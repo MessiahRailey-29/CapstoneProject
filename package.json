@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "@clerk/types": "^4.76.0"
+  },
+  "dependencies": {
+    "expo": "^53.0.20"
+  }
+}
