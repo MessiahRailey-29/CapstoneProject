@@ -43,6 +43,7 @@ export default function NewListScreen(){
     return(
         <BodyScrollView contentContainerStyle={{
             padding: 16,
+            gap: 32,
         }}
         >
             <View style = {{
