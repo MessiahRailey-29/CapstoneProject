@@ -1,16 +1,29 @@
 import { BodyScrollView } from '@/components/ui/BodyScrollView';
 import { ThemedText } from '@/components/ThemedText';
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, Stack } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
-import { appleBlue } from '@/constants/Colors';
+import { appleBlue, backgroundColors, Colors, emojies } from '@/constants/Colors';
 import TextInput from '@/components/ui/text-input';
 import Button from '@/components/ui/button';
+import { useListCreation } from '@/context/ListCreationContext';
 
 export default function NewListScreen(){
     const [listName, setListName] = useState("");
     const [listDescription, setListDescription] = useState("");
-    const handleCreateList = ()=>{}
+    const {selectedColor, setSelectedColor, setSelectedEmoji, selectedEmoji} = useListCreation();
+    const handleCreateList = ()=>{};
+
+    useEffect(() => {
+      setSelectedEmoji(emojies[Math.floor(Math.random() * emojies.length)]);
+      setSelectedColor(backgroundColors[Math.floor(Math.random() * backgroundColors.length)]);
+
+      //cleanup function
+      return () => {
+        setSelectedColor("");
+        setSelectedEmoji("");
+      }
+    }, [])
     return(
         <>
         <Stack.Screen
@@ -34,19 +47,19 @@ export default function NewListScreen(){
                     containerStyle={styles.titleInputContainer}
                     />
                     <Link href={{
-                        pathname: "/",
+                        pathname: "/emoji-picker",
                     }}
-                    style={[styles.emojiButton, {borderColor: "blue"}]}
+                    style={[styles.emojiButton, {borderColor: selectedColor}]}
                     >
                     <View style={styles.emojiContainer}>
-                        <Text>{"😊"}</Text>
+                        <Text>{selectedEmoji}</Text>
                     </View>
                     </Link>
 
                     <Link href={{
-                        pathname: "/",  
+                        pathname: "/color-picker",  
                     }}
-                    style={[styles.emojiButton, {borderColor: "blue"}]}
+                    style={[styles.emojiButton, {borderColor: selectedColor}]}
                     >
                     <View style={styles.colorContainer}>
                         <View
@@ -54,7 +67,7 @@ export default function NewListScreen(){
                             width: 24,
                             height: 24,
                             borderRadius: 100,
-                            backgroundColor: "blue",
+                            backgroundColor: selectedColor,
                         }}
                         />
                     </View>
