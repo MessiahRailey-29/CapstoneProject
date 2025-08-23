@@ -1,0 +1,11 @@
+name = "groceries-shopping-list-server"
+main = "src/index.ts"
+compatibility_date = "2025-08-23"
+
+[[durable_objects.bindings]]
+name = "GroceriesDurableObjects"
+class_name = "GroceriesDurableObject"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["GroceriesDurableObject"]
