@@ -3,6 +3,6 @@
     "@clerk/types": "^4.76.0"
   },
   "dependencies": {
-    "expo": "^53.0.20"
+    "expo": "53.0.22"
   }
 }
