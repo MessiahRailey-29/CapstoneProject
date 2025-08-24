@@ -1,19 +1,20 @@
 import { BodyScrollView } from '@/components/ui/BodyScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import React, { useEffect, useState } from "react";
-import { Link, Stack } from 'expo-router';
+import { Link, Stack, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { appleBlue, backgroundColors, Colors, emojies } from '@/constants/Colors';
 import TextInput from '@/components/ui/text-input';
 import Button from '@/components/ui/button';
 import { useListCreation } from '@/context/ListCreationContext';
+import { useAddShoppingListCallback } from '@/stores/ShoppingListsStore';
 
 export default function NewListScreen(){
+    const router = useRouter();
     const [listName, setListName] = useState("");
     const [listDescription, setListDescription] = useState("");
     const {selectedColor, setSelectedColor, setSelectedEmoji, selectedEmoji} = useListCreation();
-    const handleCreateList = ()=>{};
-
+    const useAddShoppingList = useAddShoppingListCallback();
     useEffect(() => {
       setSelectedEmoji(emojies[Math.floor(Math.random() * emojies.length)]);
       setSelectedColor(backgroundColors[Math.floor(Math.random() * backgroundColors.length)]);
@@ -23,7 +24,25 @@ export default function NewListScreen(){
         setSelectedColor("");
         setSelectedEmoji("");
       }
-    }, [])
+    }, []);
+
+    const handleCreateList = ()=>{
+      if (!listName){
+        return;
+      }
+      const listId = useAddShoppingList(
+        listName,
+        listDescription,
+        selectedEmoji,
+        selectedColor
+      );
+
+      router.replace({
+        pathname: "/",
+        params: {listId},
+      })
+    };
+
     return(
         <>
         <Stack.Screen
@@ -40,7 +59,7 @@ export default function NewListScreen(){
                     variant="ghost"
                     value={listName}
                     onChangeText={setListName}
-                    onSubmitEditing={()=>{handleCreateList}}
+                    onSubmitEditing={handleCreateList}
                     returnKeyType="done"
                     autoFocus
                     inputStyle={styles.titleInput}

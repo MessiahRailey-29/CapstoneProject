@@ -48,6 +48,7 @@ export const useAddShoppingListCallback = () => {
                     },
                 ]),
             });
+            return id;
         },
         [store]
     )
