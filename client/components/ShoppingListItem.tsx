@@ -2,7 +2,7 @@ import * as React from "react";
 import { ThemedText } from "./ThemedText";
 import { useShoppingListProductCount, useShoppingListUserNicknames, useShoppingListValue } from "@/stores/ShoppingListStore";
 import { useDelShoppingListCallback } from "@/stores/ShoppingListsStore";
-import { Animated, Pressable, StyleSheet, View } from "react-native";
+import { Animated, Pressable, StyleSheet, useColorScheme, View } from "react-native";
 import { appleRed, borderColor } from "@/constants/Colors";
 import { Link } from "expo-router";
 import IconCircle from "./IconCircle";
@@ -51,7 +51,7 @@ export default function ShoppingListItem({ listId }: {listId: string}) {
         >
         <Link href = {{pathname: "/list/[listId]", params:{listId}}}>
         <View style={styles.swipeable}>
-            <View>
+            <View style={styles.leftContent}>
                 <IconCircle emoji={emoji} backgroundColor={color}/>
                 <View style = {styles.textContent}>
                     <ThemedText type= "defaultSemiBold" numberOfLines={2}>
@@ -61,6 +61,48 @@ export default function ShoppingListItem({ listId }: {listId: string}) {
                         {productCount} product {productCount==1 ? "" : "s"} 
                     </ThemedText>
                 </View>
+
+                <View style={styles.rightContent}>
+                  {userNicknames.length > 1 && (
+                    <View style={styles.nicknameContainer}>
+                      {userNicknames.length === 4
+                      ?
+                      userNicknames.map((nickname, index) => (
+                        <NicknameCircle
+                        key = {nickname}
+                        nickname = {nickname}
+                        color = {color}
+                        index = {index}
+                        />
+                      ))
+                      : userNicknames.length > 4
+                      ?
+                      userNicknames
+                      .slice(0,4)
+                      .map((nickname, index) => (
+                        <NicknameCircle
+                        key = {nickname}
+                        nickname = {nickname}
+                        color = {color}
+                        index = {index}
+                        isEllipsis={index===3}
+                        />
+                      ))
+                      :
+                      userNicknames.map((nickname, index) => (
+                        <NicknameCircle
+                        key={nickname}
+                        nickname={nickname}
+                        color={color}
+                        index={index}
+                        />
+                      ))
+                      }
+                    </View>
+                  )
+
+                  }
+                </View>
             </View>
         </View>
         </Link>
@@ -68,6 +110,38 @@ export default function ShoppingListItem({ listId }: {listId: string}) {
         </Animated.View>
     );
 }
+
+export const NicknameCircle = ({
+  nickname,
+  color,
+  index = 0,
+  isEllipsis = false,
+}: {
+  nickname: string;
+  color: string;
+  index?: number;
+  isEllipsis?: boolean;
+}) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
+  return (
+    <ThemedText
+      type="defaultSemiBold"
+      style={[
+        styles.nicknameCircle,
+        isEllipsis && styles.ellipsisCircle,
+        {
+          backgroundColor: color,
+          borderColor: isDark ? "#000000" : "#ffffff",
+          marginLeft: index > 0 ? -6 : 0,
+        },
+      ]}
+    >
+      {isEllipsis ? "..." : nickname[0].toUpperCase()}
+    </ThemedText>
+  );
+};
 
 const styles = StyleSheet.create({
   rightAction: {
