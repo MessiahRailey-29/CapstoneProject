@@ -1,6 +1,6 @@
 import * as React from "react";
 import { ThemedText } from "@/components/ThemedText";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { FlatList } from "react-native";
 
 export default function ListScreen() {
@@ -9,9 +9,13 @@ export default function ListScreen() {
 
     return (
         <>
+        <Stack.Screen
+        options={{}}
+        />
         <FlatList
         data = {[listId]}
         renderItem={({ item }) => <ThemedText>{item}</ThemedText>}
+        contentInsetAdjustmentBehavior="automatic"
         />
         </>
     )

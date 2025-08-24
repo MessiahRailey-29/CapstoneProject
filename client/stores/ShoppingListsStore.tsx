@@ -52,7 +52,13 @@ export const useAddShoppingListCallback = () => {
         },
         [store]
     )
-}
+};
+
+export const useShoppingListIds = () => useRowIds ("lists", useStoreId())
+
+//deletes a shopping list
+export const useDelShoppingListCallback = (id: string) =>
+    useDelRowCallback("lists", id, useStoreId());    
 
 export default function ShoppingListsStore () {
     const storeId = useStoreId();

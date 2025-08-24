@@ -38,9 +38,9 @@ export default function NewListScreen(){
       );
 
       router.replace({
-        pathname: "/",
+        pathname: "/list/[listId]",
         params: {listId},
-      })
+      });
     };
 
     return(

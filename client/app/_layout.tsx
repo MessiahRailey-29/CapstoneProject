@@ -4,6 +4,7 @@ import { Slot, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import {ClerkProvider, ClerkLoaded} from '@clerk/clerk-expo';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { tokenCache } from '@/cache';
@@ -26,6 +27,7 @@ export default function RootLayout() {
   }
 
   return (
+    <GestureHandlerRootView>
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <ClerkLoaded>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -34,5 +36,6 @@ export default function RootLayout() {
         </ThemeProvider>
     </ClerkLoaded>
     </ClerkProvider>
+    </GestureHandlerRootView>
   );
 }
