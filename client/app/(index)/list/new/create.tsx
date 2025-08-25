@@ -1,116 +1,167 @@
-import { BodyScrollView } from '@/components/ui/BodyScrollView';
-import { ThemedText } from '@/components/ThemedText';
 import React, { useEffect, useState } from "react";
-import { Link, Stack, useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
-import { appleBlue, backgroundColors, Colors, emojies } from '@/constants/Colors';
-import TextInput from '@/components/ui/text-input';
-import Button from '@/components/ui/button';
-import { useListCreation } from '@/context/ListCreationContext';
-import { useAddShoppingListCallback } from '@/stores/ShoppingListsStore';
+import { Link, Stack, useRouter } from "expo-router";
+import { StyleSheet, Text, View } from "react-native";
+import { BodyScrollView } from "@/components/ui/BodyScrollView";
+import Button from "@/components/ui/button";
+import TextInput from "@/components/ui/text-input";
+import { appleBlue, backgroundColors, emojies } from "@/constants/Colors";
+import { useListCreation } from "@/context/ListCreationContext";
+import { useAddShoppingListCallback } from "@/stores/ShoppingListsStore";
 
-export default function NewListScreen(){
-    const router = useRouter();
-    const [listName, setListName] = useState("");
-    const [listDescription, setListDescription] = useState("");
-    const {selectedColor, setSelectedColor, setSelectedEmoji, selectedEmoji} = useListCreation();
-    const useAddShoppingList = useAddShoppingListCallback();
-    useEffect(() => {
-      setSelectedEmoji(emojies[Math.floor(Math.random() * emojies.length)]);
-      setSelectedColor(backgroundColors[Math.floor(Math.random() * backgroundColors.length)]);
+export default function CreateListScreen() {
+  const [listName, setListName] = useState("");
+  const [listDescription, setListDescription] = useState("");
+  const { selectedEmoji, setSelectedEmoji, selectedColor, setSelectedColor } =
+    useListCreation();
 
-      //cleanup function
-      return () => {
-        setSelectedColor("");
-        setSelectedEmoji("");
-      }
-    }, []);
+  const router = useRouter();
+  const useAddShoppingList = useAddShoppingListCallback();
 
-    const handleCreateList = ()=>{
-      if (!listName){
-        return;
-      }
-      const listId = useAddShoppingList(
-        listName,
-        listDescription,
-        selectedEmoji,
-        selectedColor
-      );
+  useEffect(() => {
+    setSelectedEmoji(emojies[Math.floor(Math.random() * emojies.length)]);
+    setSelectedColor(
+      backgroundColors[Math.floor(Math.random() * backgroundColors.length)]
+    );
 
-      router.replace({
-        pathname: "/list/[listId]",
-        params: {listId},
-      });
+    // Cleanup function to reset context when unmounting
+    return () => {
+      setSelectedEmoji("");
+      setSelectedColor("");
     };
+  }, []);
 
-    return(
-        <>
-        <Stack.Screen
+  const handleCreateList = () => {
+    if (!listName) {
+      return;
+    }
+
+    const listId = useAddShoppingList(
+      listName,
+      listDescription,
+      selectedEmoji,
+      selectedColor
+    );
+
+    router.replace({
+      pathname: "/list/[listId]",
+      params: { listId },
+    });
+  };
+
+  const handleCreateTestLists = () => {
+    const testListNames = [
+      "Grocery Shopping",
+      "Weekend BBQ",
+      "Party Supplies",
+      "Office Supplies",
+      "Camping Trip",
+      "Holiday Gifts",
+      "Home Improvement",
+      "School Supplies",
+      "Birthday Party",
+      "Household Items",
+    ];
+
+    const testEmojis = [
+      "🛒",
+      "🍖",
+      "🎉",
+      "📎",
+      "⛺️",
+      "🎁",
+      "🔨",
+      "📚",
+      "🎂",
+      "🏠",
+    ];
+    const testColors = Object.values(backgroundColors).slice(0, 10);
+
+    testListNames.forEach((name, index) => {
+      useAddShoppingList(
+        name,
+        `This is a test list for ${name}`,
+        testEmojis[index],
+        testColors[index]
+      );
+    });
+
+    // Navigate back to the main list view
+    router.replace("/");
+  };
+
+  return (
+    <>
+      <Stack.Screen
         options={{
-            headerTitle: "New list",
-            headerLargeTitle: false,
+          headerLargeTitle: false,
+          headerTitle: "New list",
         }}
+      />
+      <BodyScrollView contentContainerStyle={styles.scrollViewContent}>
+        <View style={styles.inputContainer}>
+          <TextInput
+            placeholder="Grocery Essentials"
+            value={listName}
+            onChangeText={setListName}
+            onSubmitEditing={handleCreateList}
+            returnKeyType="done"
+            variant="ghost"
+            size="lg"
+            autoFocus
+            inputStyle={styles.titleInput}
+            containerStyle={styles.titleInputContainer}
+          />
+          <Link
+            href={{ pathname: "/emoji-picker" }}
+            style={[styles.emojiButton, { borderColor: selectedColor }]}
+          >
+            <View style={styles.emojiContainer}>
+              <Text>{selectedEmoji}</Text>
+            </View>
+          </Link>
+          <Link
+            href={{ pathname: "/color-picker" }}
+            style={[styles.colorButton, { borderColor: selectedColor }]}
+          >
+            <View style={styles.colorContainer}>
+              <View
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 100,
+                  backgroundColor: selectedColor,
+                }}
+              />
+            </View>
+          </Link>
+        </View>
+        <TextInput
+          placeholder="Description (optional)"
+          value={listDescription}
+          onChangeText={setListDescription}
+          onSubmitEditing={handleCreateList}
+          returnKeyType="done"
+          variant="ghost"
+          inputStyle={styles.descriptionInput}
         />
-            <BodyScrollView contentContainerStyle={styles.scrollViewContent}>
-                <View style={styles.inputContainer}>
-                    <TextInput
-                    placeholder="Grocery essentials"
-                    size="lg"
-                    variant="ghost"
-                    value={listName}
-                    onChangeText={setListName}
-                    onSubmitEditing={handleCreateList}
-                    returnKeyType="done"
-                    autoFocus
-                    inputStyle={styles.titleInput}
-                    containerStyle={styles.titleInputContainer}
-                    />
-                    <Link href={{
-                        pathname: "/emoji-picker",
-                    }}
-                    style={[styles.emojiButton, {borderColor: selectedColor}]}
-                    >
-                    <View style={styles.emojiContainer}>
-                        <Text>{selectedEmoji}</Text>
-                    </View>
-                    </Link>
-
-                    <Link href={{
-                        pathname: "/color-picker",  
-                    }}
-                    style={[styles.emojiButton, {borderColor: selectedColor}]}
-                    >
-                    <View style={styles.colorContainer}>
-                        <View
-                        style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: 100,
-                            backgroundColor: selectedColor,
-                        }}
-                        />
-                    </View>
-                    </Link>
-                </View>
-                <TextInput
-                placeholder="description: optional"
-                value={listDescription}
-                onChangeText={setListDescription}
-                onSubmitEditing={handleCreateList}
-                returnKeyType="done"
-                variant="ghost"
-                inputStyle={styles.descriptionInput}
-                />
-                <Button
-                onPress={handleCreateList}
-                disabled={!listName}
-                variant='ghost'
-                >
-                Create list
-                </Button>
-            </BodyScrollView>
-        </>
-    )
+        <Button
+          onPress={handleCreateList}
+          disabled={!listName}
+          variant="ghost"
+          textStyle={styles.createButtonText}
+        >
+          Create list
+        </Button>
+        <Button
+          onPress={handleCreateTestLists}
+          variant="ghost"
+          textStyle={styles.createButtonText}
+        >
+          Create 10 test lists
+        </Button>
+      </BodyScrollView>
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -146,6 +197,10 @@ const styles = StyleSheet.create({
   },
   descriptionInput: {
     padding: 0,
+  },
+  createButtonText: {
+    color: appleBlue,
+    fontWeight: "normal",
   },
   colorButton: {
     padding: 1,
