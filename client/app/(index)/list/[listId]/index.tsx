@@ -1,27 +1,32 @@
-import * as React from "react";
-import { ThemedText } from "@/components/ThemedText";
+import React from "react";
+import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { FlatList, Pressable, View } from "react-native";
-import { useShoppingListProductIds, useShoppingListValue } from "@/stores/ShoppingListStore";
-import { IconSymbol } from "@/components/ui/IconSymbol";
+import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
+import ShoppingListProductItem from "@/components/ShoppingListProductItem";
+import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import Button from "@/components/ui/button";
-import ShoppingListProductItem from "@/components/ShoppingListProductItem";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import {
+  useShoppingListProductIds,
+  useShoppingListValue,
+} from "@/stores/ShoppingListStore";
 
 export default function ListScreen() {
-    const router = useRouter();
-    const { listId } = useLocalSearchParams() as {listId: string};
-    const [name] = useShoppingListValue(listId, "name");
-    const [emoji] = useShoppingListValue(listId, "emoji");
-    const [description] = useShoppingListValue(listId, "description");
-    const newProductHref = {
-        pathname: "/list/[listId]/product/new",
-        params: { listId }
-    } as const
-    return (
-        <>
-        <Stack.Screen
+  const router = useRouter();
+  const { listId } = useLocalSearchParams() as { listId: string };
+  const [name] = useShoppingListValue(listId, "name");
+  const [emoji] = useShoppingListValue(listId, "emoji");
+  const [description] = useShoppingListValue(listId, "description");
+  const newProductHref = {
+    pathname: "/list/[listId]/product/new",
+    params: { listId },
+  } as const;
+
+  return (
+    <>
+      <Stack.Screen
         options={{
           headerTitle: emoji + " " + name,
           headerRight: () => (
@@ -33,7 +38,7 @@ export default function ListScreen() {
             >
               <Pressable
                 onPress={() => {
-                 router.push({
+                  router.push({
                     pathname: "/list/[listId]/share",
                     params: { listId },
                   });
@@ -44,7 +49,7 @@ export default function ListScreen() {
               </Pressable>
               <Pressable
                 onPress={() => {
-                 router.push({
+                  router.push({
                     pathname: "/list/[listId]/edit",
                     params: { listId },
                   });
@@ -58,7 +63,7 @@ export default function ListScreen() {
               </Pressable>
               <Pressable
                 onPress={() => {
-                router.push(newProductHref);
+                  router.push(newProductHref);
                 }}
                 style={{ paddingLeft: 8 }}
               >
@@ -67,8 +72,8 @@ export default function ListScreen() {
             </View>
           ),
         }}
-        />
-        <Animated.FlatList
+      />
+      <Animated.FlatList
         data={useShoppingListProductIds(listId)}
         renderItem={({ item: productId }) => (
           <ShoppingListProductItem listId={listId} productId={productId} />
@@ -96,7 +101,7 @@ export default function ListScreen() {
           >
             <Button
               onPress={() => {
-              //  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+               // Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 router.push(newProductHref);
               }}
               variant="ghost"
@@ -107,5 +112,5 @@ export default function ListScreen() {
         )}
       />
     </>
-    )
+  );
 }
