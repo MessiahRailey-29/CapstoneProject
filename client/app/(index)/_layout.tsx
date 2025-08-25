@@ -84,6 +84,16 @@ export default function HomeRoutesLayout(){
                 sheetGrabberVisible: true,
               }}
               />
+              <Stack.Screen
+              name = "list/[listId]/product/new"
+              options={{
+                presentation: "formSheet",
+                sheetAllowedDetents: [0.8, 1],
+                sheetGrabberVisible: true,
+                headerLargeTitle: false,
+                headerTitle: "Add product",
+              }}
+              />
           </Stack>
         </ListCreationProvider>
       </TinyBaseProvider>
