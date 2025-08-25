@@ -33,10 +33,10 @@ export default function ListScreen() {
             >
               <Pressable
                 onPress={() => {
-                 /* router.push({
+                 router.push({
                     pathname: "/list/[listId]/share",
                     params: { listId },
-                  }); */
+                  });
                 }}
                 style={{ padding: 8 }}
               >
@@ -44,10 +44,10 @@ export default function ListScreen() {
               </Pressable>
               <Pressable
                 onPress={() => {
-                 /* router.push({
+                 router.push({
                     pathname: "/list/[listId]/edit",
                     params: { listId },
-                  }); */
+                  });
                 }}
                 style={{ padding: 8 }}
               >

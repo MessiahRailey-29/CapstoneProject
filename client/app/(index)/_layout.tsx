@@ -94,6 +94,25 @@ export default function HomeRoutesLayout(){
                 headerTitle: "Add product",
               }}
               />
+              <Stack.Screen
+              name = "list/[listId]/edit"
+              options={{
+                presentation: "formSheet",
+                sheetAllowedDetents: [0.8, 1],
+                sheetGrabberVisible: true,
+                headerLargeTitle: false,
+                headerTitle: "Edit",
+              }}
+              />
+              <Stack.Screen
+              name = "list/[listId]/share"
+              options={{
+                presentation: "formSheet",
+                sheetGrabberVisible: true,
+                headerLargeTitle: false,
+                headerTitle: "Share",
+              }}
+              />
           </Stack>
         </ListCreationProvider>
       </TinyBaseProvider>

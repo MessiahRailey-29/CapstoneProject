@@ -54,6 +54,19 @@ export const useAddShoppingListCallback = () => {
     )
 };
 
+export const useJoinShoppingListCallback = () => {
+    const store = useStore(useStoreId());
+    return useCallback(
+        (listId: string) => {
+            store.setRow("lists", listId, {
+                id: listId,
+                initialContentJson: JSON.stringify([{},{}]),
+            });
+        },
+        [store]
+    );
+}
+
 export const useShoppingListIds = () => useRowIds ("lists", useStoreId())
 
 //deletes a shopping list
