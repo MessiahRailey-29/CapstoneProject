@@ -37,14 +37,14 @@ export default function HomeRoutesLayout(){
               <Stack.Screen name="index" options={{headerTitle: "Shopping Lists"}}/>
               <Stack.Screen name="list/new/index"
               options={{
-                presentation: 'formSheet',
+                presentation: 'modal',
                 sheetGrabberVisible: true,
                 headerShown: false,
               }}
               />
               <Stack.Screen name="profile"
               options={{
-                presentation: 'formSheet',
+                presentation: 'modal',
                 sheetAllowedDetents: [0.75, 1],
                 sheetGrabberVisible: true,
                 headerShown: false,
@@ -52,7 +52,7 @@ export default function HomeRoutesLayout(){
               />
               <Stack.Screen name="list/new/scan"
               options={{
-                presentation: 'fullScreenModal',
+                presentation: 'modal',
                 headerLargeTitle: false,
                 headerTitle: "Scan QR code",
                 headerLeft: () => (
@@ -67,7 +67,7 @@ export default function HomeRoutesLayout(){
               <Stack.Screen
               name = "emoji-picker"
               options={{
-                presentation: "formSheet",
+                presentation: "modal",
                 headerLargeTitle: false,
                 headerTitle: "Choose an emoji",
                 sheetAllowedDetents: [0.5, 0.75, 0.1],
@@ -77,7 +77,7 @@ export default function HomeRoutesLayout(){
               <Stack.Screen
               name = "color-picker"
               options={{
-                presentation: "formSheet",
+                presentation: "modal",
                 headerLargeTitle: false,
                 headerTitle: "Choose a color",
                 sheetAllowedDetents: [0.5, 0.75, 0.1],
@@ -87,7 +87,7 @@ export default function HomeRoutesLayout(){
               <Stack.Screen
               name = "list/[listId]/product/new"
               options={{
-                presentation: "formSheet",
+                presentation: "modal",
                 sheetAllowedDetents: [0.8, 1],
                 sheetGrabberVisible: true,
                 headerLargeTitle: false,
@@ -97,7 +97,7 @@ export default function HomeRoutesLayout(){
               <Stack.Screen
               name = "list/[listId]/edit"
               options={{
-                presentation: "formSheet",
+                presentation: "modal",
                 sheetAllowedDetents: [0.8, 1],
                 sheetGrabberVisible: true,
                 headerLargeTitle: false,
@@ -107,7 +107,7 @@ export default function HomeRoutesLayout(){
               <Stack.Screen
               name = "list/[listId]/share"
               options={{
-                presentation: "formSheet",
+                presentation: "modal",
                 sheetGrabberVisible: true,
                 headerLargeTitle: false,
                 headerTitle: "Share",
@@ -116,7 +116,7 @@ export default function HomeRoutesLayout(){
               <Stack.Screen
               name = "list/[listId]/product/[productId]"
               options={{
-                presentation: "formSheet",
+                presentation: "modal",
                 sheetAllowedDetents: [0.75, 1],
                 sheetGrabberVisible: true,
                 headerLargeTitle: false,
