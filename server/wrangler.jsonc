@@ -1,0 +1,21 @@
+{
+  "name": "groceries-shopping-list-server",
+  "main": "server/src/index.ts",
+  "compatibility_date": "2025-08-16",
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GroceriesDurableObjects",
+        "class_name": "GroceriesDurableObject"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["GroceriesDurableObject"]
+    }
+  ]
+}
