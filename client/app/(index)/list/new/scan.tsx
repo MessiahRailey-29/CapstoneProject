@@ -14,9 +14,9 @@ export default function ScanQRCode() {
   const [permission, requestPermission] = useCameraPermissions();
   const joinShoppingListCallback = useJoinShoppingListCallback();
   const router = useRouter();
-
   const [qrCodeDetected, setQrCodeDetected] = useState<string>("");
-  const timeoutRef = useRef<number | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   if (!permission) {
     return <View />;

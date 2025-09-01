@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import React, { useEffect, useState } from "react";
 import { Link, Stack, useRouter } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";

@@ -5,7 +5,13 @@ declare namespace Cloudflare {
 	interface Env {
 	}
 }
-interface Env extends Cloudflare.Env {}
+interface Env extends Cloudflare.Env {
+  // D1 database binding
+  groceries_db: D1Database;
+
+  // Durable Object binding for WS sync
+  GroceriesDurableObject: DurableObjectNamespace;
+}
 
 // Begin runtime types
 /*! *****************************************************************************

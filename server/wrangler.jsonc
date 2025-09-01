@@ -17,5 +17,13 @@
       "tag": "v1",
       "new_classes": ["GroceriesDurableObject"]
     }
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "groceries_db",
+      "database_name": "groceries_db",
+      "database_id": "87be0a59-4f60-470f-9350-7e3710da02ec"
+    }
   ]
 }

@@ -1,0 +1,8 @@
+name = "capstone-server"
+main = "src/index.ts"
+compatibility_date = "2024-09-01"
+
+[[d1_databases]]
+binding = "groceries_db"
+database_name = "groceries_db"
+database_id = "87be0a59-4f60-470f-9350-7e3710da02ec"
