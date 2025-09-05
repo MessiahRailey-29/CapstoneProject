@@ -28,12 +28,20 @@ export default function HomeScreen(){
         </BodyScrollView>
     )
     const renderHeaderRight = ()=>{
-        return(
+    return(
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <Pressable 
+                onPress={()=>router.push("/product-browser")}
+                style={{marginRight: 16}}
+            >
+                <IconSymbol name="magnifyingglass" color={appleBlue}/>
+            </Pressable>
             <Pressable onPress={()=>router.push("/list/new")}>
-            <IconSymbol name = "plus" color={appleBlue}/>
-        </Pressable>
-        );
-    };
+                <IconSymbol name="plus" color={appleBlue}/>
+            </Pressable>
+        </View>
+    );
+};
 
     const renderHeaderLeft = ()=>{
         return(
