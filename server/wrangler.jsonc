@@ -13,12 +13,12 @@
     ]
   },
 
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_classes": ["GroceriesDurableObject"]
-    }
-  ],
+"migrations": [
+  {
+    "tag": "v2", // bump this each time you reset
+    "new_sqlite_classes": ["GroceriesDurableObject"]
+  }
+],
 
   "d1_databases": [
     {
