@@ -34,6 +34,12 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: corsHeaders(),
+      });
+    }
+
     // ----- Durable Object route -----
     if (url.pathname.startsWith("/do/")) {
       // Use "shared" or product-specific key
@@ -71,7 +77,12 @@ export default {
 // 📌 Get all products
 async function getProducts(env: Env): Promise<Response> {
   const { results } = await env.groceries_db.prepare("SELECT * FROM products").all();
-  return Response.json(results);
+  return new Response(JSON.stringify(results), {
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders(),
+    },
+  });
 }
 
 // 📌 Get single product
@@ -80,7 +91,12 @@ async function getProduct(env: Env, id: number): Promise<Response> {
     .prepare("SELECT * FROM products WHERE id = ?")
     .bind(id)
     .all();
-  return Response.json(results[0] || {});
+  return new Response(JSON.stringify(results[0] || {}), {
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders(),
+    },
+  });
 }
 
 // 📌 Get prices for a product
@@ -89,5 +105,19 @@ async function getPrices(env: Env, productId: number): Promise<Response> {
     .prepare("SELECT * FROM prices WHERE product_id = ?")
     .bind(productId)
     .all();
-  return Response.json(results);
+  return new Response(JSON.stringify(results), {
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders(),
+    },
+  });
+}
+
+
+function corsHeaders(origin?: string) {
+  return {
+    'Access-Control-Allow-Origin': origin || '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
 }

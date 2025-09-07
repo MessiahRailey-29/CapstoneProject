@@ -4,6 +4,7 @@ import ShoppingListsStore from "@/stores/ShoppingListsStore";
 import { useUser } from "@clerk/clerk-expo";
 import { Redirect, Stack, useRouter } from "expo-router";
 import { Provider as TinyBaseProvider } from 'tinybase/ui-react';
+import { IconSymbol } from "@/components/ui/IconSymbol";
 export default function HomeRoutesLayout(){
   const router = useRouter();
 
@@ -122,6 +123,23 @@ export default function HomeRoutesLayout(){
                 headerLargeTitle: false,
                 headerTitle: "Details",
               }}
+              />
+              <Stack.Screen 
+                name="product-browser" 
+                options={{
+                  headerTitle: "Browse Products",
+                  headerLargeTitle: true,
+                }} 
+              />
+              <Stack.Screen 
+                name="product-detail" 
+                options={{
+                  presentation: "modal",
+                  headerLargeTitle: false,
+                  headerTitle: "Product Details",
+                  sheetAllowedDetents: [0.8, 1],
+                  sheetGrabberVisible: true,
+                }} 
               />
           </Stack>
         </ListCreationProvider>
