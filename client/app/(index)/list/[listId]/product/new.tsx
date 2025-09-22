@@ -1,14 +1,20 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Platform, View, FlatList, Pressable, StyleSheet, Keyboard } from "react-native";
+import { Platform, View, FlatList, Pressable, StyleSheet, Keyboard, Alert } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import Button from "@/components/ui/button";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import TextInput from "@/components/ui/text-input";
 import { useAddShoppingListProductCallback } from "@/stores/ShoppingListStore";
-import { useProducts } from "@/hooks/useProducts";
-import { DatabaseProduct } from "@/services/productsApi";
+import { useProducts, useProductPrices } from "@/hooks/useProducts";
+import { DatabaseProduct, ProductPrice } from "@/services/productsApi";
+
+interface SelectedStoreInfo {
+  store: string;
+  price: number;
+  priceId: number;
+}
 
 export default function NewItemScreen() {
   const { listId } = useLocalSearchParams() as { listId: string };
@@ -18,47 +24,75 @@ export default function NewItemScreen() {
   const [quantity, setQuantity] = useState(1);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<DatabaseProduct | null>(null);
+  const [selectedStoreInfo, setSelectedStoreInfo] = useState<SelectedStoreInfo | null>(null);
+  const [showStoreSelection, setShowStoreSelection] = useState(false);
 
   const router = useRouter();
   const addShoppingListProduct = useAddShoppingListProductCallback(listId);
-  const { products, loading: productsLoading, searchProducts } = useProducts();
+  const { products, loading: productsLoading, searchProducts, hasProducts, isApiConfigured } = useProducts();
+  const { prices, loading: pricesLoading } = useProductPrices(selectedProduct?.id || null);
 
   // Filter products based on the current name input
   const suggestions = useMemo(() => {
-    if (!name.trim() || name.length < 2) return [];
-    return searchProducts(name).slice(0, 8); // Limit to 8 suggestions
-  }, [name, searchProducts]);
+    if (!name.trim() || name.length < 2 || !hasProducts) return [];
+    return searchProducts(name).slice(0, 8);
+  }, [name, searchProducts, hasProducts]);
 
   // Show/hide suggestions based on input and results
   useEffect(() => {
-    setShowSuggestions(suggestions.length > 0 && name.length >= 2);
-  }, [suggestions, name]);
+    setShowSuggestions(suggestions.length > 0 && name.length >= 2 && hasProducts);
+  }, [suggestions, name, hasProducts]);
+
+  // Reset store selection when product changes
+  useEffect(() => {
+    setSelectedStoreInfo(null);
+    setShowStoreSelection(false);
+  }, [selectedProduct]);
 
   const handleCreateProduct = useCallback(() => {
     if (!name.trim()) return;
 
-    addShoppingListProduct(name.trim(), quantity, units, notes);
+    addShoppingListProduct(
+      name.trim(), 
+      quantity, 
+      units, 
+      notes,
+      selectedStoreInfo?.store,
+      selectedStoreInfo?.price,
+      selectedProduct?.id,
+      selectedProduct?.category
+    );
+    
     router.back();
-  }, [name, quantity, units, notes, addShoppingListProduct, router]);
+  }, [name, quantity, units, notes, selectedStoreInfo, selectedProduct, addShoppingListProduct, router]);
 
   const handleProductSelect = useCallback((product: DatabaseProduct) => {
     setName(product.name);
     setSelectedProduct(product);
     setShowSuggestions(false);
+    setShowStoreSelection(true); // Show store selection when product is selected
     Keyboard.dismiss();
     
-    // Auto-set some common units based on category
     const categoryUnits = getCategoryUnits(product.category);
     if (categoryUnits) {
       setUnits(categoryUnits);
     }
   }, []);
 
+  const handleStoreSelect = useCallback((price: ProductPrice) => {
+    setSelectedStoreInfo({
+      store: price.store,
+      price: price.price,
+      priceId: price.id
+    });
+    setShowStoreSelection(false);
+  }, []);
+
   const handleNameChange = useCallback((text: string) => {
     setName(text);
-    setSelectedProduct(null); // Clear selected product when manually typing
+    setSelectedProduct(null);
+    setSelectedStoreInfo(null);
     
-    // If user clears the input, hide suggestions
     if (!text.trim()) {
       setShowSuggestions(false);
     }
@@ -66,6 +100,7 @@ export default function NewItemScreen() {
 
   const handleDismissSuggestions = useCallback(() => {
     setShowSuggestions(false);
+    setShowStoreSelection(false);
     Keyboard.dismiss();
   }, []);
 
@@ -108,7 +143,7 @@ export default function NewItemScreen() {
               containerStyle={styles.nameInput}
               onSubmitEditing={handleCreateProduct}
             />
-            {showSuggestions && (
+            {(showSuggestions || showStoreSelection) && (
               <Pressable 
                 style={styles.dismissButton}
                 onPress={handleDismissSuggestions}
@@ -128,11 +163,29 @@ export default function NewItemScreen() {
             </View>
           )}
 
+          {/* Selected Store Indicator */}
+          {selectedStoreInfo && (
+            <View style={styles.selectedStoreBadge}>
+              <IconSymbol name="storefront" color="#007AFF" size={16} />
+              <ThemedText type="default" style={styles.selectedStoreText}>
+                {selectedStoreInfo.store} • ₱{selectedStoreInfo.price.toFixed(2)}
+              </ThemedText>
+              <Pressable
+                onPress={() => setShowStoreSelection(true)}
+                style={styles.changeStoreButton}
+              >
+                <ThemedText type="default" style={styles.changeStoreText}>
+                  Change
+                </ThemedText>
+              </Pressable>
+            </View>
+          )}
+
           {/* Product Suggestions */}
-          {showSuggestions && !productsLoading && (
+          {showSuggestions && !productsLoading && hasProducts && (
             <View style={styles.suggestionsContainer}>
               <ThemedText type="defaultSemiBold" style={styles.suggestionsHeader}>
-                Suggestions
+                Product Suggestions
               </ThemedText>
               <FlatList
                 data={suggestions}
@@ -147,6 +200,58 @@ export default function NewItemScreen() {
                 scrollEnabled={false}
                 showsVerticalScrollIndicator={false}
               />
+            </View>
+          )}
+
+          {/* Store Selection */}
+          {showStoreSelection && selectedProduct && (
+            <View style={styles.suggestionsContainer}>
+              <ThemedText type="defaultSemiBold" style={styles.suggestionsHeader}>
+                Choose Store & Price
+              </ThemedText>
+              {pricesLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ThemedText>Loading prices...</ThemedText>
+                </View>
+              ) : prices.length > 0 ? (
+                <FlatList
+                  data={prices}
+                  renderItem={({ item }) => (
+                    <StoreSelectionItem
+                      price={item}
+                      onSelect={handleStoreSelect}
+                      isSelected={selectedStoreInfo?.priceId === item.id}
+                    />
+                  )}
+                  keyExtractor={(item) => item.id.toString()}
+                  scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
+                />
+              ) : (
+                <View style={styles.noPricesContainer}>
+                  <ThemedText style={styles.noPricesText}>
+                    No prices available for this product
+                  </ThemedText>
+                  <Button
+                    variant="ghost"
+                    onPress={() => {
+                      setShowStoreSelection(false);
+                      // Allow proceeding without store selection
+                    }}
+                  >
+                    Continue without price
+                  </Button>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Show info if API not configured */}
+          {!isApiConfigured && name.length >= 2 && (
+            <View style={styles.infoContainer}>
+              <ThemedText type="default" style={styles.infoText}>
+                💡 Configure your API to see product suggestions
+              </ThemedText>
             </View>
           )}
         </View>
@@ -197,6 +302,11 @@ export default function NewItemScreen() {
               <ThemedText type="default" style={styles.quantityUnits}>
                 {units}
               </ThemedText>
+              {selectedStoreInfo && (
+                <ThemedText type="default" style={styles.totalPriceText}>
+                  Total: ₱{(selectedStoreInfo.price * quantity).toFixed(2)}
+                </ThemedText>
+              )}
             </View>
             <View style={styles.quantityButtons}>
               <Button
@@ -249,7 +359,7 @@ export default function NewItemScreen() {
   );
 }
 
-// Product Suggestion Item Component
+// Simple Product Suggestion Item (without price display to avoid complexity)
 function ProductSuggestionItem({ 
   product, 
   onSelect, 
@@ -259,7 +369,6 @@ function ProductSuggestionItem({
   onSelect: (product: DatabaseProduct) => void;
   searchQuery: string;
 }) {
-  // Highlight matching text
   const highlightText = (text: string, query: string) => {
     if (!query) return text;
     const index = text.toLowerCase().indexOf(query.toLowerCase());
@@ -290,13 +399,44 @@ function ProductSuggestionItem({
             {product.category}
           </ThemedText>
         </View>
-        <IconSymbol name="arrow.up.left.and.arrow.down.right" color="#007AFF" size={16} />
+        <IconSymbol name="chevron.right" color="#007AFF" size={16} />
       </View>
     </Pressable>
   );
 }
 
-// Helper function to suggest units based on category
+// Store Selection Item Component
+function StoreSelectionItem({ 
+  price, 
+  onSelect, 
+  isSelected 
+}: { 
+  price: ProductPrice; 
+  onSelect: (price: ProductPrice) => void;
+  isSelected: boolean;
+}) {
+  return (
+    <Pressable
+      style={[styles.storeItem, isSelected && styles.storeItemSelected]}
+      onPress={() => onSelect(price)}
+    >
+      <View style={styles.storeContent}>
+        <View style={styles.storeMain}>
+          <ThemedText type="defaultSemiBold" style={styles.storeName}>
+            {price.store}
+          </ThemedText>
+          <ThemedText type="title" style={styles.storePrice}>
+            ₱{price.price.toFixed(2)}
+          </ThemedText>
+        </View>
+        {isSelected && (
+          <IconSymbol name="checkmark.circle.fill" color="#34C759" size={20} />
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
 function getCategoryUnits(category: string): string | null {
   const categoryMap: { [key: string]: string } = {
     'Beverages': 'L',
@@ -309,6 +449,7 @@ function getCategoryUnits(category: string): string | null {
     'Fruits': 'kg',
     'Bread': 'pcs',
     'Snacks': 'g',
+    'Household': 'pcs',
   };
   
   return categoryMap[category] || null;
@@ -317,155 +458,80 @@ function getCategoryUnits(category: string): string | null {
 const COMMON_UNITS = ['pcs', 'kg', 'g', 'L', 'mL', 'pack'];
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-  },
-  nameSection: {
-    marginBottom: 24,
-  },
-  nameInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    position: 'relative',
-  },
-  nameInput: {
-    flex: 1,
-    marginBottom: 0,
-  },
-  dismissButton: {
-    position: 'absolute',
-    right: 12,
-    bottom: 12,
-    zIndex: 1,
-  },
+  container: { padding: 16 },
+  nameSection: { marginBottom: 24 },
+  nameInputContainer: { flexDirection: 'row', alignItems: 'flex-end', position: 'relative' },
+  nameInput: { flex: 1, marginBottom: 0 },
+  dismissButton: { position: 'absolute', right: 12, bottom: 12, zIndex: 1 },
   selectedProductBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8F5E8',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginTop: 8,
-    alignSelf: 'flex-start',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E8',
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, marginTop: 8, alignSelf: 'flex-start'
   },
-  selectedText: {
-    fontSize: 12,
-    color: '#34C759',
-    marginLeft: 4,
+  selectedText: { fontSize: 12, color: '#34C759', marginLeft: 4 },
+  selectedStoreBadge: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F4FF',
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, marginTop: 6, alignSelf: 'flex-start'
   },
+  selectedStoreText: { fontSize: 12, color: '#007AFF', marginLeft: 4, flex: 1 },
+  changeStoreButton: { marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2 },
+  changeStoreText: { fontSize: 10, color: '#007AFF', textDecorationLine: 'underline' },
   suggestionsContainer: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
-    maxHeight: 300,
+    backgroundColor: '#f8f9fa', borderRadius: 12, padding: 12, marginTop: 8, maxHeight: 400
   },
-  suggestionsHeader: {
-    fontSize: 14,
-    marginBottom: 8,
-    color: '#666',
+  suggestionsHeader: { fontSize: 14, marginBottom: 8, color: '#666' },
+  loadingContainer: { padding: 20, alignItems: 'center' },
+  noPricesContainer: { padding: 20, alignItems: 'center' },
+  noPricesText: { marginBottom: 12, color: '#666', textAlign: 'center' },
+  infoContainer: {
+    backgroundColor: '#f0f8ff', borderRadius: 8, padding: 12, marginTop: 8,
+    borderLeftWidth: 3, borderLeftColor: '#007AFF'
   },
+  infoText: { fontSize: 12, color: '#666', textAlign: 'center' },
   suggestionItem: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    marginBottom: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: 'white', borderRadius: 8, marginBottom: 6,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1
   },
   suggestionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12
   },
-  suggestionMain: {
-    flex: 1,
+  suggestionMain: { flex: 1 },
+  suggestionName: { fontSize: 15, marginBottom: 2 },
+  suggestionCategory: { fontSize: 12, color: '#666' },
+  storeItem: {
+    backgroundColor: 'white', borderRadius: 8, marginBottom: 6,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1,
+    borderWidth: 2, borderColor: 'transparent'
   },
-  suggestionName: {
-    fontSize: 15,
-    marginBottom: 2,
+  storeItemSelected: { borderColor: '#34C759', backgroundColor: '#F0FFF0' },
+  storeContent: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16
   },
-  suggestionCategory: {
-    fontSize: 12,
-    color: '#666',
-  },
-  highlightedText: {
-    backgroundColor: '#FFE066',
-    fontWeight: 'bold',
-  },
-  inputRow: {
-    marginBottom: 24,
-  },
-  unitsInput: {
-    marginBottom: 12,
-  },
-  commonUnitsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+  storeMain: { flex: 1 },
+  storeName: { fontSize: 16, marginBottom: 4 },
+  storePrice: { fontSize: 18, color: '#007AFF' },
+  highlightedText: { backgroundColor: '#FFE066', fontWeight: 'bold' },
+  inputRow: { marginBottom: 24 },
+  unitsInput: { marginBottom: 12 },
+  commonUnitsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   unitChip: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    backgroundColor: '#f0f0f0', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6,
+    borderWidth: 1, borderColor: '#e0e0e0'
   },
-  unitChipSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  unitChipText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  unitChipTextSelected: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  quantitySection: {
-    marginBottom: 24,
-  },
-  quantityLabel: {
-    marginBottom: 12,
-  },
+  unitChipSelected: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
+  unitChipText: { fontSize: 12, color: '#666' },
+  unitChipTextSelected: { color: 'white', fontWeight: '600' },
+  quantitySection: { marginBottom: 24 },
+  quantityLabel: { marginBottom: 12 },
   quantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#f8f9fa', borderRadius: 12, padding: 16
   },
-  quantityDisplay: {
-    alignItems: 'center',
-  },
-  quantityText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  quantityUnits: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  quantityButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  quantityButton: {
-    padding: 4,
-  },
-  notesInput: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  addButton: {
-    marginTop: 24,
-  },
+  quantityDisplay: { alignItems: 'center' },
+  quantityText: { fontSize: 24, fontWeight: 'bold' },
+  quantityUnits: { fontSize: 14, color: '#666', marginTop: 2 },
+  totalPriceText: { fontSize: 12, color: '#007AFF', marginTop: 4, fontWeight: '600' },
+  quantityButtons: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  quantityButton: { padding: 4 },
+  notesInput: { height: 80, textAlignVertical: 'top' },
+  addButton: { marginTop: 24 },
 });

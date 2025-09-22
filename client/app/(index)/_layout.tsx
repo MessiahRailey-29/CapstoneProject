@@ -71,7 +71,7 @@ export default function HomeRoutesLayout(){
                 presentation: "modal",
                 headerLargeTitle: false,
                 headerTitle: "Choose an emoji",
-                sheetAllowedDetents: [0.5, 0.75, 0.1],
+                sheetAllowedDetents: [0.5, 0.75, 1],
                 sheetGrabberVisible: true,
               }}
               />
@@ -81,7 +81,7 @@ export default function HomeRoutesLayout(){
                 presentation: "modal",
                 headerLargeTitle: false,
                 headerTitle: "Choose a color",
-                sheetAllowedDetents: [0.5, 0.75, 0.1],
+                sheetAllowedDetents: [0.5, 0.75, 1],
                 sheetGrabberVisible: true,
               }}
               />

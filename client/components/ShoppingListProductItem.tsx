@@ -25,14 +25,23 @@ export default function ShoppingListProductItem({
 }) {
   const router = useRouter();
   const [name] = useShoppingListProductCell(listId, productId, "name");
+  const [quantity] = useShoppingListProductCell(listId, productId, "quantity");
+  const [units] = useShoppingListProductCell(listId, productId, "units");
   const [color] = useShoppingListValue(listId, "color");
   const [isPurchased, setIsPurchased] = useShoppingListProductCell(
     listId,
     productId,
     "isPurchased"
   );
+  
+  // New store selection fields
+  const [selectedStore] = useShoppingListProductCell(listId, productId, "selectedStore");
+  const [selectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
+  const [category] = useShoppingListProductCell(listId, productId, "category");
 
   const deleteCallback = useDelShoppingListProductCallback(listId, productId);
+
+  const totalPrice = selectedPrice * quantity;
 
   const RightAction = (
     prog: SharedValue<number>,
@@ -45,11 +54,7 @@ export default function ShoppingListProductItem({
     });
 
     return (
-      <Pressable
-        onPress={() => {
-          deleteCallback();
-        }}
-      >
+      <Pressable onPress={deleteCallback}>
         <Reanimated.View style={[styleAnimation, styles.rightAction]}>
           <IconSymbol name="trash.fill" size={24} color="white" />
         </Reanimated.View>
@@ -66,34 +71,28 @@ export default function ShoppingListProductItem({
       renderRightActions={RightAction}
       overshootRight={false}
       enableContextMenu
-      containerStyle={{
-        paddingBottom: 12,
-        paddingHorizontal: 16,
-      }}
+      containerStyle={styles.container}
     >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <Pressable
-          onPress={() => {
-            if (process.env.EXPO_OS === "ios") {
-              Haptics.notificationAsync(
-                Haptics.NotificationFeedbackType.Success
-              );
-            }
-            setIsPurchased(!isPurchased);
-          }}
-        >
-          <IconSymbol
-            name={isPurchased ? "checkmark.circle.fill" : "circle"}
-            size={28}
-            color={color}
-          />
-        </Pressable>
+      <View style={styles.productContainer}>
+        <View style={styles.checkboxContainer}>
+          <Pressable
+            onPress={() => {
+              if (process.env.EXPO_OS === "ios") {
+                Haptics.notificationAsync(
+                  Haptics.NotificationFeedbackType.Success
+                );
+              }
+              setIsPurchased(!isPurchased);
+            }}
+          >
+            <IconSymbol
+              name={isPurchased ? "checkmark.circle.fill" : "circle"}
+              size={28}
+              color={color}
+            />
+          </Pressable>
+        </View>
+
         <Pressable
           onPress={() => {
             router.push({
@@ -101,21 +100,95 @@ export default function ShoppingListProductItem({
               params: { listId, productId },
             });
           }}
-          style={styles.swipeable}
+          style={styles.productContent}
         >
-          <ThemedText
-            type="defaultSemiBold"
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            style={{
-              maxWidth: "95%",
-              opacity: isPurchased ? 0.5 : 1,
-              textDecorationLine: isPurchased ? "line-through" : "none",
-            }}
-          >
-            {name}
-          </ThemedText>
-          {/* <IconSymbol name="chevron.right" size={14} color="#A1A1AA" /> */}
+          <View style={styles.productMain}>
+            <ThemedText
+              type="defaultSemiBold"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={[
+                styles.productName,
+                isPurchased && styles.strikethrough
+              ]}
+            >
+              {name}
+            </ThemedText>
+            
+            <View style={styles.productDetails}>
+              <ThemedText
+                type="default"
+                style={[
+                  styles.quantityText,
+                  isPurchased && styles.strikethrough
+                ]}
+              >
+                {quantity} {units}
+              </ThemedText>
+              
+              {category && (
+                <ThemedText style={styles.categoryDot}>•</ThemedText>
+              )}
+              
+              {category && (
+                <ThemedText
+                  type="default"
+                  style={[
+                    styles.categoryText,
+                    isPurchased && styles.strikethrough
+                  ]}
+                >
+                  {category}
+                </ThemedText>
+              )}
+            </View>
+
+            {/* Store and Price Information */}
+            {(selectedStore || selectedPrice > 0) && (
+              <View style={styles.storeInfo}>
+                {selectedStore && (
+                  <View style={styles.storeContainer}>
+                    <IconSymbol name="storefront" size={12} color="#666" />
+                    <ThemedText
+                      type="default"
+                      style={[
+                        styles.storeText,
+                        isPurchased && styles.strikethrough
+                      ]}
+                    >
+                      {selectedStore}
+                    </ThemedText>
+                  </View>
+                )}
+                
+                {selectedPrice > 0 && (
+                  <View style={styles.priceContainer}>
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={[
+                        styles.priceText,
+                        isPurchased && styles.strikethrough
+                      ]}
+                    >
+                      ₱{selectedPrice.toFixed(2)}/{units}
+                    </ThemedText>
+                    
+                    {quantity > 1 && (
+                      <ThemedText
+                        type="default"
+                        style={[
+                          styles.totalPriceText,
+                          isPurchased && styles.strikethrough
+                        ]}
+                      >
+                        (₱{totalPrice.toFixed(2)} total)
+                      </ThemedText>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
         </Pressable>
       </View>
     </ReanimatedSwipeable>
@@ -123,16 +196,82 @@ export default function ShoppingListProductItem({
 }
 
 const styles = StyleSheet.create({
-  swipeable: {
-    flexGrow: 1,
-    flexShrink: 1,
+  container: {
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+  },
+  productContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  checkboxContainer: {
+    paddingTop: 2,
+  },
+  productContent: {
+    flex: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: borderColor,
+    paddingBottom: 12,
+  },
+  productMain: {
+    flex: 1,
+  },
+  productName: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  productDetails: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  quantityText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  categoryDot: {
+    marginHorizontal: 6,
+    color: "#ccc",
+  },
+  categoryText: {
+    fontSize: 12,
+    color: "#999",
+    fontStyle: "italic",
+  },
+  storeInfo: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 6,
+    padding: 8,
+    gap: 4,
+  },
+  storeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  storeText: {
+    fontSize: 12,
+    color: "#666",
+  },
+  priceContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: borderColor,
     gap: 8,
-    paddingVertical: 8,
+  },
+  priceText: {
+    fontSize: 14,
+    color: "#007AFF",
+  },
+  totalPriceText: {
+    fontSize: 12,
+    color: "#007AFF",
+    opacity: 0.8,
+  },
+  strikethrough: {
+    textDecorationLine: "line-through",
+    opacity: 0.5,
   },
   rightAction: {
     width: 80,

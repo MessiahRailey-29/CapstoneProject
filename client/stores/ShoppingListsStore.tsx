@@ -31,28 +31,73 @@ const {
 const useStoreId = () => STORE_ID_PREFIX + useUser().user.id;
 
 // Returns a callback that adds a new shopping list to the store.
+// In your useAddShoppingListCallback
 export const useAddShoppingListCallback = () => {
   const store = useStore(useStoreId());
   return useCallback(
-    (name: string, description: string, emoji: string, color: string) => {
+    (name: string, description: string, emoji: string, color: string, shoppingDate?: Date | null, budget?: number) => {
       const id = randomUUID();
+      
+      const listData = {
+        id,
+        name,
+        description,
+        emoji,
+        color,
+        shoppingDate: shoppingDate?.toISOString() || null,
+        budget: typeof budget === "number" && !isNaN(budget) ? budget : 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      console.log('💾 Saving list data:', listData);
+
       store.setRow("lists", id, {
         id,
-        valuesCopy: JSON.stringify({
-          id,
-          name,
-          description,
-          emoji,
-          color,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }),
+        valuesCopy: JSON.stringify(listData),
       });
+      
       return id;
     },
     [store]
   );
 };
+
+//new
+export const useShoppingListData = (listId: string) => {
+  const [valuesCopy] = useValuesCopy(listId);
+
+  console.log('📖 Reading valuesCopy for', listId, ':', valuesCopy);
+
+  try {
+    const data = JSON.parse(valuesCopy || '{}');
+    console.log('📊 Parsed list data:', data);
+
+    return {
+      name: data.name || '',
+      description: data.description || '',
+      emoji: data.emoji || '🛒',
+      color: data.color || '#007AFF',
+      shoppingDate: data.shoppingDate || null,
+      budget: typeof data.budget === 'number' ? data.budget : 0,
+      createdAt: data.createdAt || '',
+      updatedAt: data.updatedAt || '',
+    };
+  } catch (error) {
+    console.log('❌ Error parsing list data:', error);
+    return {
+      name: '',
+      description: '',
+      emoji: '🛒',
+      color: '#007AFF',
+      shoppingDate: null,
+      budget: 0,
+      createdAt: '',
+      updatedAt: '',
+    };
+  }
+};
+
 
 // Returns a callback that adds an existing shopping list to the store.
 export const useJoinShoppingListCallback = () => {

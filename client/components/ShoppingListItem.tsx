@@ -11,14 +11,78 @@ import { SharedValue, useAnimatedStyle } from "react-native-reanimated";
 import { IconSymbol } from "./ui/IconSymbol";
 import Reanimated from "react-native-reanimated";
 
+// Date utility functions
+const formatShoppingDate = (dateString: string | null | undefined): string | null => {
+  if (!dateString) return null;
+  
+  try {
+    const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Reset time parts for accurate comparison
+    today.setHours(0, 0, 0, 0);
+    tomorrow.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+    
+    const isToday = date.getTime() === today.getTime();
+    const isTomorrow = date.getTime() === tomorrow.getTime();
+    
+    if (isToday) return 'Today';
+    if (isTomorrow) return 'Tomorrow';
+    
+    // Check if it's in the past
+    if (date < today) {
+      return 'Past due';
+    }
+    
+    // Future dates
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short',
+      month: 'short', 
+      day: 'numeric' 
+    });
+  } catch {
+    return null;
+  }
+};
+
+const getDateStatusColor = (dateString: string | null | undefined): string => {
+  if (!dateString) return '#999';
+  
+  try {
+    const date = new Date(dateString);
+    const today = new Date();
+    
+    today.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+    
+    if (date < today) return '#FF3B30'; // Red for past dates
+    if (date.getTime() === today.getTime()) return '#FF9500'; // Orange for today
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (date.getTime() === tomorrow.getTime()) return '#34C759'; // Green for tomorrow
+    
+    return '#007AFF'; // Blue for future dates
+  } catch {
+    return '#999';
+  }
+};
+
 export default function ShoppingListItem({ listId }: {listId: string}) {
-    const [name] = useShoppingListValue (listId, "name");
-    const [emoji] = useShoppingListValue (listId, "emoji");
-    const [color] = useShoppingListValue (listId, "color");
-    const productCount = useShoppingListProductCount (listId);
-    const userNicknames = useShoppingListUserNicknames (listId);
+    const [name] = useShoppingListValue(listId, "name");
+    const [emoji] = useShoppingListValue(listId, "emoji");
+    const [color] = useShoppingListValue(listId, "color");
+    const [shoppingDate] = useShoppingListValue(listId, "shoppingDate");
+    const productCount = useShoppingListProductCount(listId);
+    const userNicknames = useShoppingListUserNicknames(listId);
 
     const deleteCallback = useDelShoppingListCallback(listId);
+    
+    const formattedDate = formatShoppingDate(shoppingDate);
+    const dateColor = getDateStatusColor(shoppingDate);
 
     const RightAction = (
             prog: SharedValue<number>,
@@ -38,6 +102,7 @@ export default function ShoppingListItem({ listId }: {listId: string}) {
             </Pressable>
         )
     }
+    
     return (
         <Animated.View>
         <ReanimatedSwipeable
@@ -57,9 +122,22 @@ export default function ShoppingListItem({ listId }: {listId: string}) {
                     <ThemedText type= "defaultSemiBold" numberOfLines={2}>
                         {name}
                     </ThemedText>
-                    <ThemedText type="defaultSemiBold" style={styles.productCount}>
-                        {productCount} product {productCount==1 ? "" : "s"} 
-                    </ThemedText>
+                    <View style={styles.metaInfo}>
+                      <ThemedText type="defaultSemiBold" style={styles.productCount}>
+                          {productCount} product{productCount === 1 ? "" : "s"} 
+                      </ThemedText>
+                      {formattedDate && (
+                        <>
+                          <ThemedText style={styles.metaDot}>•</ThemedText>
+                          <ThemedText 
+                            type="defaultSemiBold" 
+                            style={[styles.dateText, { color: dateColor }]}
+                          >
+                            {formattedDate}
+                          </ThemedText>
+                        </>
+                      )}
+                    </View>
                 </View>
 
                 <View style={styles.rightContent}>
@@ -99,9 +177,7 @@ export default function ShoppingListItem({ listId }: {listId: string}) {
                       ))
                       }
                     </View>
-                  )
-
-                  }
+                  )}
                 </View>
             </View>
         </View>
@@ -171,9 +247,22 @@ const styles = StyleSheet.create({
   textContent: {
     flexShrink: 1,
   },
+  metaInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   productCount: {
     fontSize: 12,
     color: "gray",
+  },
+  metaDot: {
+    fontSize: 12,
+    color: "#ccc",
+  },
+  dateText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   rightContent: {
     flexDirection: "row",

@@ -56,7 +56,7 @@ export default function EditScreen() {
         options={{
           headerLeft: () => (
             <Button variant="ghost" onPress={router.back}>
-              Cancel
+              Save
             </Button>
           ),
         }}

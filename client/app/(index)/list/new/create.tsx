@@ -8,15 +8,32 @@ import TextInput from "@/components/ui/text-input";
 import { appleBlue, backgroundColors, emojies } from "@/constants/Colors";
 import { useListCreation } from "@/context/ListCreationContext";
 import { useAddShoppingListCallback } from "@/stores/ShoppingListsStore";
+import DatePickerButton from "@/components/DatePickerButton"; // You'll need to create this component
+import BudgetInput from "@/components/BudgetInput"; // You'll need to create this component
 
 export default function CreateListScreen() {
   const [listName, setListName] = useState("");
   const [listDescription, setListDescription] = useState("");
-  const { selectedEmoji, setSelectedEmoji, selectedColor, setSelectedColor } =
-    useListCreation();
+  const { 
+    selectedEmoji, 
+    setSelectedEmoji, 
+    selectedColor, 
+    setSelectedColor,
+    selectedDate,
+    setSelectedDate,
+    budget,
+    setBudget 
+  } = useListCreation();
 
   const router = useRouter();
   const useAddShoppingList = useAddShoppingListCallback();
+
+  useEffect(() => {
+    console.log('🔧 Budget changed in CreateListScreen:', {
+      budget,
+      budgetType: typeof budget
+    });
+  }, [budget]);
 
   useEffect(() => {
     setSelectedEmoji(emojies[Math.floor(Math.random() * emojies.length)]);
@@ -28,6 +45,22 @@ export default function CreateListScreen() {
     return () => {
       setSelectedEmoji("");
       setSelectedColor("");
+      setSelectedDate(null);
+      setBudget(0); // Add this to reset budget
+    };
+  }, []);
+  
+  useEffect(() => {
+    setSelectedEmoji(emojies[Math.floor(Math.random() * emojies.length)]);
+    setSelectedColor(
+      backgroundColors[Math.floor(Math.random() * backgroundColors.length)]
+    );
+
+    // Cleanup function to reset context when unmounting
+    return () => {
+      setSelectedEmoji("");
+      setSelectedColor("");
+      setSelectedDate(null);
     };
   }, []);
 
@@ -36,11 +69,23 @@ export default function CreateListScreen() {
       return;
     }
 
+    console.log('Creating list with budget:', {
+      listName,
+      listDescription,
+      selectedEmoji,
+      selectedColor,
+      selectedDate,
+      budget,
+      budgetType: typeof budget
+    });
+
     const listId = useAddShoppingList(
       listName,
       listDescription,
       selectedEmoji,
-      selectedColor
+      selectedColor,
+      selectedDate,
+      budget
     );
 
     router.replace({
@@ -77,12 +122,20 @@ export default function CreateListScreen() {
     ];
     const testColors = Object.values(backgroundColors).slice(0, 10);
 
+    // Create test dates (today + random days in the future)
+    const getRandomDate = (index: number) => {
+      const date = new Date();
+      date.setDate(date.getDate() + Math.floor(Math.random() * 7) + index);
+      return date;
+    };
+
     testListNames.forEach((name, index) => {
       useAddShoppingList(
         name,
         `This is a test list for ${name}`,
         testEmojis[index],
-        testColors[index]
+        testColors[index],
+        getRandomDate(index)
       );
     });
 
@@ -136,6 +189,7 @@ export default function CreateListScreen() {
             </View>
           </Link>
         </View>
+        
         <TextInput
           placeholder="Description (optional)"
           value={listDescription}
@@ -145,6 +199,29 @@ export default function CreateListScreen() {
           variant="ghost"
           inputStyle={styles.descriptionInput}
         />
+
+        <View style={styles.dateSection}>
+          <Text style={styles.dateLabel}>When do you plan to shop?</Text>
+          <DatePickerButton
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            borderColor={selectedColor}
+          />
+        </View>
+
+        <View style={styles.budgetSection}>
+          <Text style={styles.budgetLabel}>What's your budget?</Text>
+          <BudgetInput
+          budget={budget}
+          onBudgetChange={(val) => {
+            console.log("📝 BudgetInput change:", val, typeof val);
+            setBudget(val);
+          }}
+          borderColor={selectedColor}
+        />
+
+        </View>
+        
         <Button
           onPress={handleCreateList}
           disabled={!listName}
@@ -213,5 +290,23 @@ const styles = StyleSheet.create({
     height: 28,
     alignItems: "center",
     justifyContent: "center",
+  },
+  dateSection: {
+    marginVertical: 16,
+    gap: 8,
+  },
+  dateLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#666",
+  },
+  budgetSection: {
+    marginVertical: 16,
+    gap: 8,
+  },
+  budgetLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#666",
   },
 });

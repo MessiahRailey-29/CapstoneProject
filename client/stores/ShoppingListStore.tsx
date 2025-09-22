@@ -12,6 +12,7 @@ import {
 import { useUserIdAndNickname } from "@/hooks/useNickname";
 import { useCreateClientPersisterAndStart } from "@/stores/persistence/useCreateClientPersisterAndStart";
 import { useCreateServerSynchronizerAndStart } from "./synchronization/useCreateServerSynchronizerAndStart";
+import React from "react";
 
 const STORE_ID_PREFIX = "shoppingListStore-";
 
@@ -21,9 +22,12 @@ const VALUES_SCHEMA = {
   description: { type: "string" },
   emoji: { type: "string" },
   color: { type: "string" },
+  shoppingDate: { type: "string" },
+  budget: { type: "number", default: 0 },
   createdAt: { type: "string" },
   updatedAt: { type: "string" },
 } as const;
+
 const TABLES_SCHEMA = {
   products: {
     id: { type: "string" },
@@ -33,7 +37,11 @@ const TABLES_SCHEMA = {
     isPurchased: { type: "boolean", default: false },
     category: { type: "string", default: "" },
     notes: { type: "string" },
-    createdBy: { type: "string" }, // userId
+    // Enhanced with store selection
+    selectedStore: { type: "string", default: "" },
+    selectedPrice: { type: "number", default: 0 },
+    databaseProductId: { type: "number", default: 0 },
+    createdBy: { type: "string" },
     createdAt: { type: "string" },
     updatedAt: { type: "string" },
   },
@@ -65,37 +73,66 @@ const {
 
 const useStoreId = (listId: string) => STORE_ID_PREFIX + listId;
 
-// Returns a callback that adds a new product to the shopping list.
+// Enhanced product creation with store selection
 export const useAddShoppingListProductCallback = (listId: string) => {
   const store = useStore(useStoreId(listId));
   const [userId] = useUserIdAndNickname();
   return useCallback(
-    (name: string, quantity: number, units: string, notes: string) => {
+    (
+      name: string, 
+      quantity: number, 
+      units: string, 
+      notes: string,
+      selectedStore?: string,
+      selectedPrice?: number,
+      databaseProductId?: number,
+      category?: string
+    ) => {
       const id = randomUUID();
-      store.setRow("products", id, {
-        id,
-        name,
-        quantity,
-        units,
-        notes,
-        createdBy: userId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      const now = new Date().toISOString();
+      
+      // Check for duplicate products by name
+      const existingProducts = store.getTable("products");
+      const isDuplicate = Object.values(existingProducts).some(
+        (product: any) => product.name === name && !product.isPurchased
+      );
+      
+      if (isDuplicate) {
+        console.warn('Product with same name already exists:', name);
+        return id;
+      }
+      
+      // Use transaction for atomic operation
+      store.transaction(() => {
+        store.setRow("products", id, {
+          id,
+          name,
+          quantity,
+          units,
+          notes,
+          selectedStore: selectedStore || "",
+          selectedPrice: selectedPrice || 0,
+          databaseProductId: databaseProductId || 0,
+          category: category || "",
+          isPurchased: false,
+          createdBy: userId,
+          createdAt: now,
+          updatedAt: now,
+        });
       });
+      
+      console.log('âœ… Added product:', name);
       return id;
     },
-    [store, listId]
+    [store, userId]
   );
 };
 
-// Returns a callback that deletes a product from the shopping list.
 export const useDelShoppingListProductCallback = (
   listId: string,
   productId: string
 ) => useDelRowCallback("products", productId, useStoreId(listId));
 
-// Returns a pair of 1) a property of the shopping list, 2) a callback that
-// updates it, similar to the React useState pattern.
 export const useShoppingListValue = <ValueId extends ShoppingListValueId>(
   listId: string,
   valueId: ValueId
@@ -112,7 +149,6 @@ export const useShoppingListValue = <ValueId extends ShoppingListValueId>(
   ),
 ];
 
-// Returns the product IDs of the shopping list, sorted by the specified cell.
 export const useShoppingListProductIds = (
   listId: string,
   cellId: ShoppingListProductCellId = "createdAt",
@@ -129,12 +165,9 @@ export const useShoppingListProductIds = (
     useStoreId(listId)
   );
 
-// Returns the number of products in the shopping list.
 export const useShoppingListProductCount = (listId: string) =>
   useRowCount("products", useStoreId(listId));
 
-// Returns a pair of 1) a property of a product in the shopping list, 2) a
-// callback that updates it, similar to the React useState pattern.
 export const useShoppingListProductCell = <
   CellId extends ShoppingListProductCellId
 >(
@@ -156,7 +189,6 @@ export const useShoppingListProductCell = <
   ),
 ];
 
-// Returns the nickname of the person who created the product.
 export const useShoppingListProductCreatedByNickname = (
   listId: string,
   productId: string
@@ -169,13 +201,12 @@ export const useShoppingListProductCreatedByNickname = (
   return useCell("collaborators", userId, "nickname", useStoreId(listId));
 };
 
-// Returns the nicknames of people involved in this shopping list.
 export const useShoppingListUserNicknames = (listId: string) =>
   Object.entries(useTable("collaborators", useStoreId(listId))).map(
     ([, { nickname }]) => nickname
   );
 
-// Create, persist, and sync a store containing the shopping list and products.
+// Fixed store with better sync handling
 export default function ShoppingListStore({
   listId,
   useValuesCopy,
@@ -191,47 +222,102 @@ export default function ShoppingListStore({
     createMergeableStore().setSchema(TABLES_SCHEMA, VALUES_SCHEMA)
   );
 
-  // Debounce the setValuesCopy callback to prevent excessive re-renders.
-  const debouncedSetValuesCopy = useCallback(
-    debounce((values) => {
-      setValuesCopy(values)
-    }, 300),
-    [setValuesCopy],
-  )
+  // Initialize store with data from valuesCopy when it changes
+  React.useEffect(() => {
+    if (valuesCopy) {
+      try {
+        const data = JSON.parse(valuesCopy);
+        console.log('Initializing store with data:', data);
+        
+        // Set individual values in TinyBase store
+        if (data.values) {
+          const values = data.values;
+          
+          // Set all the values properly in TinyBase
+          if (values.name) store.setValue('name', values.name);
+          if (values.description) store.setValue('description', values.description);
+          if (values.emoji) store.setValue('emoji', values.emoji);
+          if (values.color) store.setValue('color', values.color);
+          if (values.budget !== undefined) {
+            console.log('Setting budget in TinyBase:', values.budget);
+            store.setValue('budget', values.budget);
+          }
+          if (values.createdAt) store.setValue('createdAt', values.createdAt);
+          if (values.updatedAt) store.setValue('updatedAt', values.updatedAt);
+          
+          store.setValue('listId', listId);
+        }
+        
+        // Also restore tables data if present
+        if (data.tables) {
+          if (data.tables.products) {
+            Object.entries(data.tables.products).forEach(([productId, productData]: [string, any]) => {
+              store.setRow('products', productId, productData);
+            });
+          }
+          if (data.tables.collaborators) {
+            Object.entries(data.tables.collaborators).forEach(([collaboratorId, collaboratorData]: [string, any]) => {
+              store.setRow('collaborators', collaboratorId, collaboratorData);
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing store from valuesCopy:', error);
+      }
+    }
+  }, [valuesCopy, store, listId]);
 
-  // Add listener to values for updating the parent 'lists store' copy.
+  // Improved debounce with more conservative timing
+  const debouncedSetValuesCopy = useCallback(
+    debounce((storeData: string) => {
+      setValuesCopy(storeData);
+    }, 1000), // Increased to 1 second to reduce sync conflicts
+    [setValuesCopy]
+  );
+
+  // Better values listener with change detection
   useValuesListener(
     () => {
-      // BUG FIX: The previous implementation update only the store values
-      // which would clear all existing table data when only values were updated.
-      // Now we properly parse both tables and values from initialValues
-      // to maintain table data integrity across updates.
-      const storeData = {
-        tables: {
-          products: store.getTable('products'),
-          collaborators: store.getTable('collaborators'),
-        },
-        values: {
-          ...store.getValues(),
-          listId,
-        },
+      try {
+        const storeData = {
+          tables: {
+            products: store.getTable('products'),
+            collaborators: store.getTable('collaborators'),
+          },
+          values: {
+            ...store.getValues(), // This will now include the properly set budget
+            listId,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+        
+        const serializedData = JSON.stringify(storeData);
+        
+        // Only update if data actually changed (prevents loops)
+        if (serializedData !== valuesCopy) {
+          console.log('Syncing store data:', storeData.values);
+          debouncedSetValuesCopy(serializedData);
+        }
+      } catch (error) {
+        console.error('Error in values listener:', error);
       }
-      debouncedSetValuesCopy(JSON.stringify(storeData))
     },
-    [debouncedSetValuesCopy],
+    [debouncedSetValuesCopy, valuesCopy, listId, store],
     false,
-    store,
-  )
-
-  // Persist store (with initial content if it hasn't been saved before), then
-  // ensure the current user is added as a collaborator.
-  useCreateClientPersisterAndStart(storeId, store, valuesCopy, () =>
-    store.setRow("collaborators", userId, { nickname })
+    store
   );
+
+  useCreateClientPersisterAndStart(storeId, store, valuesCopy, () => {
+    // Only add collaborator once
+    const existingCollaborator = store.getCell("collaborators", userId, "nickname");
+    if (!existingCollaborator) {
+      store.setRow("collaborators", userId, { nickname });
+    }
+  });
+  
   useCreateServerSynchronizerAndStart(storeId, store);
   useProvideStore(storeId, store);
 
-  // Create relationship between products (createdBy) and collaborators tables.
   const relationships = useCreateRelationships(store, (store) =>
     createRelationships(store).setRelationshipDefinition(
       "createdByNickname",

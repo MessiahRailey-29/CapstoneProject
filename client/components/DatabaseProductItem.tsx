@@ -1,9 +1,7 @@
-//DatabaseProductsItem.tsx
-
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
-import { DatabaseProduct, ProductPrice } from '@/services/productsApi';
+import { ThemedText } from './ThemedText';
+import { DatabaseProduct } from '@/services/productsApi';
 import { useProductPrices } from '@/hooks/useProducts';
 
 interface DatabaseProductItemProps {
@@ -12,11 +10,20 @@ interface DatabaseProductItemProps {
 }
 
 export default function DatabaseProductItem({ product, onPress }: DatabaseProductItemProps) {
-  const { prices, loading } = useProductPrices(product.id);
+  const { prices, loading, error } = useProductPrices(product.id);
+  
+  console.log(`🏪 DatabaseProductItem for product ${product.id} (${product.name}):`, {
+    pricesCount: prices.length,
+    loading,
+    error,
+    prices: prices
+  });
   
   const lowestPrice = prices.length > 0 
     ? Math.min(...prices.map(p => p.price))
     : null;
+
+  console.log(`💰 Lowest price for ${product.name}:`, lowestPrice);
 
   return (
     <Pressable
@@ -38,7 +45,11 @@ export default function DatabaseProductItem({ product, onPress }: DatabaseProduc
             <ThemedText type="default" style={styles.loadingText}>
               Loading...
             </ThemedText>
-          ) : lowestPrice ? (
+          ) : error ? (
+            <ThemedText type="default" style={styles.errorText}>
+              Error loading
+            </ThemedText>
+          ) : lowestPrice !== null ? (
             <ThemedText type="defaultSemiBold" style={styles.price}>
               ₱{lowestPrice.toFixed(2)}
             </ThemedText>
@@ -92,6 +103,10 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     color: 'gray',
+  },
+  errorText: {
+    fontSize: 12,
+    color: 'red',
   },
   noPrice: {
     fontSize: 12,
