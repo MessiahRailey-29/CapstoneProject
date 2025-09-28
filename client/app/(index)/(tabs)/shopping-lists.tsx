@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { appleBlue, backgroundColors } from "@/constants/Colors";
 import { useShoppingListIds } from "@/stores/ShoppingListsStore";
-import { useClerk } from "@clerk/clerk-expo";
-import { Link, Stack, useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import {FlatList, Platform, Pressable, StyleSheet, View} from "react-native";
 
 export default function HomeScreen(){
@@ -27,27 +26,12 @@ export default function HomeScreen(){
             </Button>
         </BodyScrollView>
     )
+    
     const renderHeaderRight = ()=>{
-    return(
-        <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            <Pressable 
-                onPress={()=>router.push("/product-browser")}
-                style={{marginRight: 16}}
-            >
-                <IconSymbol name="magnifyingglass" color={appleBlue}/>
-            </Pressable>
+        return(
             <Pressable onPress={()=>router.push("/list/new")}>
                 <IconSymbol name="plus" color={appleBlue}/>
             </Pressable>
-        </View>
-    );
-};
-
-    const renderHeaderLeft = ()=>{
-        return(
-            <Pressable onPress={()=>router.push("/profile")}>
-            <IconSymbol name = "gear" color={appleBlue}/>
-        </Pressable>
         );
     };
 
@@ -55,16 +39,10 @@ export default function HomeScreen(){
         <>
         <Stack.Screen options={{
             headerRight: renderHeaderRight,
-            headerLeft: renderHeaderLeft,
         }}/>
         <FlatList
         data={shoppingListIds}
         renderItem={({ item: listId}) => <ShoppingListItem listId = {listId}/>}
-        //renderItem={({ item: listId}) => (
-        //<Link href={{pathname: "/list/[listId]", params: {listId}}}>
-        //    {listId}
-        //    </Link>
-        //)}
         contentContainerStyle={styles.listContainer}
         contentInsetAdjustmentBehavior="automatic"
         ListEmptyComponent={renderEmptyList}

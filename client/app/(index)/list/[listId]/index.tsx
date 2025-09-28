@@ -13,31 +13,35 @@ import {
   useShoppingListProductIds,
   useShoppingListValue,
 } from "@/stores/ShoppingListStore";
-import { useShoppingListData } from "@/stores/ShoppingListsStore"; // Import the new hook
+import { useShoppingListData } from "@/stores/ShoppingListsStore";
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 export default function ListScreen() {
   const router = useRouter();
   const { listId } = useLocalSearchParams() as { listId: string };
-  
-  // Get list data from ShoppingListsStore (includes budget)
+
+  // Raw values from valuesCopy (always available)
   const listData = useShoppingListData(listId);
-  
-  // Get individual list data from ShoppingListStore
+
+  // Hydrated values (can be blank until hydration completes)
   const [name] = useShoppingListValue(listId, "name");
   const [emoji] = useShoppingListValue(listId, "emoji");
   const [description] = useShoppingListValue(listId, "description");
   const productIds = useShoppingListProductIds(listId);
-  
-  // Use the budget from the correct store
+
+  // ✅ Safe fallbacks
+  const displayName = name || listData.name || "";
+  const displayEmoji = emoji || listData.emoji || "❓";
+  const displayDescription = description || listData.description || "";
   const budget = listData.budget;
-  
-  console.log('List Screen Debug:', {
+
+  console.log("List Screen Debug:", {
     listId,
     budget,
     budgetType: typeof budget,
     name,
     productCount: productIds.length,
-    listData
+    listData,
   });
 
   const newProductHref = {
@@ -47,13 +51,19 @@ export default function ListScreen() {
 
   const ListHeaderComponent = () => (
     <View>
-      {description && (
+      {displayDescription ? (
         <ThemedText
-          style={{ paddingHorizontal: 16, fontSize: 14, color: "gray", marginBottom: 16 }}
+          style={{
+            paddingHorizontal: 16,
+            fontSize: 14,
+            color: "gray",
+            marginBottom: 16,
+          }}
         >
-          {description}
+          {displayDescription}
         </ThemedText>
-      )}
+      ) : null}
+
       {/* Always show BudgetSummary when we have budget or products with prices */}
       <BudgetSummary listId={listId} budget={budget} />
     </View>
@@ -63,7 +73,7 @@ export default function ListScreen() {
     <>
       <Stack.Screen
         options={{
-          headerTitle: emoji + " " + name,
+          headerTitle: displayEmoji + " " + displayName, // ✅ safe fallback
           headerRight: () => (
             <View
               style={{
@@ -112,6 +122,17 @@ export default function ListScreen() {
                 style={{ paddingLeft: 8 }}
               >
                 <IconSymbol name="plus" color={"#007AFF"} />
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  router.push({
+                    pathname: "/list/[listId]/duplicate-check",
+                    params: { listId },
+                  });
+                }}
+                style={{ padding: 8 }}
+              >
+                <AntDesign name="check-square" size={24} color="black" />
               </Pressable>
             </View>
           ),

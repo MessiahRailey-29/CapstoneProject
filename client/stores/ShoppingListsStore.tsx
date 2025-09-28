@@ -31,30 +31,37 @@ const {
 const useStoreId = () => STORE_ID_PREFIX + useUser().user.id;
 
 // Returns a callback that adds a new shopping list to the store.
-// In your useAddShoppingListCallback
 export const useAddShoppingListCallback = () => {
   const store = useStore(useStoreId());
   return useCallback(
     (name: string, description: string, emoji: string, color: string, shoppingDate?: Date | null, budget?: number) => {
       const id = randomUUID();
       
-      const listData = {
-        id,
-        name,
-        description,
-        emoji,
-        color,
-        shoppingDate: shoppingDate?.toISOString() || null,
-        budget: typeof budget === "number" && !isNaN(budget) ? budget : 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      // Create the complete initial data structure that matches what ShoppingListStore expects
+      const completeData = {
+        tables: {
+          products: {},
+          collaborators: {},
+        },
+        values: {
+          listId: id,
+          name,
+          description,
+          emoji,
+          color,
+          budget: budget || 0, // Ensure budget is always a number
+          shoppingDate: shoppingDate?.toISOString() || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
       };
 
-      console.log('💾 Saving list data:', listData);
+      console.log('💾 Creating list with complete data structure:', completeData);
+      console.log('💰 Budget in values:', completeData.values.budget);
 
       store.setRow("lists", id, {
         id,
-        valuesCopy: JSON.stringify(listData),
+        valuesCopy: JSON.stringify(completeData),
       });
       
       return id;
@@ -62,42 +69,6 @@ export const useAddShoppingListCallback = () => {
     [store]
   );
 };
-
-//new
-export const useShoppingListData = (listId: string) => {
-  const [valuesCopy] = useValuesCopy(listId);
-
-  console.log('📖 Reading valuesCopy for', listId, ':', valuesCopy);
-
-  try {
-    const data = JSON.parse(valuesCopy || '{}');
-    console.log('📊 Parsed list data:', data);
-
-    return {
-      name: data.name || '',
-      description: data.description || '',
-      emoji: data.emoji || '🛒',
-      color: data.color || '#007AFF',
-      shoppingDate: data.shoppingDate || null,
-      budget: typeof data.budget === 'number' ? data.budget : 0,
-      createdAt: data.createdAt || '',
-      updatedAt: data.updatedAt || '',
-    };
-  } catch (error) {
-    console.log('❌ Error parsing list data:', error);
-    return {
-      name: '',
-      description: '',
-      emoji: '🛒',
-      color: '#007AFF',
-      shoppingDate: null,
-      budget: 0,
-      createdAt: '',
-      updatedAt: '',
-    };
-  }
-};
-
 
 // Returns a callback that adds an existing shopping list to the store.
 export const useJoinShoppingListCallback = () => {
@@ -146,6 +117,56 @@ export const useShoppingListsValues = () =>
       }
     });
 
+export const useShoppingListData = (listId: string) => {
+  const [valuesCopy] = useValuesCopy(listId);
+  
+  console.log('📖 Reading valuesCopy for', listId, ':', valuesCopy);
+  
+  try {
+    const data = JSON.parse(valuesCopy || '{}');
+    console.log('📊 Parsed list data:', data);
+    
+    // Handle both old format (direct properties) and new format (nested in values)
+    let values;
+    if (data.values) {
+      // New format with nested structure
+      values = data.values;
+      console.log('📋 Using nested values structure:', values);
+    } else {
+      // Old format or direct properties
+      values = data;
+      console.log('📋 Using direct properties structure:', values);
+    }
+    
+    const result = {
+      name: values.name || '',
+      description: values.description || '',
+      emoji: values.emoji || '🛒',
+      color: values.color || '#007AFF',
+      shoppingDate: values.shoppingDate || null,
+      budget: values.budget || 0,
+      createdAt: values.createdAt || '',
+      updatedAt: values.updatedAt || '',
+    };
+    
+    console.log('🎯 Final list data result:', result);
+    console.log('💰 Budget from useShoppingListData:', result.budget, typeof result.budget);
+    
+    return result;
+  } catch (error) {
+    console.log('❌ Error parsing list data:', error);
+    return {
+      name: '',
+      description: '',
+      emoji: '🛒',
+      color: '#007AFF',
+      shoppingDate: null,
+      budget: 0,
+      createdAt: '',
+      updatedAt: '',
+    };
+  }
+};
 // Create, persist, and sync a store containing the IDs of the shopping lists.
 export default function ShoppingListsStore() {
   const storeId = useStoreId();

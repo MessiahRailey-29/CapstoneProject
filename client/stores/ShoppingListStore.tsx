@@ -1,18 +1,12 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { randomUUID } from "expo-crypto";
 import { debounce } from 'lodash'
 import { useRemoteRowId } from "tinybase/ui-react";
 import * as UiReact from "tinybase/ui-react/with-schemas";
-import {
-  Cell,
-  createMergeableStore,
-  createRelationships,
-  Value,
-} from "tinybase/with-schemas";
+import { Cell, createMergeableStore, createRelationships, Value } from "tinybase/with-schemas";
 import { useUserIdAndNickname } from "@/hooks/useNickname";
 import { useCreateClientPersisterAndStart } from "@/stores/persistence/useCreateClientPersisterAndStart";
 import { useCreateServerSynchronizerAndStart } from "./synchronization/useCreateServerSynchronizerAndStart";
-import React from "react";
 
 const STORE_ID_PREFIX = "shoppingListStore-";
 
@@ -37,7 +31,6 @@ const TABLES_SCHEMA = {
     isPurchased: { type: "boolean", default: false },
     category: { type: "string", default: "" },
     notes: { type: "string" },
-    // Enhanced with store selection
     selectedStore: { type: "string", default: "" },
     selectedPrice: { type: "number", default: 0 },
     databaseProductId: { type: "number", default: 0 },
@@ -68,15 +61,15 @@ const {
   useCreateRelationships,
   useTable,
   useValue,
-  useValuesListener,
 } = UiReact as UiReact.WithSchemas<Schemas>;
 
-const useStoreId = (listId: string) => STORE_ID_PREFIX + listId;
+const useStoreId = (listId: string) => `shoppingListStore-${listId}`;
 
-// Enhanced product creation with store selection
+// Enhanced product creation with better duplicate checking
 export const useAddShoppingListProductCallback = (listId: string) => {
   const store = useStore(useStoreId(listId));
   const [userId] = useUserIdAndNickname();
+  
   return useCallback(
     (
       name: string, 
@@ -91,22 +84,44 @@ export const useAddShoppingListProductCallback = (listId: string) => {
       const id = randomUUID();
       const now = new Date().toISOString();
       
-      // Check for duplicate products by name
-      const existingProducts = store.getTable("products");
-      const isDuplicate = Object.values(existingProducts).some(
-        (product: any) => product.name === name && !product.isPurchased
-      );
+      const normalizedName = name.trim().toLowerCase();
       
-      if (isDuplicate) {
-        console.warn('Product with same name already exists:', name);
-        return id;
+      if (!normalizedName) {
+        console.warn('Product name cannot be empty');
+        return null;
       }
       
-      // Use transaction for atomic operation
-      store.transaction(() => {
+      try {
+        // Get current products directly from store
+        const existingProducts = store.getTable("products");
+        
+        console.log('DUPLICATE CHECK:', {
+          listId,
+          searchingFor: normalizedName,
+          existingCount: Object.keys(existingProducts).length,
+        });
+        
+        // Check for duplicates
+        const isDuplicate = Object.values(existingProducts).some((product) => {
+          if (!product || typeof product !== 'object' || !('name' in product) || !('isPurchased' in product)) {
+            return false;
+          }
+          
+          const existingName = String(product.name).trim().toLowerCase();
+          const isPurchased = Boolean(product.isPurchased);
+          
+          return existingName === normalizedName && !isPurchased;
+        });
+        
+        if (isDuplicate) {
+          console.warn('DUPLICATE FOUND:', normalizedName);
+          return null;
+        }
+        
+        // Add product
         store.setRow("products", id, {
           id,
-          name,
+          name: name.trim(),
           quantity,
           units,
           notes,
@@ -119,10 +134,19 @@ export const useAddShoppingListProductCallback = (listId: string) => {
           createdAt: now,
           updatedAt: now,
         });
-      });
-      
-      console.log('âœ… Added product:', name);
-      return id;
+        
+        console.log('PRODUCT ADDED:', {
+          id,
+          name: name.trim(),
+          newProductCount: Object.keys(store.getTable("products")).length
+        });
+        
+        return id;
+        
+      } catch (error) {
+        console.error('ERROR ADDING PRODUCT:', error);
+        return null;
+      }
     },
     [store, userId]
   );
@@ -206,7 +230,7 @@ export const useShoppingListUserNicknames = (listId: string) =>
     ([, { nickname }]) => nickname
   );
 
-// Fixed store with better sync handling
+// OPTIMIZED STORE - Dramatically reduced write frequency
 export default function ShoppingListStore({
   listId,
   useValuesCopy,
@@ -217,101 +241,161 @@ export default function ShoppingListStore({
   const storeId = useStoreId(listId);
   const [userId, nickname] = useUserIdAndNickname();
   const [valuesCopy, setValuesCopy] = useValuesCopy(listId);
+  const initialized = useRef(false);
+  const lastSyncedHash = useRef<string>('');
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const store = useCreateMergeableStore(() =>
     createMergeableStore().setSchema(TABLES_SCHEMA, VALUES_SCHEMA)
   );
 
-  // Initialize store with data from valuesCopy when it changes
-  React.useEffect(() => {
-    if (valuesCopy) {
+  // Initialize store from valuesCopy only once
+  useEffect(() => {
+    if (!initialized.current && valuesCopy && valuesCopy !== '{}') {
       try {
-        const data = JSON.parse(valuesCopy);
-        console.log('Initializing store with data:', data);
+        const parsedData = JSON.parse(valuesCopy);
         
-        // Set individual values in TinyBase store
-        if (data.values) {
-          const values = data.values;
-          
-          // Set all the values properly in TinyBase
-          if (values.name) store.setValue('name', values.name);
-          if (values.description) store.setValue('description', values.description);
-          if (values.emoji) store.setValue('emoji', values.emoji);
-          if (values.color) store.setValue('color', values.color);
-          if (values.budget !== undefined) {
-            console.log('Setting budget in TinyBase:', values.budget);
-            store.setValue('budget', values.budget);
-          }
-          if (values.createdAt) store.setValue('createdAt', values.createdAt);
-          if (values.updatedAt) store.setValue('updatedAt', values.updatedAt);
-          
-          store.setValue('listId', listId);
+        console.log('INITIALIZING STORE:', {
+          listId,
+          hasProducts: !!parsedData.tables?.products,
+          productCount: Object.keys(parsedData.tables?.products || {}).length,
+        });
+        
+        // Initialize products
+        if (parsedData.tables?.products) {
+          Object.entries(parsedData.tables.products).forEach(([productId, product]) => {
+            if (product && typeof product === 'object') {
+              store.setRow('products', productId, product);
+            }
+          });
         }
         
-        // Also restore tables data if present
-        if (data.tables) {
-          if (data.tables.products) {
-            Object.entries(data.tables.products).forEach(([productId, productData]: [string, any]) => {
-              store.setRow('products', productId, productData);
-            });
-          }
-          if (data.tables.collaborators) {
-            Object.entries(data.tables.collaborators).forEach(([collaboratorId, collaboratorData]: [string, any]) => {
-              store.setRow('collaborators', collaboratorId, collaboratorData);
-            });
-          }
+        // Initialize collaborators
+        if (parsedData.tables?.collaborators) {
+          Object.entries(parsedData.tables.collaborators).forEach(([collaboratorId, collaborator]) => {
+            if (collaborator && typeof collaborator === 'object') {
+              store.setRow('collaborators', collaboratorId, collaborator);
+            }
+          });
         }
+        
+        // Initialize values
+        if (parsedData.values) {
+          const validValueKeys: (keyof typeof VALUES_SCHEMA)[] = [
+            'name', 'description', 'emoji', 'color', 'shoppingDate', 
+            'budget', 'createdAt', 'updatedAt'
+          ];
+          
+          validValueKeys.forEach(key => {
+            if (key in parsedData.values && parsedData.values[key] !== undefined) {
+              store.setValue(key, parsedData.values[key]);
+            }
+          });
+        }
+        
+        initialized.current = true;
+        
       } catch (error) {
-        console.error('Error initializing store from valuesCopy:', error);
+        console.error('INITIALIZATION ERROR:', error);
       }
     }
-  }, [valuesCopy, store, listId]);
+  }, [valuesCopy, store]);
 
-  // Improved debounce with more conservative timing
-  const debouncedSetValuesCopy = useCallback(
-    debounce((storeData: string) => {
-      setValuesCopy(storeData);
-    }, 1000), // Increased to 1 second to reduce sync conflicts
-    [setValuesCopy]
-  );
-
-  // Better values listener with change detection
-  useValuesListener(
-    () => {
-      try {
+  // CRITICAL FIX: Smart sync that only writes when there are meaningful changes
+  const performSmartSync = useCallback(() => {
+    if (!initialized.current) return;
+    
+    try {
+      const currentTables = {
+        products: store.getTable('products'),
+        collaborators: store.getTable('collaborators'),
+      };
+      
+      const currentValues = store.getValues();
+      
+      // Create hash WITHOUT timestamp to detect meaningful changes
+      const meaningfulData = {
+        tables: currentTables,
+        values: { ...currentValues, listId } // Exclude updatedAt from hash
+      };
+      
+      const currentHash = JSON.stringify(meaningfulData);
+      
+      // Only sync if there's a meaningful change
+      if (currentHash !== lastSyncedHash.current) {
         const storeData = {
-          tables: {
-            products: store.getTable('products'),
-            collaborators: store.getTable('collaborators'),
-          },
+          tables: currentTables,
           values: {
-            ...store.getValues(), // This will now include the properly set budget
+            ...currentValues,
             listId,
             updatedAt: new Date().toISOString(),
           },
         };
         
-        const serializedData = JSON.stringify(storeData);
+        console.log('SYNCING MEANINGFUL CHANGES:', {
+          listId,
+          productCount: Object.keys(currentTables.products).length,
+          reason: 'Data actually changed'
+        });
         
-        // Only update if data actually changed (prevents loops)
-        if (serializedData !== valuesCopy) {
-          console.log('Syncing store data:', storeData.values);
-          debouncedSetValuesCopy(serializedData);
-        }
-      } catch (error) {
-        console.error('Error in values listener:', error);
+        setValuesCopy(JSON.stringify(storeData));
+        lastSyncedHash.current = currentHash;
       }
-    },
-    [debouncedSetValuesCopy, valuesCopy, listId, store],
-    false,
-    store
+    } catch (error) {
+      console.error('SYNC ERROR:', error);
+    }
+  }, [store, setValuesCopy, listId]);
+
+  // CRITICAL FIX: Much longer debounce + smart batching
+  const debouncedSync = useCallback(
+    debounce(() => {
+      performSmartSync();
+    }, 10000), // 10 seconds - only sync after user stops making changes
+    [performSmartSync]
   );
 
+  // CRITICAL FIX: Manual sync triggers instead of automatic listeners
+  const triggerSync = useCallback(() => {
+    // Clear existing timeout
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+    
+    // Set new timeout
+    syncTimeoutRef.current = setTimeout(() => {
+      debouncedSync();
+    }, 2000); // Wait 2 seconds after last change
+  }, [debouncedSync]);
+
+  // CRITICAL FIX: Sync on strategic moments instead of every change
+  useEffect(() => {
+    if (!initialized.current) return;
+    
+    // Sync when component unmounts (user navigates away)
+    return () => {
+      performSmartSync();
+    };
+  }, [performSmartSync]);
+
+  // CRITICAL FIX: Sync when app goes to background
+  useEffect(() => {
+    const handleAppStateChange = () => {
+      performSmartSync();
+    };
+
+    // Sync after initial load
+    if (initialized.current) {
+      const timer = setTimeout(performSmartSync, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [initialized.current, performSmartSync]);
+
   useCreateClientPersisterAndStart(storeId, store, valuesCopy, () => {
-    // Only add collaborator once
+    // Add collaborator if not exists
     const existingCollaborator = store.getCell("collaborators", userId, "nickname");
-    if (!existingCollaborator) {
+    if (!existingCollaborator && nickname) {
       store.setRow("collaborators", userId, { nickname });
+      triggerSync(); // Trigger sync for this important change
     }
   });
   

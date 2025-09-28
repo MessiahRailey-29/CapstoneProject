@@ -1,9 +1,13 @@
-// server/src/index.ts - Updated to handle both WebSocket sync AND API calls
+// ===== index.ts =====
+import { durableObjectFetch, GroceriesDurableObject } from './GroceriesDurableObject';
 
 export interface Env {
   groceries_db: D1Database;
   GroceriesDurableObjects: DurableObjectNamespace;
 }
+
+// Export the Durable Object class
+export { GroceriesDurableObject };
 
 // CORS helper function
 function corsHeaders(origin?: string) {
@@ -16,44 +20,7 @@ function corsHeaders(origin?: string) {
 }
 
 // =======================
-// Durable Object for WebSocket sync (keep your existing sync functionality)
-// =======================
-export class GroceriesDurableObject {
-  state: DurableObjectState;
-  env: Env;
-
-  constructor(state: DurableObjectState, env: Env) {
-    this.state = state;
-    this.env = env;
-  }
-
-  async fetch(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-
-    // Handle WebSocket upgrade for sync (existing functionality)
-    const upgradeHeader = request.headers.get('Upgrade');
-    if (upgradeHeader === 'websocket') {
-      // Your existing WebSocket sync logic goes here
-      // This keeps your TinyBase sync working
-      return new Response('WebSocket endpoint', { status: 426 });
-    }
-
-    // Handle other Durable Object requests
-    if (url.pathname.endsWith("/ping")) {
-      return new Response("pong from Durable Object", {
-        headers: corsHeaders(),
-      });
-    }
-
-    return new Response("Not Found in Durable Object", { 
-      status: 404,
-      headers: corsHeaders(),
-    });
-  }
-}
-
-// =======================
-// Worker Entrypoint - Now handles BOTH sync and API
+// Worker Entrypoint
 // =======================
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -66,18 +33,22 @@ export default {
       });
     }
 
-    // ----- WebSocket Sync Routes (existing functionality) -----
+    // ----- WebSocket Sync Routes (TinyBase sync) -----
     const upgradeHeader = request.headers.get('Upgrade');
     if (upgradeHeader === 'websocket') {
+      // Extract store ID from the URL path
+      const pathParts = url.pathname.split('/').filter(Boolean);
+      const storeId = pathParts[pathParts.length - 1] || 'default';
+      
       // Route WebSocket connections to Durable Object for sync
-      let id = env.GroceriesDurableObjects.idFromName("sync");
-      let stub = env.GroceriesDurableObjects.get(id);
+      const id = env.GroceriesDurableObjects.idFromName(storeId);
+      const stub = env.GroceriesDurableObjects.get(id);
       return stub.fetch(request);
     }
 
     // ----- API Routes for Database Products -----
     if (url.pathname.startsWith('/api/products')) {
-      let id = url.searchParams.get('id');
+      const id = url.searchParams.get('id');
       if (id) {
         return await getProduct(env, parseInt(id));
       } else {
@@ -86,7 +57,7 @@ export default {
     }
 
     if (url.pathname.startsWith('/api/prices')) {
-      let productId = url.searchParams.get('product_id');
+      const productId = url.searchParams.get('product_id');
       if (productId) {
         return await getPrices(env, parseInt(productId));
       }
@@ -94,13 +65,6 @@ export default {
         status: 400,
         headers: corsHeaders(),
       });
-    }
-
-    // ----- Durable Object routes (if needed for other purposes) -----
-    if (url.pathname.startsWith('/do/')) {
-      let id = env.GroceriesDurableObjects.idFromName("shared");
-      let stub = env.GroceriesDurableObjects.get(id);
-      return stub.fetch(request);
     }
 
     // ----- Health check / Root -----
@@ -128,7 +92,7 @@ export default {
 // Database API Handlers
 // =======================
 
-// 📌 Get all products
+// Get all products
 async function getProducts(env: Env): Promise<Response> {
   try {
     const { results } = await env.groceries_db
@@ -138,7 +102,7 @@ async function getProducts(env: Env): Promise<Response> {
     return new Response(JSON.stringify(results || []), {
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
+        'Cache-Control': 'public, max-age=300',
         ...corsHeaders(),
       },
     });
@@ -157,7 +121,7 @@ async function getProducts(env: Env): Promise<Response> {
   }
 }
 
-// 📌 Get single product
+// Get single product
 async function getProduct(env: Env, id: number): Promise<Response> {
   try {
     const { results } = await env.groceries_db
@@ -167,10 +131,11 @@ async function getProduct(env: Env, id: number): Promise<Response> {
     
     const product = results?.[0];
     
-    return new Response(JSON.stringify(product || {}), {
+    return new Response(JSON.stringify(product || null), {
+      status: product ? 200 : 404,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=600', // Cache for 10 minutes
+        'Cache-Control': 'public, max-age=600',
         ...corsHeaders(),
       },
     });
@@ -189,7 +154,7 @@ async function getProduct(env: Env, id: number): Promise<Response> {
   }
 }
 
-// 📌 Get prices for a product
+// Get prices for a product
 async function getPrices(env: Env, productId: number): Promise<Response> {
   try {
     const { results } = await env.groceries_db
@@ -200,7 +165,7 @@ async function getPrices(env: Env, productId: number): Promise<Response> {
     return new Response(JSON.stringify(results || []), {
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
+        'Cache-Control': 'public, max-age=300',
         ...corsHeaders(),
       },
     });

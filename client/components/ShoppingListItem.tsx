@@ -1,12 +1,25 @@
 import * as React from "react";
 import { ThemedText } from "./ThemedText";
-import { useShoppingListProductCount, useShoppingListUserNicknames, useShoppingListValue } from "@/stores/ShoppingListStore";
-import { useDelShoppingListCallback } from "@/stores/ShoppingListsStore";
-import { Animated, Pressable, StyleSheet, useColorScheme, View } from "react-native";
+import {
+  useShoppingListProductCount,
+  useShoppingListUserNicknames,
+  useShoppingListValue,
+} from "@/stores/ShoppingListStore";
+import {
+  useDelShoppingListCallback,
+  useShoppingListData,
+} from "@/stores/ShoppingListsStore";
+import {
+  Animated,
+  Pressable,
+  StyleSheet,
+  useColorScheme,
+  View,
+} from "react-native";
 import { appleRed, borderColor } from "@/constants/Colors";
 import { Link } from "expo-router";
 import IconCircle from "./IconCircle";
-import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable"
+import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { SharedValue, useAnimatedStyle } from "react-native-reanimated";
 import { IconSymbol } from "./ui/IconSymbol";
 import Reanimated from "react-native-reanimated";
@@ -14,34 +27,21 @@ import Reanimated from "react-native-reanimated";
 // Date utility functions
 const formatShoppingDate = (dateString: string | null | undefined): string | null => {
   if (!dateString) return null;
-  
   try {
     const date = new Date(dateString);
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    // Reset time parts for accurate comparison
     today.setHours(0, 0, 0, 0);
     tomorrow.setHours(0, 0, 0, 0);
     date.setHours(0, 0, 0, 0);
-    
-    const isToday = date.getTime() === today.getTime();
-    const isTomorrow = date.getTime() === tomorrow.getTime();
-    
-    if (isToday) return 'Today';
-    if (isTomorrow) return 'Tomorrow';
-    
-    // Check if it's in the past
-    if (date < today) {
-      return 'Past due';
-    }
-    
-    // Future dates
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short',
-      month: 'short', 
-      day: 'numeric' 
+    if (date.getTime() === today.getTime()) return "Today";
+    if (date.getTime() === tomorrow.getTime()) return "Tomorrow";
+    if (date < today) return "Past due";
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
     });
   } catch {
     return null;
@@ -49,63 +49,69 @@ const formatShoppingDate = (dateString: string | null | undefined): string | nul
 };
 
 const getDateStatusColor = (dateString: string | null | undefined): string => {
-  if (!dateString) return '#999';
-  
+  if (!dateString) return "#999";
   try {
     const date = new Date(dateString);
     const today = new Date();
-    
     today.setHours(0, 0, 0, 0);
     date.setHours(0, 0, 0, 0);
-    
-    if (date < today) return '#FF3B30'; // Red for past dates
-    if (date.getTime() === today.getTime()) return '#FF9500'; // Orange for today
-    
+    if (date < today) return "#FF3B30";
+    if (date.getTime() === today.getTime()) return "#FF9500";
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    if (date.getTime() === tomorrow.getTime()) return '#34C759'; // Green for tomorrow
-    
-    return '#007AFF'; // Blue for future dates
+    if (date.getTime() === tomorrow.getTime()) return "#34C759";
+    return "#007AFF";
   } catch {
-    return '#999';
+    return "#999";
   }
 };
 
-export default function ShoppingListItem({ listId }: {listId: string}) {
-    const [name] = useShoppingListValue(listId, "name");
-    const [emoji] = useShoppingListValue(listId, "emoji");
-    const [color] = useShoppingListValue(listId, "color");
-    const [shoppingDate] = useShoppingListValue(listId, "shoppingDate");
-    const productCount = useShoppingListProductCount(listId);
-    const userNicknames = useShoppingListUserNicknames(listId);
+export default function ShoppingListItem({ listId }: { listId: string }) {
+  // Get data from both stores
+  const [name] = useShoppingListValue(listId, "name");
+  const [emoji] = useShoppingListValue(listId, "emoji");
+  const [color] = useShoppingListValue(listId, "color");
+  const productCount = useShoppingListProductCount(listId);
+  const userNicknames = useShoppingListUserNicknames(listId);
 
-    const deleteCallback = useDelShoppingListCallback(listId);
-    
-    const formattedDate = formatShoppingDate(shoppingDate);
-    const dateColor = getDateStatusColor(shoppingDate);
+  // Get metadata from ShoppingListsStore (includes shopping date!)
+  const listData = useShoppingListData(listId);
 
-    const RightAction = (
-            prog: SharedValue<number>,
-            drag: SharedValue<number>
-    ) => {
-        const styleAnimation = useAnimatedStyle(() => ({
-            transform: [{translateX: drag.value +200}],
-        }));
+  // Use fallbacks to ensure we always have display values
+  const displayName = name || listData.name || "";
+  const displayEmoji = emoji || listData.emoji || "📝";
+  const displayColor = color || listData.color || "#ccc";
+  const shoppingDate = listData.shoppingDate; // Get date from listData!
 
-        return (
-            <Pressable
-            onPress={deleteCallback}
-            >
-                <Reanimated.View style={[styleAnimation, styles.rightAction]}>
-                    <IconSymbol name = "trash.fill" size={24} color="white"/>
-                </Reanimated.View>
-            </Pressable>
-        )
-    }
-    
+  const deleteCallback = useDelShoppingListCallback(listId);
+
+  const formattedDate = formatShoppingDate(shoppingDate);
+  const dateColor = getDateStatusColor(shoppingDate);
+
+  console.log('ShoppingListItem Debug:', {
+    listId,
+    shoppingDate,
+    formattedDate,
+    listDataShoppingDate: listData.shoppingDate
+  });
+
+  const RightAction = (prog: SharedValue<number>, drag: SharedValue<number>) => {
+    const styleAnimation = useAnimatedStyle(() => ({
+      transform: [{ translateX: drag.value + 200 }],
+    }));
+
     return (
-        <Animated.View>
-        <ReanimatedSwipeable
+      <Pressable onPress={deleteCallback}>
+        <Reanimated.View style={[styleAnimation, styles.rightAction]}>
+          <IconSymbol name="trash.fill" size={24} color="white" />
+        </Reanimated.View>
+      </Pressable>
+    );
+  };
+
+  return (
+    <Animated.View>
+      <ReanimatedSwipeable
         key={listId}
         friction={2}
         enableTrackpadTwoFingerGesture
@@ -113,78 +119,73 @@ export default function ShoppingListItem({ listId }: {listId: string}) {
         renderRightActions={RightAction}
         overshootRight={false}
         enableContextMenu
-        >
-        <Link href = {{pathname: "/list/[listId]", params:{listId}}}>
-        <View style={styles.swipeable}>
+      >
+        <Link href={{ pathname: "/list/[listId]", params: { listId } }}>
+          <View style={styles.swipeable}>
             <View style={styles.leftContent}>
-                <IconCircle emoji={emoji} backgroundColor={color}/>
-                <View style = {styles.textContent}>
-                    <ThemedText type= "defaultSemiBold" numberOfLines={2}>
-                        {name}
-                    </ThemedText>
-                    <View style={styles.metaInfo}>
-                      <ThemedText type="defaultSemiBold" style={styles.productCount}>
-                          {productCount} product{productCount === 1 ? "" : "s"} 
+              <IconCircle emoji={displayEmoji} backgroundColor={displayColor} />
+              <View style={styles.textContent}>
+                <ThemedText type="defaultSemiBold" numberOfLines={2}>
+                  {displayName}
+                </ThemedText>
+                <View style={styles.metaInfo}>
+                  <ThemedText type="defaultSemiBold" style={styles.productCount}>
+                    {productCount} product{productCount === 1 ? "" : "s"}
+                  </ThemedText>
+                  {formattedDate && (
+                    <>
+                      <ThemedText style={styles.metaDot}>•</ThemedText>
+                      <ThemedText
+                        type="defaultSemiBold"
+                        style={[styles.dateText, { color: dateColor }]}
+                      >
+                        {formattedDate}
                       </ThemedText>
-                      {formattedDate && (
-                        <>
-                          <ThemedText style={styles.metaDot}>•</ThemedText>
-                          <ThemedText 
-                            type="defaultSemiBold" 
-                            style={[styles.dateText, { color: dateColor }]}
-                          >
-                            {formattedDate}
-                          </ThemedText>
-                        </>
-                      )}
-                    </View>
-                </View>
-
-                <View style={styles.rightContent}>
-                  {userNicknames.length > 1 && (
-                    <View style={styles.nicknameContainer}>
-                      {userNicknames.length === 4
-                      ?
-                      userNicknames.map((nickname, index) => (
-                        <NicknameCircle
-                        key = {nickname}
-                        nickname = {nickname}
-                        color = {color}
-                        index = {index}
-                        />
-                      ))
-                      : userNicknames.length > 4
-                      ?
-                      userNicknames
-                      .slice(0,4)
-                      .map((nickname, index) => (
-                        <NicknameCircle
-                        key = {nickname}
-                        nickname = {nickname}
-                        color = {color}
-                        index = {index}
-                        isEllipsis={index===3}
-                        />
-                      ))
-                      :
-                      userNicknames.map((nickname, index) => (
-                        <NicknameCircle
-                        key={nickname}
-                        nickname={nickname}
-                        color={color}
-                        index={index}
-                        />
-                      ))
-                      }
-                    </View>
+                    </>
                   )}
                 </View>
+              </View>
+              <View style={styles.rightContent}>
+                {userNicknames.length > 1 && (
+                  <View style={styles.nicknameContainer}>
+                    {userNicknames.length === 4
+                      ? userNicknames.map((nickname, index) => (
+                          <NicknameCircle
+                            key={nickname}
+                            nickname={nickname}
+                            color={displayColor}
+                            index={index}
+                          />
+                        ))
+                      : userNicknames.length > 4
+                      ? userNicknames
+                          .slice(0, 4)
+                          .map((nickname, index) => (
+                            <NicknameCircle
+                              key={nickname}
+                              nickname={nickname}
+                              color={displayColor}
+                              index={index}
+                              isEllipsis={index === 3}
+                            />
+                          ))
+                      : userNicknames.map((nickname, index) => (
+                          <NicknameCircle
+                            key={nickname}
+                            nickname={nickname}
+                            color={displayColor}
+                            index={index}
+                          />
+                        ))}
+                  </View>
+                )}
+              </View>
             </View>
-        </View>
+          </View>
         </Link>
-        </ReanimatedSwipeable>
-        </Animated.View>
-    );
+      </ReanimatedSwipeable>
+    </Animated.View>
+  );
 }
 
 export const NicknameCircle = ({

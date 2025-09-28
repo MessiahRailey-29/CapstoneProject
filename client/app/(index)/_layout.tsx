@@ -5,6 +5,7 @@ import { useUser } from "@clerk/clerk-expo";
 import { Redirect, Stack, useRouter } from "expo-router";
 import { Provider as TinyBaseProvider } from 'tinybase/ui-react';
 import { IconSymbol } from "@/components/ui/IconSymbol";
+
 export default function HomeRoutesLayout(){
   const router = useRouter();
 
@@ -35,18 +36,18 @@ export default function HomeRoutesLayout(){
               }),
         }}
           >
-              <Stack.Screen name="index" options={{headerTitle: "Shopping Lists"}}/>
+              {/* Main Tab Navigator */}
+              <Stack.Screen 
+                name="(tabs)" 
+                options={{
+                  headerShown: false
+                }}
+              />
+              
+              {/* Modal screens that appear over tabs */}
               <Stack.Screen name="list/new/index"
               options={{
                 presentation: 'modal',
-                sheetGrabberVisible: true,
-                headerShown: false,
-              }}
-              />
-              <Stack.Screen name="profile"
-              options={{
-                presentation: 'modal',
-                sheetAllowedDetents: [0.75, 1],
                 sheetGrabberVisible: true,
                 headerShown: false,
               }}
@@ -125,13 +126,6 @@ export default function HomeRoutesLayout(){
               }}
               />
               <Stack.Screen 
-                name="product-browser" 
-                options={{
-                  headerTitle: "Browse Products",
-                  headerLargeTitle: true,
-                }} 
-              />
-              <Stack.Screen 
                 name="product-detail" 
                 options={{
                   presentation: "modal",
@@ -140,6 +134,23 @@ export default function HomeRoutesLayout(){
                   sheetAllowedDetents: [0.8, 1],
                   sheetGrabberVisible: true,
                 }} 
+              />
+              <Stack.Screen
+                name="list/[listId]/duplicate-check"
+                options={{
+                  presentation: "modal",
+                  headerLargeTitle: false,
+                  headerTitle: "Check Duplicates",
+                  sheetAllowedDetents: [0.9, 1],
+                  sheetGrabberVisible: true,
+                }}
+              />
+              <Stack.Screen
+                name="list/[listId]/index"
+                options={{
+                  headerTitle: "",
+                  headerLargeTitle: false,
+                }}
               />
           </Stack>
         </ListCreationProvider>

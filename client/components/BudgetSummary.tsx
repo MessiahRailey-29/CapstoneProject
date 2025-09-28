@@ -28,7 +28,7 @@ function ProductCost({ listId, productId }: { listId: string; productId: string 
 export default function BudgetSummary({ 
   listId, 
   budget, 
-  currency = 'â‚±' 
+  currency = '₱' 
 }: BudgetSummaryProps) {
   const productIds = useShoppingListProductIds(listId);
 
@@ -169,7 +169,7 @@ export default function BudgetSummary({
             .map((item, index) => (
             <View key={item.productId} style={styles.breakdownItem}>
               <Text style={styles.productName} numberOfLines={1}>
-                {item.name} (Ã—{item.quantity})
+                {item.name} (×{item.quantity})
               </Text>
               <Text style={styles.productCost}>
                 {currency}{formatCurrency(item.cost)}

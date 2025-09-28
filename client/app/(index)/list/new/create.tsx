@@ -29,28 +29,6 @@ export default function CreateListScreen() {
   const useAddShoppingList = useAddShoppingListCallback();
 
   useEffect(() => {
-    console.log('🔧 Budget changed in CreateListScreen:', {
-      budget,
-      budgetType: typeof budget
-    });
-  }, [budget]);
-
-  useEffect(() => {
-    setSelectedEmoji(emojies[Math.floor(Math.random() * emojies.length)]);
-    setSelectedColor(
-      backgroundColors[Math.floor(Math.random() * backgroundColors.length)]
-    );
-
-    // Cleanup function to reset context when unmounting
-    return () => {
-      setSelectedEmoji("");
-      setSelectedColor("");
-      setSelectedDate(null);
-      setBudget(0); // Add this to reset budget
-    };
-  }, []);
-  
-  useEffect(() => {
     setSelectedEmoji(emojies[Math.floor(Math.random() * emojies.length)]);
     setSelectedColor(
       backgroundColors[Math.floor(Math.random() * backgroundColors.length)]
@@ -88,10 +66,13 @@ export default function CreateListScreen() {
       budget
     );
 
-    router.replace({
-      pathname: "/list/[listId]",
-      params: { listId },
-    });
+    // Small delay to let the store initialize
+    setTimeout(() => {
+      router.replace({
+        pathname: "/list/[listId]",
+        params: { listId },
+      });
+    }, 100);
   };
 
   const handleCreateTestLists = () => {
@@ -212,14 +193,10 @@ export default function CreateListScreen() {
         <View style={styles.budgetSection}>
           <Text style={styles.budgetLabel}>What's your budget?</Text>
           <BudgetInput
-          budget={budget}
-          onBudgetChange={(val) => {
-            console.log("📝 BudgetInput change:", val, typeof val);
-            setBudget(val);
-          }}
-          borderColor={selectedColor}
-        />
-
+            budget={budget}
+            onBudgetChange={setBudget}
+            borderColor={selectedColor}
+          />
         </View>
         
         <Button

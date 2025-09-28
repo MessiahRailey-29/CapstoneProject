@@ -1,46 +1,92 @@
-import React, { useEffect } from "react";
-import * as Haptics from "expo-haptics";
+import React, { useEffect, useState } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import Button from "@/components/ui/button";
 import TextInput from "@/components/ui/text-input";
+import BudgetInput from "@/components/BudgetInput";
 import { useListCreation } from "@/context/ListCreationContext";
-import { useShoppingListValue } from "@/stores/ShoppingListStore";
+// Remove ShoppingListStore imports - only use ShoppingListsStore
+import { useShoppingListData, useValuesCopy } from "@/stores/ShoppingListsStore";
 import { StatusBar } from "expo-status-bar";
 
 export default function EditScreen() {
   const router = useRouter();
   const { listId } = useLocalSearchParams() as { listId: string };
 
-  // List values
-  const [name, setName] = useShoppingListValue(listId, "name");
-  const [description, setDescription] = useShoppingListValue(
-    listId,
-    "description"
-  );
-  const [emoji, setEmoji] = useShoppingListValue(listId, "emoji");
-  const [color, setColor] = useShoppingListValue(listId, "color");
+  // Only use ShoppingListsStore
+  const listData = useShoppingListData(listId);
+  const [valuesCopy, setValuesCopy] = useValuesCopy(listId);
 
-  // List creation context
-  const { selectedEmoji, selectedColor, setSelectedColor, setSelectedEmoji } =
-    useListCreation();
+  // Local state for editing
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [budget, setBudget] = useState(0);
 
-  // Initialize context with current values
+  // List creation context for emoji/color pickers
+  const { selectedEmoji, selectedColor, setSelectedColor, setSelectedEmoji } = useListCreation();
+
+  // Initialize state when listData loads
   useEffect(() => {
-    setSelectedEmoji(emoji);
-    setSelectedColor(color);
+    if (listData.name && name !== listData.name) {
+      setName(listData.name);
+    }
+    if (listData.description !== undefined && description !== listData.description) {
+      setDescription(listData.description);
+    }
+    if (listData.budget !== undefined && budget !== listData.budget) {
+      setBudget(listData.budget);
+    }
+    if (listData.emoji && selectedEmoji !== listData.emoji) {
+      setSelectedEmoji(listData.emoji);
+    }
+    if (listData.color && selectedColor !== listData.color) {
+      setSelectedColor(listData.color);
+    }
+  }, [listData.name, listData.description, listData.budget, listData.emoji, listData.color]);
+
+  // Cleanup function
+  useEffect(() => {
     return () => {
       setSelectedEmoji("");
       setSelectedColor("");
     };
   }, [listId]);
 
-  // Update list when context changes
-  useEffect(() => {
-    if (selectedEmoji && selectedEmoji !== emoji) setEmoji(selectedEmoji);
-    if (selectedColor && selectedColor !== color) setColor(selectedColor);
-  }, [selectedEmoji, selectedColor]);
+  // Update data in store when any field changes
+  const updateListData = (updates: Partial<typeof listData>) => {
+    try {
+      const currentData = JSON.parse(valuesCopy || '{}');
+      const updatedData = {
+        ...currentData,
+        values: {
+          ...currentData.values,
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        }
+      };
+      
+      console.log('Updating list data:', updates);
+      setValuesCopy(JSON.stringify(updatedData));
+    } catch (error) {
+      console.error('Error updating list data:', error);
+    }
+  };
+
+  const handleNameChange = (newName: string) => {
+    setName(newName);
+    updateListData({ name: newName });
+  };
+
+  const handleDescriptionChange = (newDescription: string) => {
+    setDescription(newDescription);
+    updateListData({ description: newDescription });
+  };
+
+  const handleBudgetChange = (newBudget: number) => {
+    setBudget(newBudget);
+    updateListData({ budget: newBudget });
+  };
 
   const handleEmojiPress = () => {
     router.push("/emoji-picker");
@@ -49,6 +95,19 @@ export default function EditScreen() {
   const handleColorPress = () => {
     router.push("/color-picker");
   };
+
+  // Update when emoji/color context changes
+  useEffect(() => {
+    if (selectedEmoji && selectedEmoji !== listData.emoji) {
+      updateListData({ emoji: selectedEmoji });
+    }
+  }, [selectedEmoji, listData.emoji]);
+
+  useEffect(() => {
+    if (selectedColor && selectedColor !== listData.color) {
+      updateListData({ color: selectedColor });
+    }
+  }, [selectedColor, listData.color]);
 
   return (
     <>
@@ -66,83 +125,67 @@ export default function EditScreen() {
         <View style={styles.inputContainer}>
           <TextInput
             label="Name"
-            placeholder="Potatoes"
+            placeholder="Grocery Essentials"
             value={name}
-            onChangeText={setName}
+            onChangeText={handleNameChange}
             returnKeyType="done"
             containerStyle={styles.titleInputContainer}
           />
           <Pressable
             onPress={handleEmojiPress}
-            style={[styles.emojiButton, { borderColor: color }]}
+            style={[styles.emojiButton, { borderColor: selectedColor || listData.color || "#ccc" }]}
           >
             <View style={styles.emojiContainer}>
-              <Text>{emoji}</Text>
+              <Text>{selectedEmoji || listData.emoji || "📝"}</Text>
             </View>
           </Pressable>
           <Pressable
             onPress={handleColorPress}
-            style={[styles.colorButton, { borderColor: color }]}
+            style={[styles.colorButton, { borderColor: selectedColor || listData.color || "#ccc" }]}
           >
             <View style={styles.colorContainer}>
-              <View style={[styles.colorPreview, { backgroundColor: color }]} />
+              <View
+                style={[
+                  styles.colorPreview,
+                  { backgroundColor: selectedColor || listData.color || "#ccc" },
+                ]}
+              />
             </View>
           </Pressable>
         </View>
+
         <TextInput
           label="Description"
-          placeholder="Potatoes are good"
+          placeholder="Optional description"
           textAlignVertical="top"
           value={description}
           multiline
           numberOfLines={4}
-          onChangeText={setDescription}
+          onChangeText={handleDescriptionChange}
         />
+
+        <View style={styles.budgetSection}>
+          <Text style={styles.budgetLabel}>Budget</Text>
+          <BudgetInput
+            budget={budget}
+            onBudgetChange={handleBudgetChange}
+            borderColor={selectedColor || listData.color || "#ccc"}
+          />
+        </View>
       </BodyScrollView>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollViewContent: {
-    padding: 16,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  titleInputContainer: {
-    flexGrow: 1,
-    flexShrink: 1,
-  },
-  emojiButton: {
-    padding: 1,
-    borderWidth: 3,
-    borderRadius: 100,
-    marginTop: 16,
-  },
-  emojiContainer: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  colorButton: {
-    marginTop: 16,
-    padding: 1,
-    borderWidth: 3,
-    borderRadius: 100,
-  },
-  colorContainer: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  colorPreview: {
-    width: 24,
-    height: 24,
-    borderRadius: 100,
-  },
+  scrollViewContent: { padding: 16 },
+  inputContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
+  titleInputContainer: { flexGrow: 1, flexShrink: 1 },
+  emojiButton: { padding: 1, borderWidth: 3, borderRadius: 100, marginTop: 16 },
+  emojiContainer: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
+  colorButton: { marginTop: 16, padding: 1, borderWidth: 3, borderRadius: 100 },
+  colorContainer: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
+  colorPreview: { width: 24, height: 24, borderRadius: 100 },
+  budgetSection: { marginVertical: 16, gap: 8 },
+  budgetLabel: { fontSize: 16, fontWeight: "500", color: "#666" },
 });
