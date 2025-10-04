@@ -31,6 +31,7 @@ const TABLES_SCHEMA = {
     isPurchased: { type: "boolean", default: false },
     category: { type: "string", default: "" },
     notes: { type: "string" },
+    // Enhanced with store selection
     selectedStore: { type: "string", default: "" },
     selectedPrice: { type: "number", default: 0 },
     databaseProductId: { type: "number", default: 0 },
@@ -61,11 +62,12 @@ const {
   useCreateRelationships,
   useTable,
   useValue,
+  useValuesListener,
 } = UiReact as UiReact.WithSchemas<Schemas>;
 
 const useStoreId = (listId: string) => `shoppingListStore-${listId}`;
 
-// Enhanced product creation with better duplicate checking
+// Enhanced product creation with immediate duplicate check
 export const useAddShoppingListProductCallback = (listId: string) => {
   const store = useStore(useStoreId(listId));
   const [userId] = useUserIdAndNickname();
@@ -84,21 +86,25 @@ export const useAddShoppingListProductCallback = (listId: string) => {
       const id = randomUUID();
       const now = new Date().toISOString();
       
+      // Normalize name for comparison
       const normalizedName = name.trim().toLowerCase();
       
       if (!normalizedName) {
-        console.warn('Product name cannot be empty');
+        console.warn('❌ Product name cannot be empty');
         return null;
       }
       
       try {
-        // Get current products directly from store
+        // Get current products directly from store - this should work now
         const existingProducts = store.getTable("products");
         
-        console.log('DUPLICATE CHECK:', {
+        console.log('🔍 DUPLICATE CHECK:', {
           listId,
           searchingFor: normalizedName,
           existingCount: Object.keys(existingProducts).length,
+          existingNames: Object.values(existingProducts)
+            .map(p => p && typeof p === 'object' && 'name' in p ? String(p.name).trim().toLowerCase() : null)
+            .filter(Boolean)
         });
         
         // Check for duplicates
@@ -114,7 +120,7 @@ export const useAddShoppingListProductCallback = (listId: string) => {
         });
         
         if (isDuplicate) {
-          console.warn('DUPLICATE FOUND:', normalizedName);
+          console.warn('❌ DUPLICATE FOUND:', normalizedName);
           return null;
         }
         
@@ -135,7 +141,7 @@ export const useAddShoppingListProductCallback = (listId: string) => {
           updatedAt: now,
         });
         
-        console.log('PRODUCT ADDED:', {
+        console.log('✅ PRODUCT ADDED:', {
           id,
           name: name.trim(),
           newProductCount: Object.keys(store.getTable("products")).length
@@ -144,7 +150,7 @@ export const useAddShoppingListProductCallback = (listId: string) => {
         return id;
         
       } catch (error) {
-        console.error('ERROR ADDING PRODUCT:', error);
+        console.error('❌ ERROR ADDING PRODUCT:', error);
         return null;
       }
     },
@@ -230,7 +236,7 @@ export const useShoppingListUserNicknames = (listId: string) =>
     ([, { nickname }]) => nickname
   );
 
-// OPTIMIZED STORE - Dramatically reduced write frequency
+// Simplified store - going back to original approach but with better initialization
 export default function ShoppingListStore({
   listId,
   useValuesCopy,
@@ -242,8 +248,6 @@ export default function ShoppingListStore({
   const [userId, nickname] = useUserIdAndNickname();
   const [valuesCopy, setValuesCopy] = useValuesCopy(listId);
   const initialized = useRef(false);
-  const lastSyncedHash = useRef<string>('');
-  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const store = useCreateMergeableStore(() =>
     createMergeableStore().setSchema(TABLES_SCHEMA, VALUES_SCHEMA)
@@ -255,10 +259,11 @@ export default function ShoppingListStore({
       try {
         const parsedData = JSON.parse(valuesCopy);
         
-        console.log('INITIALIZING STORE:', {
-          listId,
+        console.log('🔧 INITIALIZING STORE FROM VALUESCOPY:', {
           hasProducts: !!parsedData.tables?.products,
           productCount: Object.keys(parsedData.tables?.products || {}).length,
+          hasValues: !!parsedData.values,
+          values: parsedData.values
         });
         
         // Initialize products
@@ -279,7 +284,7 @@ export default function ShoppingListStore({
           });
         }
         
-        // Initialize values
+        // Initialize values (THIS WAS MISSING!)
         if (parsedData.values) {
           const validValueKeys: (keyof typeof VALUES_SCHEMA)[] = [
             'name', 'description', 'emoji', 'color', 'shoppingDate', 
@@ -288,6 +293,7 @@ export default function ShoppingListStore({
           
           validValueKeys.forEach(key => {
             if (key in parsedData.values && parsedData.values[key] !== undefined) {
+              console.log(`📝 Setting ${key}:`, parsedData.values[key]);
               store.setValue(key, parsedData.values[key]);
             }
           });
@@ -296,106 +302,89 @@ export default function ShoppingListStore({
         initialized.current = true;
         
       } catch (error) {
-        console.error('INITIALIZATION ERROR:', error);
+        console.error('❌ INITIALIZATION ERROR:', error);
       }
     }
   }, [valuesCopy, store]);
 
-  // CRITICAL FIX: Smart sync that only writes when there are meaningful changes
-  const performSmartSync = useCallback(() => {
+  // Sync changes back to valuesCopy (but only after initialization)
+  const debouncedSetValuesCopy = useCallback(
+    debounce((storeData: string) => {
+      if (initialized.current) {
+        setValuesCopy(storeData);
+      }
+    }, 500),
+    [setValuesCopy]
+  );
+
+  // Create sync function
+  const syncStoreData = useCallback(() => {
     if (!initialized.current) return;
     
     try {
-      const currentTables = {
-        products: store.getTable('products'),
-        collaborators: store.getTable('collaborators'),
-      };
-      
-      const currentValues = store.getValues();
-      
-      // Create hash WITHOUT timestamp to detect meaningful changes
-      const meaningfulData = {
-        tables: currentTables,
-        values: { ...currentValues, listId } // Exclude updatedAt from hash
-      };
-      
-      const currentHash = JSON.stringify(meaningfulData);
-      
-      // Only sync if there's a meaningful change
-      if (currentHash !== lastSyncedHash.current) {
-        const storeData = {
-          tables: currentTables,
-          values: {
-            ...currentValues,
-            listId,
-            updatedAt: new Date().toISOString(),
-          },
-        };
-        
-        console.log('SYNCING MEANINGFUL CHANGES:', {
+      const storeData = {
+        tables: {
+          products: store.getTable('products'),
+          collaborators: store.getTable('collaborators'),
+        },
+        values: {
+          ...store.getValues(),
           listId,
-          productCount: Object.keys(currentTables.products).length,
-          reason: 'Data actually changed'
+          updatedAt: new Date().toISOString(),
+        },
+      };
+      
+      const serializedData = JSON.stringify(storeData);
+      
+      if (serializedData !== valuesCopy) {
+        console.log('🔄 SYNCING CHANGES:', {
+          listId,
+          productCount: Object.keys(storeData.tables.products).length,
+          collaboratorCount: Object.keys(storeData.tables.collaborators).length
         });
-        
-        setValuesCopy(JSON.stringify(storeData));
-        lastSyncedHash.current = currentHash;
+        debouncedSetValuesCopy(serializedData);
       }
     } catch (error) {
-      console.error('SYNC ERROR:', error);
+      console.error('❌ SYNC ERROR:', error);
     }
-  }, [store, setValuesCopy, listId]);
+  }, [store, valuesCopy, listId, debouncedSetValuesCopy]);
 
-  // CRITICAL FIX: Much longer debounce + smart batching
-  const debouncedSync = useCallback(
-    debounce(() => {
-      performSmartSync();
-    }, 10000), // 10 seconds - only sync after user stops making changes
-    [performSmartSync]
-  );
-
-  // CRITICAL FIX: Manual sync triggers instead of automatic listeners
-  const triggerSync = useCallback(() => {
-    // Clear existing timeout
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
-    }
-    
-    // Set new timeout
-    syncTimeoutRef.current = setTimeout(() => {
-      debouncedSync();
-    }, 2000); // Wait 2 seconds after last change
-  }, [debouncedSync]);
-
-  // CRITICAL FIX: Sync on strategic moments instead of every change
+  // Listen to both tables and values changes
+  useValuesListener(syncStoreData, [syncStoreData], false, store);
+  
+  // Add listeners for table changes (this is the key fix)
   useEffect(() => {
-    if (!initialized.current) return;
+    if (!store || !initialized.current) return;
     
-    // Sync when component unmounts (user navigates away)
+    const listenerId = store.addTableListener('products', () => {
+      console.log('📊 PRODUCTS TABLE CHANGED');
+      syncStoreData();
+    });
+    
     return () => {
-      performSmartSync();
+      store.delListener(listenerId);
     };
-  }, [performSmartSync]);
-
-  // CRITICAL FIX: Sync when app goes to background
+  }, [store, syncStoreData]);
+  
   useEffect(() => {
-    const handleAppStateChange = () => {
-      performSmartSync();
+    if (!store || !initialized.current) return;
+    
+    const listenerId = store.addTableListener('collaborators', () => {
+      console.log('👥 COLLABORATORS TABLE CHANGED');
+      syncStoreData();
+    });
+    
+    return () => {
+      store.delListener(listenerId);
     };
-
-    // Sync after initial load
-    if (initialized.current) {
-      const timer = setTimeout(performSmartSync, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [initialized.current, performSmartSync]);
+  }, [store, syncStoreData]);
 
   useCreateClientPersisterAndStart(storeId, store, valuesCopy, () => {
     // Add collaborator if not exists
     const existingCollaborator = store.getCell("collaborators", userId, "nickname");
     if (!existingCollaborator && nickname) {
       store.setRow("collaborators", userId, { nickname });
-      triggerSync(); // Trigger sync for this important change
+      console.log('👥 Added collaborator:', { userId, nickname });
     }
   });
   
