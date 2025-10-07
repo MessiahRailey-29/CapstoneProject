@@ -33,7 +33,7 @@ export default function SignInScreen(){
             // and redirect the user
             if(signInAttempt.status === "complete"){
                 await setActive({session: signInAttempt.createdSessionId});
-                router.replace("/(index)");
+                router.replace("/(index)/(tabs)");
             }else{
             //If status isn't complete, check why. user might need to complete further steps
                 console.error(JSON.stringify(signInAttempt, null, 2));

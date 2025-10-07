@@ -8,7 +8,7 @@ export default function AuthRoutesLayout() {
 
   if (!isLoaded) return null;
 
-  if (isSignedIn) return <Redirect href="/(index)" />;
+  if (isSignedIn) return <Redirect href="/(index)/(tabs)" />;
 
   return (
     <Stack
