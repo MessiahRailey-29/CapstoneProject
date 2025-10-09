@@ -1,3 +1,4 @@
+// client/hooks/useProducts.ts
 import { useState, useEffect } from 'react';
 import { productsApi, DatabaseProduct, ProductPrice } from '@/services/productsApi';
 
@@ -48,7 +49,7 @@ export const useProducts = () => {
     refetch: loadProducts,
     hasProducts: products.length > 0,
     isApiConfigured: Boolean(process.env.EXPO_PUBLIC_API_BASE_URL && 
-      process.env.EXPO_PUBLIC_API_BASE_URL == 'https://groceries-shopping-list-server.chaeyoungs202.workers.dev')
+      process.env.EXPO_PUBLIC_API_BASE_URL.trim().length > 0)
   };
 };
 

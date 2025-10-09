@@ -14,6 +14,7 @@ import {
   useShoppingListValue,
 } from "@/stores/ShoppingListStore";
 import { useShoppingListData } from "@/stores/ShoppingListsStore";
+import { ShopNowButtonWithData } from "@/components/ShopNowButton";
 import AntDesign from '@expo/vector-icons/AntDesign';
 
 export default function ListScreen() {
@@ -29,7 +30,7 @@ export default function ListScreen() {
   const [description] = useShoppingListValue(listId, "description");
   const productIds = useShoppingListProductIds(listId);
 
-  // ✅ Safe fallbacks
+  // Safe fallbacks
   const displayName = name || listData.name || "";
   const displayEmoji = emoji || listData.emoji || "❓";
   const displayDescription = description || listData.description || "";
@@ -64,8 +65,11 @@ export default function ListScreen() {
         </ThemedText>
       ) : null}
 
-      {/* Always show BudgetSummary when we have budget or products with prices */}
+      {/* Budget Summary */}
       <BudgetSummary listId={listId} budget={budget} />
+
+      {/* Shop Now Button */}
+      <ShopNowButtonWithData listId={listId} />
     </View>
   );
 
@@ -73,7 +77,7 @@ export default function ListScreen() {
     <>
       <Stack.Screen
         options={{
-          headerTitle: displayEmoji + " " + displayName, // ✅ safe fallback
+          headerTitle: displayEmoji + " " + displayName,
           headerRight: () => (
             <View
               style={{

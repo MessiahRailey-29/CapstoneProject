@@ -406,6 +406,9 @@ function ProductSuggestionItem({
 }
 
 // Store Selection Item Component
+// In client/app/(index)/list/[listId]/product/new.tsx
+// Find StoreSelectionItem function and replace it with this:
+
 function StoreSelectionItem({ 
   price, 
   onSelect, 
@@ -415,6 +418,12 @@ function StoreSelectionItem({
   onSelect: (price: ProductPrice) => void;
   isSelected: boolean;
 }) {
+  // ✅ FIX: Add safety check to prevent .toFixed() error
+  if (!price || typeof price.price !== 'number') {
+    console.warn('⚠️ Invalid price data:', price);
+    return null;
+  }
+
   return (
     <Pressable
       style={[styles.storeItem, isSelected && styles.storeItemSelected]}
@@ -423,7 +432,7 @@ function StoreSelectionItem({
       <View style={styles.storeContent}>
         <View style={styles.storeMain}>
           <ThemedText type="defaultSemiBold" style={styles.storeName}>
-            {price.store}
+            {price.store || 'Unknown Store'}
           </ThemedText>
           <ThemedText type="title" style={styles.storePrice}>
             ₱{price.price.toFixed(2)}

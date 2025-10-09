@@ -1,3 +1,4 @@
+// client/services/productsApi.ts
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 export interface DatabaseProduct {
@@ -14,13 +15,13 @@ export interface ProductPrice {
 }
 
 const isApiAvailable = () => {
-  return Boolean(API_BASE_URL && API_BASE_URL == 'https://groceries-shopping-list-server.chaeyoungs202.workers.dev');
+  return Boolean(API_BASE_URL && API_BASE_URL.trim().length > 0);
 };
 
 export const productsApi = {
   async getAllProducts(): Promise<DatabaseProduct[]> {
     if (!isApiAvailable()) {
-      console.log('Products API not configured, returning empty array');
+      console.log('⚠️ Products API not configured, returning empty array');
       return [];
     }
 
@@ -28,7 +29,7 @@ export const productsApi = {
       console.log('🔍 Fetching products from:', `${API_BASE_URL}/api/products`);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const response = await fetch(`${API_BASE_URL}/api/products`, {
         signal: controller.signal,
@@ -60,17 +61,17 @@ export const productsApi = {
 
   async getProduct(id: number): Promise<DatabaseProduct | null> {
     if (!isApiAvailable()) {
-      console.log('Products API not configured');
+      console.log('⚠️ Products API not configured');
       return null;
     }
 
     try {
-      console.log('🔍 Fetching product:', id, 'from:', `${API_BASE_URL}/api/products?id=${id}`);
+      console.log('🔍 Fetching product:', id);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${API_BASE_URL}/api/products?id=${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/products/${id}`, {
         signal: controller.signal,
         headers: {
           'Accept': 'application/json',
@@ -82,16 +83,17 @@ export const productsApi = {
       console.log('📊 Product API response status:', response.status);
       
       if (!response.ok) {
+        if (response.status === 404) {
+          console.log(`⚠️ Product ${id} not found`);
+          return null;
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const product = await response.json();
-      console.log('📦 Product API response data:', product);
+      console.log('📦 Product API response:', product);
       
-      const result = Object.keys(product).length > 0 ? product : null;
-      console.log('✅ Product result:', result);
-      
-      return result;
+      return product;
     } catch (error) {
       console.error('❌ Error fetching product:', error);
       return null;
@@ -100,12 +102,12 @@ export const productsApi = {
 
   async getProductPrices(productId: number): Promise<ProductPrice[]> {
     if (!isApiAvailable()) {
-      console.log('Products API not configured');
+      console.log('⚠️ Products API not configured');
       return [];
     }
 
     try {
-      const url = `${API_BASE_URL}/api/prices?product_id=${productId}`;
+      const url = `${API_BASE_URL}/api/products/${productId}/prices`;
       console.log('💰 Fetching prices for product:', productId, 'from:', url);
       
       const controller = new AbortController();
@@ -125,14 +127,14 @@ export const productsApi = {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Prices API error response:', errorText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
       console.log('📦 Prices API response data:', data);
       
       const prices = Array.isArray(data) ? data : [];
-      console.log(`💰 Loaded ${prices.length} prices for product ${productId}:`, prices);
+      console.log(`💰 Loaded ${prices.length} prices for product ${productId}`);
       
       return prices;
     } catch (error) {

@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import AntDesign from '@expo/vector-icons/AntDesign';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function TabsLayout() {
   return (
@@ -29,7 +30,7 @@ export default function TabsLayout() {
           title: 'Home',
           headerTitle: 'Home',
           tabBarIcon: ({ color, size }) => (
-            <AntDesign name="home" size={24} color="black" />
+            <AntDesign name="home" size={24} color={color} />
           ),
         }}
       />
@@ -39,7 +40,17 @@ export default function TabsLayout() {
           title: 'Lists',
           headerTitle: 'Shopping Lists',
           tabBarIcon: ({ color, size }) => (
-            <FontAwesome5 name="clipboard-list" size={24} color="black" />
+            <FontAwesome5 name="clipboard-list" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="inventory"
+        options={{
+          title: 'Inventory',
+          headerTitle: 'My Inventory',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="inventory" size={24} color="black" />
           ),
         }}
       />
@@ -49,7 +60,7 @@ export default function TabsLayout() {
           title: 'Browse',
           headerTitle: 'Browse Products',
           tabBarIcon: ({ color, size }) => (
-            <AntDesign name="eye" size={24} color="black" />
+            <AntDesign name="eye" size={24} color={color} />
           ),
         }}
       />

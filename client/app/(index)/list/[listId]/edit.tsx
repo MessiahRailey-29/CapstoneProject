@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
@@ -6,86 +6,86 @@ import Button from "@/components/ui/button";
 import TextInput from "@/components/ui/text-input";
 import BudgetInput from "@/components/BudgetInput";
 import { useListCreation } from "@/context/ListCreationContext";
-// Remove ShoppingListStore imports - only use ShoppingListsStore
-import { useShoppingListData, useValuesCopy } from "@/stores/ShoppingListsStore";
+import { useShoppingListValue } from "@/stores/ShoppingListStore";
 import { StatusBar } from "expo-status-bar";
 
 export default function EditScreen() {
   const router = useRouter();
   const { listId } = useLocalSearchParams() as { listId: string };
 
-  // Only use ShoppingListsStore
-  const listData = useShoppingListData(listId);
-  const [valuesCopy, setValuesCopy] = useValuesCopy(listId);
+  // ✅ Use ShoppingListStore directly instead of valuesCopy
+  const [storeName, setStoreName] = useShoppingListValue(listId, "name");
+  const [storeDescription, setStoreDescription] = useShoppingListValue(listId, "description");
+  const [storeEmoji, setStoreEmoji] = useShoppingListValue(listId, "emoji");
+  const [storeColor, setStoreColor] = useShoppingListValue(listId, "color");
+  const [storeBudget, setStoreBudget] = useShoppingListValue(listId, "budget");
 
   // Local state for editing
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [budget, setBudget] = useState(0);
+  const [emoji, setEmoji] = useState("🛒");
+  const [color, setColor] = useState("#007AFF");
 
   // List creation context for emoji/color pickers
   const { selectedEmoji, selectedColor, setSelectedColor, setSelectedEmoji } = useListCreation();
 
-  // Initialize state when listData loads
-  useEffect(() => {
-    if (listData.name && name !== listData.name) {
-      setName(listData.name);
-    }
-    if (listData.description !== undefined && description !== listData.description) {
-      setDescription(listData.description);
-    }
-    if (listData.budget !== undefined && budget !== listData.budget) {
-      setBudget(listData.budget);
-    }
-    if (listData.emoji && selectedEmoji !== listData.emoji) {
-      setSelectedEmoji(listData.emoji);
-    }
-    if (listData.color && selectedColor !== listData.color) {
-      setSelectedColor(listData.color);
-    }
-  }, [listData.name, listData.description, listData.budget, listData.emoji, listData.color]);
+  const initializedRef = useRef(false);
 
-  // Cleanup function
+  // ✅ Initialize from store values once
+  useEffect(() => {
+    if (!initializedRef.current && storeName) {
+      setName(storeName);
+      setDescription(storeDescription || "");
+      setBudget(storeBudget || 0);
+      setEmoji(storeEmoji || "🛒");
+      setColor(storeColor || "#007AFF");
+      
+      setSelectedEmoji(storeEmoji || "🛒");
+      setSelectedColor(storeColor || "#007AFF");
+      
+      initializedRef.current = true;
+      console.log('✅ Initialized edit screen');
+    }
+  }, [storeName, storeDescription, storeBudget, storeEmoji, storeColor]);
+
+  // ✅ Update emoji when picker changes
+  useEffect(() => {
+    if (initializedRef.current && selectedEmoji && selectedEmoji !== emoji) {
+      setEmoji(selectedEmoji);
+    }
+  }, [selectedEmoji]);
+
+  // ✅ Update color when picker changes
+  useEffect(() => {
+    if (initializedRef.current && selectedColor && selectedColor !== color) {
+      setColor(selectedColor);
+    }
+  }, [selectedColor]);
+
+  // ✅ Cleanup on unmount
   useEffect(() => {
     return () => {
       setSelectedEmoji("");
       setSelectedColor("");
+      initializedRef.current = false;
     };
-  }, [listId]);
+  }, []);
 
-  // Update data in store when any field changes
-  const updateListData = (updates: Partial<typeof listData>) => {
-    try {
-      const currentData = JSON.parse(valuesCopy || '{}');
-      const updatedData = {
-        ...currentData,
-        values: {
-          ...currentData.values,
-          ...updates,
-          updatedAt: new Date().toISOString(),
-        }
-      };
-      
-      console.log('Updating list data:', updates);
-      setValuesCopy(JSON.stringify(updatedData));
-    } catch (error) {
-      console.error('Error updating list data:', error);
-    }
-  };
-
-  const handleNameChange = (newName: string) => {
-    setName(newName);
-    updateListData({ name: newName });
-  };
-
-  const handleDescriptionChange = (newDescription: string) => {
-    setDescription(newDescription);
-    updateListData({ description: newDescription });
-  };
-
-  const handleBudgetChange = (newBudget: number) => {
-    setBudget(newBudget);
-    updateListData({ budget: newBudget });
+  const handleSave = () => {
+    console.log('💾 Saving to store:', { name, description, budget, emoji, color });
+    
+    // Save directly to ShoppingListStore
+    setStoreName(name);
+    setStoreDescription(description);
+    setStoreBudget(budget);
+    setStoreEmoji(emoji);
+    setStoreColor(color);
+    
+    // Small delay to ensure save completes
+    setTimeout(() => {
+      router.back();
+    }, 100);
   };
 
   const handleEmojiPress = () => {
@@ -96,25 +96,12 @@ export default function EditScreen() {
     router.push("/color-picker");
   };
 
-  // Update when emoji/color context changes
-  useEffect(() => {
-    if (selectedEmoji && selectedEmoji !== listData.emoji) {
-      updateListData({ emoji: selectedEmoji });
-    }
-  }, [selectedEmoji, listData.emoji]);
-
-  useEffect(() => {
-    if (selectedColor && selectedColor !== listData.color) {
-      updateListData({ color: selectedColor });
-    }
-  }, [selectedColor, listData.color]);
-
   return (
     <>
       <Stack.Screen
         options={{
           headerLeft: () => (
-            <Button variant="ghost" onPress={router.back}>
+            <Button variant="ghost" onPress={handleSave}>
               Save
             </Button>
           ),
@@ -127,27 +114,27 @@ export default function EditScreen() {
             label="Name"
             placeholder="Grocery Essentials"
             value={name}
-            onChangeText={handleNameChange}
+            onChangeText={setName}
             returnKeyType="done"
             containerStyle={styles.titleInputContainer}
           />
           <Pressable
             onPress={handleEmojiPress}
-            style={[styles.emojiButton, { borderColor: selectedColor || listData.color || "#ccc" }]}
+            style={[styles.emojiButton, { borderColor: color }]}
           >
             <View style={styles.emojiContainer}>
-              <Text>{selectedEmoji || listData.emoji || "📝"}</Text>
+              <Text>{emoji}</Text>
             </View>
           </Pressable>
           <Pressable
             onPress={handleColorPress}
-            style={[styles.colorButton, { borderColor: selectedColor || listData.color || "#ccc" }]}
+            style={[styles.colorButton, { borderColor: color }]}
           >
             <View style={styles.colorContainer}>
               <View
                 style={[
                   styles.colorPreview,
-                  { backgroundColor: selectedColor || listData.color || "#ccc" },
+                  { backgroundColor: color },
                 ]}
               />
             </View>
@@ -161,15 +148,15 @@ export default function EditScreen() {
           value={description}
           multiline
           numberOfLines={4}
-          onChangeText={handleDescriptionChange}
+          onChangeText={setDescription}
         />
 
         <View style={styles.budgetSection}>
           <Text style={styles.budgetLabel}>Budget</Text>
           <BudgetInput
             budget={budget}
-            onBudgetChange={handleBudgetChange}
-            borderColor={selectedColor || listData.color || "#ccc"}
+            onBudgetChange={setBudget}
+            borderColor={color}
           />
         </View>
       </BodyScrollView>

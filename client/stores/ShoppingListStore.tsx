@@ -31,7 +31,6 @@ const TABLES_SCHEMA = {
     isPurchased: { type: "boolean", default: false },
     category: { type: "string", default: "" },
     notes: { type: "string" },
-    // Enhanced with store selection
     selectedStore: { type: "string", default: "" },
     selectedPrice: { type: "number", default: 0 },
     databaseProductId: { type: "number", default: 0 },
@@ -67,7 +66,6 @@ const {
 
 const useStoreId = (listId: string) => `shoppingListStore-${listId}`;
 
-// Enhanced product creation with immediate duplicate check
 export const useAddShoppingListProductCallback = (listId: string) => {
   const store = useStore(useStoreId(listId));
   const [userId] = useUserIdAndNickname();
@@ -86,7 +84,6 @@ export const useAddShoppingListProductCallback = (listId: string) => {
       const id = randomUUID();
       const now = new Date().toISOString();
       
-      // Normalize name for comparison
       const normalizedName = name.trim().toLowerCase();
       
       if (!normalizedName) {
@@ -95,19 +92,8 @@ export const useAddShoppingListProductCallback = (listId: string) => {
       }
       
       try {
-        // Get current products directly from store - this should work now
         const existingProducts = store.getTable("products");
         
-        console.log('🔍 DUPLICATE CHECK:', {
-          listId,
-          searchingFor: normalizedName,
-          existingCount: Object.keys(existingProducts).length,
-          existingNames: Object.values(existingProducts)
-            .map(p => p && typeof p === 'object' && 'name' in p ? String(p.name).trim().toLowerCase() : null)
-            .filter(Boolean)
-        });
-        
-        // Check for duplicates
         const isDuplicate = Object.values(existingProducts).some((product) => {
           if (!product || typeof product !== 'object' || !('name' in product) || !('isPurchased' in product)) {
             return false;
@@ -124,7 +110,6 @@ export const useAddShoppingListProductCallback = (listId: string) => {
           return null;
         }
         
-        // Add product
         store.setRow("products", id, {
           id,
           name: name.trim(),
@@ -144,7 +129,6 @@ export const useAddShoppingListProductCallback = (listId: string) => {
         console.log('✅ PRODUCT ADDED:', {
           id,
           name: name.trim(),
-          newProductCount: Object.keys(store.getTable("products")).length
         });
         
         return id;
@@ -236,7 +220,6 @@ export const useShoppingListUserNicknames = (listId: string) =>
     ([, { nickname }]) => nickname
   );
 
-// Simplified store - going back to original approach but with better initialization
 export default function ShoppingListStore({
   listId,
   useValuesCopy,
@@ -253,18 +236,11 @@ export default function ShoppingListStore({
     createMergeableStore().setSchema(TABLES_SCHEMA, VALUES_SCHEMA)
   );
 
-  // Initialize store from valuesCopy only once
+  // ✅ Initialize ONCE from valuesCopy - never update from it again
   useEffect(() => {
     if (!initialized.current && valuesCopy && valuesCopy !== '{}') {
       try {
         const parsedData = JSON.parse(valuesCopy);
-        
-        console.log('🔧 INITIALIZING STORE FROM VALUESCOPY:', {
-          hasProducts: !!parsedData.tables?.products,
-          productCount: Object.keys(parsedData.tables?.products || {}).length,
-          hasValues: !!parsedData.values,
-          values: parsedData.values
-        });
         
         // Initialize products
         if (parsedData.tables?.products) {
@@ -284,7 +260,7 @@ export default function ShoppingListStore({
           });
         }
         
-        // Initialize values (THIS WAS MISSING!)
+        // Initialize values
         if (parsedData.values) {
           const validValueKeys: (keyof typeof VALUES_SCHEMA)[] = [
             'name', 'description', 'emoji', 'color', 'shoppingDate', 
@@ -293,7 +269,6 @@ export default function ShoppingListStore({
           
           validValueKeys.forEach(key => {
             if (key in parsedData.values && parsedData.values[key] !== undefined) {
-              console.log(`📝 Setting ${key}:`, parsedData.values[key]);
               store.setValue(key, parsedData.values[key]);
             }
           });
@@ -307,19 +282,28 @@ export default function ShoppingListStore({
     }
   }, [valuesCopy, store]);
 
-  // Sync changes back to valuesCopy (but only after initialization)
-  const debouncedSetValuesCopy = useCallback(
-    debounce((storeData: string) => {
+  // ✅ Sync FROM store TO valuesCopy only
+  const debouncedSetValuesCopyRef = useRef(
+    debounce((storeData: string, setter: (data: string) => void) => {
       if (initialized.current) {
-        setValuesCopy(storeData);
+        setter(storeData);
       }
-    }, 500),
-    [setValuesCopy]
+    }, 500)
   );
 
-  // Create sync function
+  const setValuesCopyRef = useRef(setValuesCopy);
+  const listIdRef = useRef(listId);
+  
+  useEffect(() => {
+    setValuesCopyRef.current = setValuesCopy;
+  }, [setValuesCopy]);
+  
+  useEffect(() => {
+    listIdRef.current = listId;
+  }, [listId]);
+
   const syncStoreData = useCallback(() => {
-    if (!initialized.current) return;
+    if (!initialized.current || !store) return;
     
     try {
       const storeData = {
@@ -329,62 +313,36 @@ export default function ShoppingListStore({
         },
         values: {
           ...store.getValues(),
-          listId,
+          listId: listIdRef.current,
           updatedAt: new Date().toISOString(),
         },
       };
       
       const serializedData = JSON.stringify(storeData);
-      
-      if (serializedData !== valuesCopy) {
-        console.log('🔄 SYNCING CHANGES:', {
-          listId,
-          productCount: Object.keys(storeData.tables.products).length,
-          collaboratorCount: Object.keys(storeData.tables.collaborators).length
-        });
-        debouncedSetValuesCopy(serializedData);
-      }
+      debouncedSetValuesCopyRef.current(serializedData, setValuesCopyRef.current);
     } catch (error) {
       console.error('❌ SYNC ERROR:', error);
     }
-  }, [store, valuesCopy, listId, debouncedSetValuesCopy]);
+  }, [store]);
 
-  // Listen to both tables and values changes
-  useValuesListener(syncStoreData, [syncStoreData], false, store);
-  
-  // Add listeners for table changes (this is the key fix)
-  useEffect(() => {
-    if (!store || !initialized.current) return;
-    
-    const listenerId = store.addTableListener('products', () => {
-      console.log('📊 PRODUCTS TABLE CHANGED');
-      syncStoreData();
-    });
-    
-    return () => {
-      store.delListener(listenerId);
-    };
-  }, [store, syncStoreData]);
+  useValuesListener(syncStoreData, [], false, store);
   
   useEffect(() => {
     if (!store || !initialized.current) return;
     
-    const listenerId = store.addTableListener('collaborators', () => {
-      console.log('👥 COLLABORATORS TABLE CHANGED');
-      syncStoreData();
-    });
+    const productsListenerId = store.addTableListener('products', syncStoreData);
+    const collaboratorsListenerId = store.addTableListener('collaborators', syncStoreData);
     
     return () => {
-      store.delListener(listenerId);
+      store.delListener(productsListenerId);
+      store.delListener(collaboratorsListenerId);
     };
   }, [store, syncStoreData]);
 
   useCreateClientPersisterAndStart(storeId, store, valuesCopy, () => {
-    // Add collaborator if not exists
     const existingCollaborator = store.getCell("collaborators", userId, "nickname");
     if (!existingCollaborator && nickname) {
       store.setRow("collaborators", userId, { nickname });
-      console.log('👥 Added collaborator:', { userId, nickname });
     }
   });
   
