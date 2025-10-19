@@ -1,5 +1,5 @@
 // components/NotificationBell.tsx
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
@@ -10,11 +10,6 @@ export function NotificationBell() {
   const { user } = useUser();
 
   const userId = useMemo(() => user?.id || '', [user?.id]);
-  useEffect(() => {
-    console.log('🔔 NotificationBell - userId:', userId);
-    console.log('🔔 NotificationBell - user:', user);
-  }, [userId, user]);
-  
   const { unreadCount } = useNotifications(userId);
 
   const handlePress = () => {

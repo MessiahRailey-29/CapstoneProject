@@ -8,8 +8,10 @@ import TextInput from "@/components/ui/text-input";
 import { appleBlue, backgroundColors, emojies } from "@/constants/Colors";
 import { useListCreation } from "@/context/ListCreationContext";
 import { useAddShoppingListCallback } from "@/stores/ShoppingListsStore";
-import DatePickerButton from "@/components/DatePickerButton"; // You'll need to create this component
-import BudgetInput from "@/components/BudgetInput"; // You'll need to create this component
+import DatePickerButton from "@/components/DatePickerButton";
+import BudgetInput from "@/components/BudgetInput";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useUser } from "@clerk/clerk-expo";
 
 export default function CreateListScreen() {
   const [listName, setListName] = useState("");
@@ -27,6 +29,10 @@ export default function CreateListScreen() {
 
   const router = useRouter();
   const useAddShoppingList = useAddShoppingListCallback();
+  
+  // 🔔 ADD: Get notification functions
+  const { user } = useUser();
+  const { scheduleShoppingReminder } = useNotifications(user?.id || '');
 
   useEffect(() => {
     setSelectedEmoji(emojies[Math.floor(Math.random() * emojies.length)]);
@@ -42,7 +48,7 @@ export default function CreateListScreen() {
     };
   }, []);
 
-  const handleCreateList = () => {
+  const handleCreateList = async () => {
     if (!listName) {
       return;
     }
@@ -66,6 +72,18 @@ export default function CreateListScreen() {
       budget
     );
 
+    // 🔔 SCHEDULE SHOPPING REMINDER if date is set
+    if (selectedDate && listId) {
+      try {
+        const reminderScheduled = await scheduleShoppingReminder(listId, selectedDate);
+        if (reminderScheduled) {
+          console.log('✅ Shopping reminder scheduled for', selectedDate);
+        }
+      } catch (error) {
+        console.error('❌ Failed to schedule reminder:', error);
+      }
+    }
+
     // Small delay to let the store initialize
     setTimeout(() => {
       router.replace({
@@ -75,7 +93,7 @@ export default function CreateListScreen() {
     }, 100);
   };
 
-  const handleCreateTestLists = () => {
+  const handleCreateTestLists = async () => {
     const testListNames = [
       "Grocery Shopping",
       "Weekend BBQ",
@@ -110,15 +128,25 @@ export default function CreateListScreen() {
       return date;
     };
 
-    testListNames.forEach((name, index) => {
-      useAddShoppingList(
+    for (let index = 0; index < testListNames.length; index++) {
+      const name = testListNames[index];
+      const testDate = getRandomDate(index);
+      
+      const listId = useAddShoppingList(
         name,
         `This is a test list for ${name}`,
         testEmojis[index],
         testColors[index],
-        getRandomDate(index)
+        testDate
       );
-    });
+
+      // 🔔 Schedule reminder for each test list
+      if (listId && testDate) {
+        await scheduleShoppingReminder(listId, testDate);
+      }
+    }
+
+    console.log('✅ Created 10 test lists with reminders');
 
     // Navigate back to the main list view
     router.replace("/");

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import Constants from 'expo-constants';
 
 // IMPORTANT: Replace with your actual server URL
@@ -387,6 +387,37 @@ export function useNotifications(userId: string) {
   useEffect(() => {
     Notifications.setBadgeCountAsync(unreadCount);
   }, [unreadCount]);
+
+  // 1. Auto-refresh notifications every 30 seconds when app is active
+useEffect(() => {
+  if (!userId) return;
+  
+  console.log('🔄 Setting up auto-refresh for notifications');
+  
+  const interval = setInterval(() => {
+    fetchNotifications();
+  }, 500); // Every 30 seconds
+  
+  return () => {
+    clearInterval(interval);
+  };
+}, [userId, fetchNotifications]);
+
+// 2. Refresh when app comes to foreground
+useEffect(() => {
+  if (!userId) return;
+
+  const subscription = AppState.addEventListener('change', (nextAppState) => {
+    if (nextAppState === 'active') {
+      console.log('📱 App became active - refreshing notifications');
+      fetchNotifications();
+    }
+  });
+
+  return () => {
+    subscription.remove();
+  };
+}, [userId, fetchNotifications]);
 
   return {
     // State

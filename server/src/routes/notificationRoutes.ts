@@ -19,6 +19,10 @@ router.get('/:userId', async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(parseInt(limit as string));
 
+    // 🐛 DEBUG LOG
+    console.log(`📊 Fetched ${notifications.length} notifications for ${userId}`);
+    console.log(`   Unread: ${notifications.filter(n => !n.isRead).length}`);
+
     res.json({
       success: true,
       notifications,
@@ -196,47 +200,37 @@ router.post('/:userId/schedule-reminder', async (req, res) => {
     const { userId } = req.params;
     const { listId, scheduledDate } = req.body;
 
-    // Create shopping schedule
-    const schedule = await ShoppingSchedule.create({
-      userId,
-      listId,
-      scheduledDate: new Date(scheduledDate),
-      reminderSent: false,
-    });
+    // Create expiration date (30 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
 
-    // Get user settings for reminder timing
-    const settings = await NotificationSettings.findOne({ userId });
-    const hoursBefore = settings?.reminderTiming?.hoursBefore || 2;
-
-    // Calculate reminder time
-    const reminderTime = new Date(scheduledDate);
-    reminderTime.setHours(reminderTime.getHours() - hoursBefore);
-
-    // Create notification
-    const notification = await Notification.create({
-      userId,
+    const notification = new Notification({
+      userId: userId,
       type: 'shopping_reminder',
       title: '🛒 Shopping Reminder',
-      message: `Your shopping trip is scheduled in ${hoursBefore} hours!`,
-      data: {
-        listId,
-        scheduledDate: new Date(scheduledDate),
-      },
-      scheduledFor: reminderTime,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      message: `Time to go shopping!`,
+      data: { listId },
+      isRead: false,
+      isSent: false,
+      scheduledFor: new Date(scheduledDate),
+      createdAt: new Date(),
+      expiresAt: expiresAt,
     });
 
-    res.json({
-      success: true,
-      notification,
-      schedule,
+    await notification.save();
+    
+    // 🐛 DEBUG LOG
+    console.log('✅ Created shopping reminder:', {
+      userId,
+      isRead: notification.isRead,
+      _id: notification._id
     });
+
+    res.json({ success: true, notification });
   } catch (error) {
-    console.error('Error scheduling reminder:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to schedule reminder',
-    });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('❌ Error creating reminder:', errorMessage);
+    res.status(500).json({ success: false, error: errorMessage });
   }
 });
 
@@ -246,28 +240,37 @@ router.post('/:userId/duplicate-warning', async (req, res) => {
     const { userId } = req.params;
     const { productName, listId } = req.body;
 
-    const notification = await Notification.create({
-      userId,
+    // Create expiration date (30 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    const notification = new Notification({
+      userId: userId,
       type: 'duplicate_warning',
       title: '⚠️ Duplicate Item',
-      message: `"${productName}" is already in your shopping list`,
-      data: {
-        listId,
-        productName,
-      },
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      message: `You already have ${productName} in your list`,
+      data: { productName, listId },
+      isRead: false,
+      isSent: false,
+      createdAt: new Date(),
+      expiresAt: expiresAt,
     });
 
-    res.json({
-      success: true,
-      notification,
+    await notification.save();
+    
+    // 🐛 DEBUG LOG
+    console.log('✅ Created duplicate warning:', {
+      userId,
+      productName,
+      isRead: notification.isRead,
+      _id: notification._id
     });
+
+    res.json({ success: true, notification });
   } catch (error) {
-    console.error('Error creating duplicate warning:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create duplicate warning',
-    });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('❌ Error creating duplicate warning:', errorMessage);
+    res.status(500).json({ success: false, error: errorMessage });
   }
 });
 

@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.messiahraileycapstone.client"
     },
     "web": {
       "bundler": "metro",
@@ -46,6 +47,6 @@
       "eas": {
         "projectId": "YOUR_PROJECT_ID_HERE"
       }
+    }
   }
-}
 }

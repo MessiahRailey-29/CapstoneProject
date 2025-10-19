@@ -1,5 +1,5 @@
 // client/components/ShoppingListSelectorModal.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   StyleSheet,
@@ -12,6 +12,7 @@ import {
 import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useShoppingListIds, useShoppingListsValues, useAddShoppingListCallback } from '@/stores/ShoppingListsStore';
+import { useAddProductWithNotifications } from '@/hooks/useAddProductWithNotifications';
 import { useRouter } from 'expo-router';
 
 interface ShoppingListSelectorModalProps {
@@ -46,19 +47,18 @@ function ShoppingListItem({
 }) {
   const router = useRouter();
   
-  // Import the hook at the top level of the component
-  const { useAddShoppingListProductCallback } = require('@/stores/ShoppingListStore');
-  const addProduct = useAddShoppingListProductCallback(listId);
+  // 🔔 UPDATED: Use helper hook with automatic notification support
+  const addProduct = useAddProductWithNotifications(listId);
 
-  const handlePress = () => {
+  const handlePress = async () => {
     try {
       if (!addProduct) {
         Alert.alert('Error', 'Shopping list not found');
         return;
       }
 
-      // Add product using the callback
-      const productAddedId = addProduct(
+      // 🔔 Now automatically handles duplicate warnings!
+      const productAddedId = await addProduct(
         productName,
         1, // quantity
         'pc', // units
@@ -69,6 +69,7 @@ function ShoppingListItem({
         '' // category
       );
 
+      // 🔔 If productAddedId is null, duplicate was found and notification was created
       if (productAddedId) {
         Alert.alert(
           'Success',
@@ -86,7 +87,12 @@ function ShoppingListItem({
         );
         onSuccess?.();
       } else {
-        Alert.alert('Info', 'This product is already in your list');
+        // Duplicate was found - notification was automatically created
+        Alert.alert(
+          'Duplicate Product', 
+          `${productName} is already in this list. Check your notifications for details.`,
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
       console.error('Error adding product:', error);

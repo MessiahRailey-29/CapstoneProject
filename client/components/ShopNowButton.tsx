@@ -12,6 +12,7 @@ import {
 import { useUpdateShoppingListStatus } from "@/stores/ShoppingListsStore";
 import { useAddInventoryItemsCallback } from "@/stores/InventoryStore";
 import { useUser } from "@clerk/clerk-expo";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface ShopNowButtonProps {
   listId: string;
@@ -26,12 +27,13 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
   const updateStatusInListStore = useUpdateListStatus(listId);
   const addInventoryItems = useAddInventoryItemsCallback();
   
-  // ✅ FIXED: Access store directly instead of calling hooks in a loop
+  // 🔔 ADD: Get notification functions
+  const { trackPurchase } = useNotifications(user?.id || '');
+  
   const store = useShoppingListStore(listId);
 
   console.log("📘 ShopNowButton rendered - Status:", currentStatus, "ListId:", listId);
 
-  // ✅ Use useMemo to get products data from the store directly
   const productsData = useMemo(() => {
     if (!store || !productIds || productIds.length === 0) {
       return [];
@@ -75,7 +77,6 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
           text: "Start",
           style: "default",
           onPress: () => {
-            // Update status in BOTH stores for persistence
             updateStatusInListStore('ongoing');
             updateStatusInListsStore(listId, 'ongoing');
 
@@ -85,7 +86,6 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
 
             console.log("🛒 Shopping started for list:", listId);
 
-            // Small delay to ensure status is updated
             setTimeout(() => {
               console.log("🛒 Navigating to shopping guide for list:", listId);
               router.push(`/(index)/list/${listId}/shopping-guide`);
@@ -105,7 +105,7 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
     router.push(`/(index)/list/${listId}/shopping-guide`);
   };
 
-  const handleCompleteShopping = () => {
+  const handleCompleteShopping = async () => {
     Alert.alert(
       "Complete Shopping",
       `This will:\n• Add ${productIds.length} items to your inventory\n• Move this list to Purchase History\n\nContinue?`,
@@ -117,7 +117,7 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
         {
           text: "Complete",
           style: "default",
-          onPress: () => {
+          onPress: async () => {
             console.log("🛍️ Completing shopping for list:", listId);
             console.log("📦 Products to add:", productsData.length);
 
@@ -125,6 +125,25 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
               // Add all products to inventory
               addInventoryItems(productsData, listId, user?.id || 'unknown');
               console.log("✅ Successfully added items to inventory");
+
+              // 🔔 TRACK EACH PURCHASE FOR LOW STOCK MONITORING
+              console.log("🔔 Tracking purchases for low stock alerts...");
+              let trackedCount = 0;
+              
+              for (const product of productsData) {
+                if (product.databaseProductId && product.databaseProductId > 0) {
+                  try {
+                    const tracked = await trackPurchase(product.databaseProductId, product.name);
+                    if (tracked) {
+                      trackedCount++;
+                    }
+                  } catch (error) {
+                    console.error(`❌ Failed to track purchase for ${product.name}:`, error);
+                  }
+                }
+              }
+              
+              console.log(`✅ Tracked ${trackedCount}/${productsData.length} purchases for low stock monitoring`);
 
               // Update status in BOTH stores for persistence
               updateStatusInListStore('completed');
@@ -136,7 +155,7 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
 
               Alert.alert(
                 "Shopping Completed!",
-                `✅ Added ${productIds.length} items to your inventory\n✅ List moved to Purchase History`,
+                `✅ Added ${productIds.length} items to your inventory\n✅ List moved to Purchase History\n🔔 Tracking ${trackedCount} items for low stock alerts`,
                 [
                   {
                     text: "View Inventory",
@@ -177,7 +196,6 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
           text: "Restore",
           style: "default",
           onPress: () => {
-            // Update status in BOTH stores for persistence
             updateStatusInListStore('regular');
             updateStatusInListsStore(listId, 'regular');
 
@@ -196,7 +214,6 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
     return null;
   }
 
-  // Show different buttons based on current status
   if (currentStatus === 'completed') {
     console.log("🔍 Rendering COMPLETED buttons");
     return (
@@ -215,7 +232,6 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
     console.log("🔍 Rendering ONGOING buttons");
     return (
       <View style={styles.container}>
-        {/* View Shopping Guide Button */}
         <Pressable onPress={handleViewShoppingGuide} style={styles.guideButton}>
           <IconSymbol name="map.fill" size={20} color="#007AFF" />
           <ThemedText style={styles.guideText}>
@@ -223,7 +239,6 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
           </ThemedText>
         </Pressable>
 
-        {/* Complete Shopping Button */}
         <Pressable onPress={handleCompleteShopping} style={styles.completeButton}>
           <IconSymbol name="checkmark.circle.fill" size={20} color="#fff" />
           <ThemedText style={styles.buttonText}>
@@ -234,7 +249,6 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
     );
   }
 
-  // Regular status - show Shop Now button
   console.log("🔍 Rendering REGULAR buttons");
   return (
     <View style={styles.container}>

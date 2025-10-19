@@ -6,7 +6,7 @@ import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import Button from "@/components/ui/button";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import TextInput from "@/components/ui/text-input";
-import { useAddShoppingListProductCallback } from "@/stores/ShoppingListStore";
+import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotifications";
 import { useProducts, useProductPrices } from "@/hooks/useProducts";
 import { DatabaseProduct, ProductPrice } from "@/services/productsApi";
 
@@ -28,7 +28,8 @@ export default function NewItemScreen() {
   const [showStoreSelection, setShowStoreSelection] = useState(false);
 
   const router = useRouter();
-  const addShoppingListProduct = useAddShoppingListProductCallback(listId);
+  // 🔔 UPDATED: Use helper hook with automatic notification support
+  const addShoppingListProduct = useAddProductWithNotifications(listId);
   const { products, loading: productsLoading, searchProducts, hasProducts, isApiConfigured } = useProducts();
   const { prices, loading: pricesLoading } = useProductPrices(selectedProduct?.id || null);
 
@@ -49,10 +50,11 @@ export default function NewItemScreen() {
     setShowStoreSelection(false);
   }, [selectedProduct]);
 
-  const handleCreateProduct = useCallback(() => {
+  const handleCreateProduct = useCallback(async () => {
     if (!name.trim()) return;
 
-    addShoppingListProduct(
+    // 🔔 Now automatically handles duplicate warnings!
+    const productId = await addShoppingListProduct(
       name.trim(), 
       quantity, 
       units, 
@@ -63,6 +65,16 @@ export default function NewItemScreen() {
       selectedProduct?.category
     );
     
+    // 🔔 If productId is null, it means duplicate was found and notification was created
+    if (productId === null) {
+      Alert.alert(
+        "Duplicate Product",
+        `"${name.trim()}" is already in your shopping list. Check your notifications for details.`,
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    
     router.back();
   }, [name, quantity, units, notes, selectedStoreInfo, selectedProduct, addShoppingListProduct, router]);
 
@@ -70,7 +82,7 @@ export default function NewItemScreen() {
     setName(product.name);
     setSelectedProduct(product);
     setShowSuggestions(false);
-    setShowStoreSelection(true); // Show store selection when product is selected
+    setShowStoreSelection(true);
     Keyboard.dismiss();
     
     const categoryUnits = getCategoryUnits(product.category);
@@ -236,7 +248,6 @@ export default function NewItemScreen() {
                     variant="ghost"
                     onPress={() => {
                       setShowStoreSelection(false);
-                      // Allow proceeding without store selection
                     }}
                   >
                     Continue without price
@@ -359,7 +370,6 @@ export default function NewItemScreen() {
   );
 }
 
-// Simple Product Suggestion Item (without price display to avoid complexity)
 function ProductSuggestionItem({ 
   product, 
   onSelect, 
@@ -405,10 +415,6 @@ function ProductSuggestionItem({
   );
 }
 
-// Store Selection Item Component
-// In client/app/(index)/list/[listId]/product/new.tsx
-// Find StoreSelectionItem function and replace it with this:
-
 function StoreSelectionItem({ 
   price, 
   onSelect, 
@@ -418,7 +424,6 @@ function StoreSelectionItem({
   onSelect: (price: ProductPrice) => void;
   isSelected: boolean;
 }) {
-  // ✅ FIX: Add safety check to prevent .toFixed() error
   if (!price || typeof price.price !== 'number') {
     console.warn('⚠️ Invalid price data:', price);
     return null;

@@ -18,8 +18,8 @@ const VALUES_SCHEMA = {
   color: { type: "string" },
   shoppingDate: { type: "string" },
   budget: { type: "number", default: 0 },
-  status: { type: "string", default: "regular" }, // New field: 'regular', 'ongoing', 'completed'
-  completedAt: { type: "string", default: "" }, // New field for completion timestamp
+  status: { type: "string", default: "regular" },
+  completedAt: { type: "string", default: "" },
   createdAt: { type: "string" },
   updatedAt: { type: "string" },
 } as const;
@@ -72,12 +72,13 @@ export const useShoppingListStore = (listId: string) => {
   return useStore(useStoreId(listId));
 };
 
+// 🔔 UPDATED: Now supports duplicate warning notifications
 export const useAddShoppingListProductCallback = (listId: string) => {
   const store = useStore(useStoreId(listId));
   const [userId] = useUserIdAndNickname();
   
   return useCallback(
-    (
+    async (
       name: string, 
       quantity: number, 
       units: string, 
@@ -85,7 +86,8 @@ export const useAddShoppingListProductCallback = (listId: string) => {
       selectedStore?: string,
       selectedPrice?: number,
       databaseProductId?: number,
-      category?: string
+      category?: string,
+      createDuplicateWarning?: (productName: string, listId: string) => Promise<boolean>
     ) => {
       const id = randomUUID();
       const now = new Date().toISOString();
@@ -113,6 +115,17 @@ export const useAddShoppingListProductCallback = (listId: string) => {
         
         if (isDuplicate) {
           console.warn('❌ DUPLICATE FOUND:', normalizedName);
+          
+          // 🔔 CREATE DUPLICATE WARNING NOTIFICATION
+          if (createDuplicateWarning) {
+            try {
+              await createDuplicateWarning(name.trim(), listId);
+              console.log('🔔 Duplicate warning notification created');
+            } catch (error) {
+              console.error('❌ Failed to create duplicate warning:', error);
+            }
+          }
+          
           return null;
         }
         
@@ -144,7 +157,7 @@ export const useAddShoppingListProductCallback = (listId: string) => {
         return null;
       }
     },
-    [store, userId]
+    [store, userId, listId]
   );
 };
 
@@ -169,7 +182,6 @@ export const useShoppingListValue = <ValueId extends ShoppingListValueId>(
   ),
 ];
 
-// NEW: Hook to update status in the individual list store
 export const useUpdateListStatus = (listId: string) => {
   const storeId = useStoreId(listId);
   const store = useStore(storeId);
@@ -183,11 +195,9 @@ export const useUpdateListStatus = (listId: string) => {
     console.log('📝 Updating status in ShoppingListStore:', listId, 'to:', newStatus);
     
     try {
-      // Update status value in the store
       store.setValue('status', newStatus);
       store.setValue('updatedAt', new Date().toISOString());
       
-      // If completing, set completedAt
       if (newStatus === 'completed') {
         const currentCompletedAt = store.getValue('completedAt');
         if (!currentCompletedAt) {
@@ -195,7 +205,6 @@ export const useUpdateListStatus = (listId: string) => {
         }
       }
       
-      // Clear completedAt if restoring to regular
       if (newStatus === 'regular') {
         store.setValue('completedAt', '');
       }
@@ -280,13 +289,11 @@ export default function ShoppingListStore({
     createMergeableStore().setSchema(TABLES_SCHEMA, VALUES_SCHEMA)
   );
 
-  // ✅ Initialize ONCE from valuesCopy - never update from it again
   useEffect(() => {
     if (!initialized.current && valuesCopy && valuesCopy !== '{}') {
       try {
         const parsedData = JSON.parse(valuesCopy);
         
-        // Initialize products
         if (parsedData.tables?.products) {
           Object.entries(parsedData.tables.products).forEach(([productId, product]) => {
             if (product && typeof product === 'object') {
@@ -295,7 +302,6 @@ export default function ShoppingListStore({
           });
         }
         
-        // Initialize collaborators
         if (parsedData.tables?.collaborators) {
           Object.entries(parsedData.tables.collaborators).forEach(([collaboratorId, collaborator]) => {
             if (collaborator && typeof collaborator === 'object') {
@@ -304,7 +310,6 @@ export default function ShoppingListStore({
           });
         }
         
-        // Initialize values (including new status field)
         if (parsedData.values) {
           const validValueKeys: (keyof typeof VALUES_SCHEMA)[] = [
             'name', 'description', 'emoji', 'color', 'shoppingDate', 
@@ -326,7 +331,6 @@ export default function ShoppingListStore({
     }
   }, [valuesCopy, store]);
 
-  // ✅ Sync FROM store TO valuesCopy only
   const debouncedSetValuesCopyRef = useRef(
     debounce((storeData: string, setter: (data: string) => void) => {
       if (initialized.current) {
@@ -362,8 +366,6 @@ export default function ShoppingListStore({
         },
       };
       
-      console.log('🔄 Syncing store data to valuesCopy:', storeData);
-      
       const serializedData = JSON.stringify(storeData);
       debouncedSetValuesCopyRef.current(serializedData, setValuesCopyRef.current);
     } catch (error) {
@@ -378,8 +380,6 @@ export default function ShoppingListStore({
     
     const productsListenerId = store.addTableListener('products', syncStoreData);
     const collaboratorsListenerId = store.addTableListener('collaborators', syncStoreData);
-    
-    // Add listener for status changes
     const statusListenerId = store.addValueListener('status', syncStoreData);
     
     return () => {

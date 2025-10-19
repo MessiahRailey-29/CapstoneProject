@@ -7,6 +7,7 @@ import { connectDB } from './db';
 import routes from './routes';
 import { setupSyncServer } from './syncServer';
 import notificationRoutes from './routes/notificationRoutes';
+import { startAllNotificationCrons } from './jobs/notificationCronJobs';
 
 // Load environment variables
 dotenv.config();
@@ -59,6 +60,10 @@ async function start() {
       try {
         await connectDB(mongoUri);
         console.log('✅ MongoDB features enabled');
+        
+        // 🔔 START CRON JOBS AFTER MONGODB CONNECTION
+        startAllNotificationCrons();
+        
       } catch (error) {
         console.error('❌ MongoDB connection failed:', error);
         console.warn('⚠️ MongoDB not available - sync server will still work');
