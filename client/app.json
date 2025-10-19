@@ -36,10 +36,16 @@
       ],
       "expo-secure-store",
       "expo-sqlite",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_PROJECT_ID_HERE"
+      }
   }
+}
 }

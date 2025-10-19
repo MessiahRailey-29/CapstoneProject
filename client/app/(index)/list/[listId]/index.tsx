@@ -14,7 +14,7 @@ import {
   useShoppingListValue,
 } from "@/stores/ShoppingListStore";
 import { useShoppingListData } from "@/stores/ShoppingListsStore";
-import { ShopNowButtonWithData } from "@/components/ShopNowButton";
+import ShopNowButton from "@/components/ShopNowButton";
 import AntDesign from '@expo/vector-icons/AntDesign';
 
 export default function ListScreen() {
@@ -35,6 +35,7 @@ export default function ListScreen() {
   const displayEmoji = emoji || listData.emoji || "❓";
   const displayDescription = description || listData.description || "";
   const budget = listData.budget;
+  const status = listData.status || 'regular'; // Get the status
 
   console.log("List Screen Debug:", {
     listId,
@@ -42,6 +43,7 @@ export default function ListScreen() {
     budgetType: typeof budget,
     name,
     productCount: productIds.length,
+    status, // Log status
     listData,
   });
 
@@ -49,7 +51,9 @@ export default function ListScreen() {
     pathname: "/list/[listId]/product/new",
     params: { listId },
   } as const;
-
+// Add this debug logging
+console.log("📍 Current list status:", status);
+console.log("📍 List data:", listData);
   const ListHeaderComponent = () => (
     <View>
       {displayDescription ? (
@@ -68,8 +72,8 @@ export default function ListScreen() {
       {/* Budget Summary */}
       <BudgetSummary listId={listId} budget={budget} />
 
-      {/* Shop Now Button */}
-      <ShopNowButtonWithData listId={listId} />
+      {/* Shop Now Button with status - this will show map when ongoing */}
+      <ShopNowButton listId={listId} currentStatus={status} />
     </View>
   );
 

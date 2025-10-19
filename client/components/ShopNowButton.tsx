@@ -1,28 +1,57 @@
-// components/ShopNowButton.tsx
-import React from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import React, { useMemo } from "react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
+import { View, StyleSheet, Alert, Pressable } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
-import Button from "@/components/ui/button";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import {
   useShoppingListProductIds,
-  useShoppingListProductCell,
+  useUpdateListStatus,
+  useShoppingListStore,
 } from "@/stores/ShoppingListStore";
+import { useUpdateShoppingListStatus } from "@/stores/ShoppingListsStore";
 import { useAddInventoryItemsCallback } from "@/stores/InventoryStore";
 import { useUser } from "@clerk/clerk-expo";
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 interface ShopNowButtonProps {
   listId: string;
+  currentStatus?: 'regular' | 'ongoing' | 'completed';
 }
 
-export default function ShopNowButton({ listId }: ShopNowButtonProps) {
+export default function ShopNowButton({ listId, currentStatus = 'regular' }: ShopNowButtonProps) {
   const router = useRouter();
   const { user } = useUser();
   const productIds = useShoppingListProductIds(listId);
+  const updateStatusInListsStore = useUpdateShoppingListStatus();
+  const updateStatusInListStore = useUpdateListStatus(listId);
   const addInventoryItems = useAddInventoryItemsCallback();
+  
+  // ✅ FIXED: Access store directly instead of calling hooks in a loop
+  const store = useShoppingListStore(listId);
+
+  console.log("📘 ShopNowButton rendered - Status:", currentStatus, "ListId:", listId);
+
+  // ✅ Use useMemo to get products data from the store directly
+  const productsData = useMemo(() => {
+    if (!store || !productIds || productIds.length === 0) {
+      return [];
+    }
+
+    return productIds.map(productId => {
+      const product = store.getRow("products", productId);
+      
+      return {
+        name: (product?.name as string) || '',
+        quantity: (product?.quantity as number) || 0,
+        units: (product?.units as string) || '',
+        category: (product?.category as string) || '',
+        selectedStore: (product?.selectedStore as string) || '',
+        selectedPrice: (product?.selectedPrice as number) || 0,
+        databaseProductId: (product?.databaseProductId as number) || 0,
+        notes: (product?.notes as string) || '',
+      };
+    });
+  }, [store, productIds]);
 
   const handleShopNow = () => {
     if (productIds.length === 0) {
@@ -35,138 +64,128 @@ export default function ShopNowButton({ listId }: ShopNowButtonProps) {
     }
 
     Alert.alert(
-      "Shop Now",
-      `Add all ${productIds.length} item(s) to your inventory?`,
+      "Start Shopping",
+      `Ready to shop for ${productIds.length} item(s)?`,
       [
         {
           text: "Cancel",
           style: "cancel",
         },
         {
-          text: "Shop Now",
+          text: "Start",
           style: "default",
           onPress: () => {
-            // Collect all product data
-            const items = productIds.map(productId => {
-              // We'll use a separate component to read each product's data
-              return { productId };
-            });
-
-            // For now, show success message
-            // We'll implement the actual data collection in the next step
-            Alert.alert(
-              "Success!",
-              `${productIds.length} items added to your inventory!`,
-              [
-                {
-                  text: "View Inventory",
-                  onPress: () => router.push("/(index)/(tabs)/inventory"),
-                },
-                {
-                  text: "OK",
-                  style: "cancel",
-                },
-              ]
-            );
-
-            console.log("🛒 Shopping completed for list:", listId);
-          },
-        },
-      ]
-    );
-  };
-
-  if (productIds.length === 0) {
-    return null;
-  }
-
-  return (
-    <View style={styles.container}>
-      <Button onPress={handleShopNow} style={styles.button}>
-        <MaterialIcons name="inventory" size={24} color="black" />
-        <ThemedText style={styles.text}>
-          Shop Now ({productIds.length})
-        </ThemedText>
-      </Button>
-    </View>
-  );
-}
-
-// Version that properly collects product data
-export function ShopNowButtonWithData({ listId }: ShopNowButtonProps) {
-  const router = useRouter();
-  const { user } = useUser();
-  const productIds = useShoppingListProductIds(listId);
-  const addInventoryItems = useAddInventoryItemsCallback();
-
-  // Collect all product data using hooks
-  const productsData = productIds.map(productId => {
-    const [name] = useShoppingListProductCell(listId, productId, "name");
-    const [quantity] = useShoppingListProductCell(listId, productId, "quantity");
-    const [units] = useShoppingListProductCell(listId, productId, "units");
-    const [category] = useShoppingListProductCell(listId, productId, "category");
-    const [selectedStore] = useShoppingListProductCell(listId, productId, "selectedStore");
-    const [selectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
-    const [databaseProductId] = useShoppingListProductCell(listId, productId, "databaseProductId");
-    const [notes] = useShoppingListProductCell(listId, productId, "notes");
-
-    return {
-      name: name as string,
-      quantity: quantity as number,
-      units: units as string,
-      category: category as string,
-      selectedStore: selectedStore as string,
-      selectedPrice: selectedPrice as number,
-      databaseProductId: databaseProductId as number,
-      notes: notes as string,
-    };
-  });
-
-  const handleShopNow = () => {
-    if (productIds.length === 0) {
-      Alert.alert("Empty List", "Add some products to your list before shopping!");
-      return;
-    }
-
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
-    Alert.alert(
-      "Shop Now",
-      `Add all ${productIds.length} item(s) to your inventory?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Shop Now",
-          style: "default",
-          onPress: () => {
-            // Add items to inventory
-            addInventoryItems(productsData, listId, user?.id || "unknown");
+            // Update status in BOTH stores for persistence
+            updateStatusInListStore('ongoing');
+            updateStatusInListsStore(listId, 'ongoing');
 
             if (process.env.EXPO_OS === "ios") {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
 
-            Alert.alert(
-              "Success!",
-              `${productIds.length} items added to your inventory!`,
-              [
-                {
-                  text: "View Inventory",
-                  onPress: () => router.push("/(index)/(tabs)/inventory"),
-                },
-                {
-                  text: "OK",
-                  style: "cancel",
-                },
-              ]
-            );
+            console.log("🛒 Shopping started for list:", listId);
 
-            console.log("🛒 Shopping completed for list:", listId);
+            // Small delay to ensure status is updated
+            setTimeout(() => {
+              console.log("🛒 Navigating to shopping guide for list:", listId);
+              router.push(`/(index)/list/${listId}/shopping-guide`);
+            }, 100);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleViewShoppingGuide = () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    console.log("🗺️ Opening shopping guide for list:", listId);
+    router.push(`/(index)/list/${listId}/shopping-guide`);
+  };
+
+  const handleCompleteShopping = () => {
+    Alert.alert(
+      "Complete Shopping",
+      `This will:\n• Add ${productIds.length} items to your inventory\n• Move this list to Purchase History\n\nContinue?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Complete",
+          style: "default",
+          onPress: () => {
+            console.log("🛍️ Completing shopping for list:", listId);
+            console.log("📦 Products to add:", productsData.length);
+
+            try {
+              // Add all products to inventory
+              addInventoryItems(productsData, listId, user?.id || 'unknown');
+              console.log("✅ Successfully added items to inventory");
+
+              // Update status in BOTH stores for persistence
+              updateStatusInListStore('completed');
+              updateStatusInListsStore(listId, 'completed');
+
+              if (process.env.EXPO_OS === "ios") {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }
+
+              Alert.alert(
+                "Shopping Completed!",
+                `✅ Added ${productIds.length} items to your inventory\n✅ List moved to Purchase History`,
+                [
+                  {
+                    text: "View Inventory",
+                    onPress: () => router.push("/(index)/(tabs)/inventory"),
+                  },
+                  {
+                    text: "View History",
+                    onPress: () => router.push("/(index)/(tabs)/shopping-lists"),
+                  },
+                  {
+                    text: "OK",
+                    style: "cancel",
+                  },
+                ]
+              );
+
+              console.log("✅ Shopping completed for list:", listId);
+            } catch (error) {
+              console.error("❌ Error completing shopping:", error);
+              Alert.alert('Error', 'Failed to complete shopping. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRestoreList = () => {
+    Alert.alert(
+      "Restore List",
+      "Move this list back to active shopping lists?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Restore",
+          style: "default",
+          onPress: () => {
+            // Update status in BOTH stores for persistence
+            updateStatusInListStore('regular');
+            updateStatusInListsStore(listId, 'regular');
+
+            if (process.env.EXPO_OS === "ios") {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+
+            console.log("♻️ List restored:", listId);
           },
         },
       ]
@@ -177,14 +196,54 @@ export function ShopNowButtonWithData({ listId }: ShopNowButtonProps) {
     return null;
   }
 
+  // Show different buttons based on current status
+  if (currentStatus === 'completed') {
+    console.log("🔍 Rendering COMPLETED buttons");
+    return (
+      <View style={styles.container}>
+        <Pressable onPress={handleRestoreList} style={styles.restoreButton}>
+          <IconSymbol name="arrow.counterclockwise" size={20} color="#007AFF" />
+          <ThemedText style={styles.restoreText}>
+            Restore List
+          </ThemedText>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (currentStatus === 'ongoing') {
+    console.log("🔍 Rendering ONGOING buttons");
+    return (
+      <View style={styles.container}>
+        {/* View Shopping Guide Button */}
+        <Pressable onPress={handleViewShoppingGuide} style={styles.guideButton}>
+          <IconSymbol name="map.fill" size={20} color="#007AFF" />
+          <ThemedText style={styles.guideText}>
+            View Shopping Guide & Map
+          </ThemedText>
+        </Pressable>
+
+        {/* Complete Shopping Button */}
+        <Pressable onPress={handleCompleteShopping} style={styles.completeButton}>
+          <IconSymbol name="checkmark.circle.fill" size={20} color="#fff" />
+          <ThemedText style={styles.buttonText}>
+            Complete Shopping
+          </ThemedText>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // Regular status - show Shop Now button
+  console.log("🔍 Rendering REGULAR buttons");
   return (
     <View style={styles.container}>
-      <Button onPress={handleShopNow} style={styles.button}>
+      <Pressable onPress={handleShopNow} style={styles.shopButton}>
         <IconSymbol name="bag" size={20} color="#fff" />
-        <ThemedText style={styles.text}>
+        <ThemedText style={styles.buttonText}>
           Shop Now ({productIds.length})
         </ThemedText>
-      </Button>
+      </Pressable>
     </View>
   );
 }
@@ -193,8 +252,9 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingVertical: 12,
+    gap: 12,
   },
-  button: {
+  shopButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -202,9 +262,60 @@ const styles = StyleSheet.create({
     backgroundColor: "#007AFF",
     paddingVertical: 14,
     borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  text: {
+  guideButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#F2F2F7",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#007AFF",
+  },
+  guideText: {
+    color: "#007AFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  completeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#34C759",
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  restoreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#F2F2F7",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#007AFF",
+  },
+  buttonText: {
     color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  restoreText: {
+    color: "#007AFF",
     fontSize: 16,
     fontWeight: "600",
   },

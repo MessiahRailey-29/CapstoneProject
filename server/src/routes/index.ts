@@ -2,16 +2,13 @@
 import { Router } from 'express';
 import { Product, Price, ShoppingList } from '../models';
 import syncRoutes from './sync';
+import recommendationsRoutes from './recommendations';
 import mongoose from 'mongoose';
 
-const router = Router();  
+const router = Router();
 
-// Sync routes (no DB required)
-router.use(syncRoutes);
-
-// Middleware to check database connection (only for product/price routes)
+// Middleware to check database connection
 const checkDB = (req: any, res: any, next: any) => {
-  // Remove the require, use the imported mongoose
   console.log('🔍 DB Check - Connection state:', mongoose.connection.readyState);
   
   if (mongoose.connection.readyState !== 1) {
@@ -24,15 +21,15 @@ const checkDB = (req: any, res: any, next: any) => {
   next();
 };
 
-// Apply to all routes
-router.use(checkDB);
+// ===== Routes that DON'T need DB check =====
+router.use(syncRoutes);
 
-// ===== Products Routes =====
-
-// Apply to product routes
+// ===== Routes that NEED DB check =====
+// Products Routes
 router.get('/products', checkDB, async (req, res) => {
   try {
     const products = await Product.find().sort({ name: 1 });
+    console.log(`✅ Fetched ${products.length} products`);
     res.json(products);
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -40,8 +37,7 @@ router.get('/products', checkDB, async (req, res) => {
   }
 });
 
-// GET /api/products/:id
-router.get('/products/:id', async (req, res) => {
+router.get('/products/:id', checkDB, async (req, res) => {
   try {
     const product = await Product.findOne({ id: parseInt(req.params.id) });
     if (!product) {
@@ -54,8 +50,7 @@ router.get('/products/:id', async (req, res) => {
   }
 });
 
-// GET /api/products/:id/prices
-router.get('/products/:id/prices', async (req, res) => {
+router.get('/products/:id/prices', checkDB, async (req, res) => {
   try {
     const prices = await Price.find({ 
       product_id: parseInt(req.params.id) 
@@ -67,10 +62,8 @@ router.get('/products/:id/prices', async (req, res) => {
   }
 });
 
-// ===== Shopping Lists Routes =====
-
-// GET /api/lists/:userId
-router.get('/lists/:userId', async (req, res) => {
+// Shopping Lists Routes
+router.get('/lists/:userId', checkDB, async (req, res) => {
   try {
     const lists = await ShoppingList.find({ userId: req.params.userId })
       .sort({ updatedAt: -1 })
@@ -82,8 +75,7 @@ router.get('/lists/:userId', async (req, res) => {
   }
 });
 
-// GET /api/lists/:userId/:listId
-router.get('/lists/:userId/:listId', async (req, res) => {
+router.get('/lists/:userId/:listId', checkDB, async (req, res) => {
   try {
     const list = await ShoppingList.findOne({ 
       listId: req.params.listId,
@@ -100,8 +92,7 @@ router.get('/lists/:userId/:listId', async (req, res) => {
   }
 });
 
-// POST /api/lists
-router.post('/lists', async (req, res) => {
+router.post('/lists', checkDB, async (req, res) => {
   try {
     const list = new ShoppingList(req.body);
     await list.save();
@@ -112,8 +103,7 @@ router.post('/lists', async (req, res) => {
   }
 });
 
-// PUT /api/lists/:listId
-router.put('/lists/:listId', async (req, res) => {
+router.put('/lists/:listId', checkDB, async (req, res) => {
   try {
     const list = await ShoppingList.findOneAndUpdate(
       { listId: req.params.listId },
@@ -131,8 +121,7 @@ router.put('/lists/:listId', async (req, res) => {
   }
 });
 
-// DELETE /api/lists/:listId
-router.delete('/lists/:listId', async (req, res) => {
+router.delete('/lists/:listId', checkDB, async (req, res) => {
   try {
     const list = await ShoppingList.findOneAndDelete({ 
       listId: req.params.listId 
@@ -147,5 +136,8 @@ router.delete('/lists/:listId', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete list' });
   }
 });
+
+// Recommendations Routes (with checkDB on each route)
+router.use(recommendationsRoutes);
 
 export default router;

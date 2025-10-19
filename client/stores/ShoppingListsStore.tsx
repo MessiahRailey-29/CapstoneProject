@@ -49,8 +49,9 @@ export const useAddShoppingListCallback = () => {
           description,
           emoji,
           color,
-          budget: budget || 0, // Ensure budget is always a number
+          budget: budget || 0,
           shoppingDate: shoppingDate?.toISOString() || null,
+          status: 'regular', // New field: 'regular', 'ongoing', 'completed'
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -98,6 +99,73 @@ export const useValuesCopy = (
   ),
 ];
 
+// NEW: Update shopping list status
+export const useUpdateShoppingListStatus = () => {
+  const storeId = useStoreId();
+  const store = useStore(storeId);
+  
+  return useCallback(
+    (listId: string, newStatus: 'regular' | 'ongoing' | 'completed') => {
+      try {
+        // Get current valuesCopy
+        const currentValuesCopy = store.getCell("lists", listId, "valuesCopy") as string;
+        
+        console.log('📝 Current valuesCopy before update:', currentValuesCopy);
+        
+        if (!currentValuesCopy || currentValuesCopy === '{}') {
+          console.warn('⚠️ No valuesCopy found for list:', listId);
+          return;
+        }
+        
+        const data = JSON.parse(currentValuesCopy);
+        
+        // Update the status in the values
+        if (data.values) {
+          data.values.status = newStatus;
+          data.values.updatedAt = new Date().toISOString();
+          
+          // If completing, also set completedAt timestamp
+          if (newStatus === 'completed' && !data.values.completedAt) {
+            data.values.completedAt = new Date().toISOString();
+          }
+          
+          // Clear completedAt if restoring to regular
+          if (newStatus === 'regular') {
+            data.values.completedAt = null;
+          }
+        } else {
+          // Handle old format - create values object if it doesn't exist
+          if (!data.values) {
+            data.values = {};
+          }
+          data.values.status = newStatus;
+          data.values.updatedAt = new Date().toISOString();
+          
+          if (newStatus === 'completed' && !data.values.completedAt) {
+            data.values.completedAt = new Date().toISOString();
+          }
+          
+          if (newStatus === 'regular') {
+            data.values.completedAt = null;
+          }
+        }
+        
+        const updatedValuesCopy = JSON.stringify(data);
+        console.log('💾 Saving updated valuesCopy:', updatedValuesCopy);
+        
+        // Save back to store - this should trigger sync
+        store.setCell("lists", listId, "valuesCopy", updatedValuesCopy);
+        
+        console.log(`✅ Updated list ${listId} status to: ${newStatus}`);
+        console.log('✅ Data saved to store, sync should happen automatically');
+      } catch (error) {
+        console.error('❌ Error updating list status:', error);
+      }
+    },
+    [store]
+  );
+};
+
 // Returns a callback that deletes a shopping list from the store.
 export const useDelShoppingListCallback = (id: string) =>
   useDelRowCallback("lists", id, useStoreId());
@@ -118,12 +186,31 @@ export const useShoppingListsValues = () =>
     });
 
 export const useShoppingListData = (listId: string) => {
-  const [valuesCopy] = useValuesCopy(listId);
+  const storeId = useStoreId();
+  const store = useStore(storeId);
   
-  console.log('📖 Reading valuesCopy for', listId, ':', valuesCopy);
+  // Get the cell value which will reactively update
+  const valuesCopy = useCell("lists", listId, "valuesCopy", storeId) as string;
   
   try {
-    const data = JSON.parse(valuesCopy || '{}');
+    console.log('📖 Reading valuesCopy for', listId, ':', valuesCopy);
+    
+    if (!valuesCopy || valuesCopy === '{}') {
+      return {
+        name: '',
+        description: '',
+        emoji: '🛒',
+        color: '#007AFF',
+        shoppingDate: null,
+        budget: 0,
+        status: 'regular' as const,
+        completedAt: null,
+        createdAt: '',
+        updatedAt: '',
+      };
+    }
+    
+    const data = JSON.parse(valuesCopy);
     console.log('📊 Parsed list data:', data);
     
     // Handle both old format (direct properties) and new format (nested in values)
@@ -145,12 +232,15 @@ export const useShoppingListData = (listId: string) => {
       color: values.color || '#007AFF',
       shoppingDate: values.shoppingDate || null,
       budget: values.budget || 0,
+      status: (values.status || 'regular') as 'regular' | 'ongoing' | 'completed',
+      completedAt: values.completedAt || null,
       createdAt: values.createdAt || '',
       updatedAt: values.updatedAt || '',
     };
     
     console.log('🎯 Final list data result:', result);
     console.log('💰 Budget from useShoppingListData:', result.budget, typeof result.budget);
+    console.log('📍 Status from useShoppingListData:', result.status);
     
     return result;
   } catch (error) {
@@ -162,11 +252,14 @@ export const useShoppingListData = (listId: string) => {
       color: '#007AFF',
       shoppingDate: null,
       budget: 0,
+      status: 'regular' as const,
+      completedAt: null,
       createdAt: '',
       updatedAt: '',
     };
   }
 };
+
 // Create, persist, and sync a store containing the IDs of the shopping lists.
 export default function ShoppingListsStore() {
   const storeId = useStoreId();

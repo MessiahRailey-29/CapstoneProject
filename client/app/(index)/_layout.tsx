@@ -6,6 +6,7 @@ import { useUser } from "@clerk/clerk-expo";
 import { Redirect, Stack, useRouter } from "expo-router";
 import { Provider as TinyBaseProvider } from 'tinybase/ui-react';
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export default function HomeRoutesLayout(){
   const router = useRouter();
@@ -152,6 +153,30 @@ export default function HomeRoutesLayout(){
               headerLargeTitle: false,
             }}
           />
+            <Stack.Screen
+            name="list/[listId]/shopping-guide"
+            options={{
+              presentation: "modal",
+              headerLargeTitle: false,
+              headerTitle: "Shopping Guide",
+              sheetAllowedDetents: [0.9, 1],
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
+          name="category-products"
+          options={{
+            presentation: "card",
+            headerLargeTitle: false,
+          }}
+        />
+          <Stack.Screen
+          options={{
+            headerTitle: 'Home',
+            headerLargeTitle: true,
+            headerRight: () => <NotificationBell />,
+          }}
+        />
         </Stack>
       </ListCreationProvider>
     </TinyBaseProvider>

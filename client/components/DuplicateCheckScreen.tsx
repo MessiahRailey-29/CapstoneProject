@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { BodyScrollView } from '@/components/ui/BodyScrollView';
@@ -6,9 +6,10 @@ import Button from '@/components/ui/button';
 import { StatusBar } from 'expo-status-bar';
 import ComparisonSettings from '@/components/ComparisonSettings';
 import DuplicateResults from '@/components/DuplicateResults';
-import { useDuplicateDetection, useDuplicateActions } from '@/hooks/useDuplicateDetection';
+import { useDuplicateDetection } from '@/hooks/useDuplicateDetection';
 import { ComparisonSettings as IComparisonSettings } from '@/services/DuplicateDetectionService';
-import { useShoppingListsValues } from '@/stores/ShoppingListsStore';
+import { useShoppingListStore } from '@/stores/ShoppingListStore';
+
 export default function DuplicateCheckScreen() {
   const router = useRouter();
   const { listId } = useLocalSearchParams() as { listId: string };
@@ -21,10 +22,15 @@ export default function DuplicateCheckScreen() {
     stats,
     updateSettings,
     runDuplicateDetection,
-    hasProducts
+    hasProducts,
+    productNameToIdMap,
   } = useDuplicateDetection(listId);
 
-  const { skipProduct, reduceQuantity } = useDuplicateActions(listId);
+  // 🔥 FIXED: Get the store using the new hook
+  const store = useShoppingListStore(listId);
+
+  // Safety check: ensure productNameToIdMap exists
+  const safeProductNameToIdMap = productNameToIdMap || new Map();
 
   const handleRunCheck = async () => {
     await runDuplicateDetection();
@@ -35,29 +41,53 @@ export default function DuplicateCheckScreen() {
     updateSettings(newSettings);
   };
 
-  const handleSkipProduct = (productName: string) => {
-    skipProduct(productName);
-    // Refresh detection after skipping
-    runDuplicateDetection();
-  };
+  // 🔥 FIXED: Use store.delRow directly - no hooks needed!
+  const handleSkipProduct = useCallback((productName: string) => {
+    const productId = safeProductNameToIdMap.get(productName);
+    
+    if (!productId || !store) {
+      console.warn('❌ Product or store not found:', productName);
+      return;
+    }
 
-  const handleReduceQuantity = (productName: string, newQuantity: number) => {
-    reduceQuantity(productName, newQuantity);
-    // Refresh detection after reducing
-    runDuplicateDetection();
-  };
+    try {
+      store.delRow('products', productId);
+      console.log('✅ Skipped product:', productName);
+      
+      // Refresh detection after skipping
+      setTimeout(() => {
+        runDuplicateDetection();
+      }, 100);
+    } catch (error) {
+      console.error('Error skipping product:', error);
+    }
+  }, [safeProductNameToIdMap, store, runDuplicateDetection]);
+
+  // 🔥 FIXED: Use store.setCell directly - no hooks needed!
+  const handleReduceQuantity = useCallback((productName: string, newQuantity: number) => {
+    const productId = safeProductNameToIdMap.get(productName);
+    
+    if (!productId || !store) {
+      console.warn('❌ Product or store not found:', productName);
+      return;
+    }
+
+    try {
+      store.setCell('products', productId, 'quantity', newQuantity);
+      console.log('✅ Reduced quantity for', productName, 'to', newQuantity);
+      
+      // Refresh detection after reducing
+      setTimeout(() => {
+        runDuplicateDetection();
+      }, 100);
+    } catch (error) {
+      console.error('Error reducing quantity:', error);
+    }
+  }, [safeProductNameToIdMap, store, runDuplicateDetection]);
 
   const handleDismiss = () => {
     router.back();
   };
-
-  // Add this to your DuplicateCheckScreen component
-const { debugAllListsData } = useDuplicateDetection(listId);
-
-// Add this button near your other buttons
-<Button onPress={debugAllListsData} variant="ghost">
-  Debug: Show Raw List Data
-</Button>
 
   if (!hasProducts) {
     return (
@@ -75,7 +105,7 @@ const { debugAllListsData } = useDuplicateDetection(listId);
         <BodyScrollView contentContainerStyle={styles.container}>
           <StatusBar style="light" animated />
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>📝</Text>
+            <Text style={styles.emptyStateIcon}>📋</Text>
             <Text style={styles.emptyStateTitle}>No Products to Check</Text>
             <Text style={styles.emptyStateText}>
               Add some products to your list first, then check for duplicates.
@@ -183,34 +213,6 @@ const { debugAllListsData } = useDuplicateDetection(listId);
   );
 }
 
-// Add this debug button to your DuplicateCheckScreen.tsx to see what data is available
-
-const handleDebugData = () => {
-  const allListsData = useShoppingListsValues();
-  
-  console.log('=== DEBUG: All Lists Data ===');
-  console.log('Total lists:', allListsData.length);
-  
-  allListsData.forEach((listData, index) => {
-    console.log(`\n--- List ${index + 1} ---`);
-    console.log('Raw listData:', listData);
-    console.log('listData.values:', listData.values);
-    console.log('listData.tables:', listData.tables);
-    console.log('listData.tables?.products:', listData.tables?.products);
-    
-    if (listData.tables?.products) {
-      console.log('Products in this list:');
-      Object.entries(listData.tables.products).forEach(([productId, productData]: [string, any]) => {
-        console.log(`  - ${productData.name} (${productData.quantity} ${productData.units})`);
-      });
-    }
-  });
-};
-
-// Add this button to your render method for debugging:
-<Button onPress={handleDebugData} variant="ghost">
-  Debug: Show All List Data
-</Button>
 const styles = StyleSheet.create({
   container: {
     padding: 16,

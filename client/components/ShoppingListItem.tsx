@@ -1,293 +1,422 @@
-import * as React from "react";
-import { ThemedText } from "./ThemedText";
-import {
-  useShoppingListProductCount,
-  useShoppingListUserNicknames,
-  useShoppingListValue,
-} from "@/stores/ShoppingListStore";
-import {
-  useDelShoppingListCallback,
-  useShoppingListData,
-} from "@/stores/ShoppingListsStore";
-import {
-  Animated,
-  Pressable,
-  StyleSheet,
-  useColorScheme,
-  View,
-} from "react-native";
-import { appleRed, borderColor } from "@/constants/Colors";
-import { Link } from "expo-router";
-import IconCircle from "./IconCircle";
-import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
-import { SharedValue, useAnimatedStyle } from "react-native-reanimated";
-import { IconSymbol } from "./ui/IconSymbol";
-import Reanimated from "react-native-reanimated";
+import IconCircle from "@/components/IconCircle";
+import {ThemedText} from "@/components/ThemedText";
+import { BodyScrollView } from "@/components/ui/BodyScrollView";
+import { Button } from "@/components/ui/button";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { appleBlue, backgroundColors } from "@/constants/Colors";
+import { useShoppingListIds, useShoppingListsValues, useShoppingListData } from "@/stores/ShoppingListsStore";
+import { useShoppingListProductIds } from "@/stores/ShoppingListStore";
+import { Stack, useRouter } from "expo-router";
+import {Platform, Pressable, StyleSheet, View, SectionList} from "react-native";
+import { useMemo } from "react";
 
-// Date utility functions
-const formatShoppingDate = (dateString: string | null | undefined): string | null => {
-  if (!dateString) return null;
-  try {
-    const date = new Date(dateString);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    today.setHours(0, 0, 0, 0);
-    tomorrow.setHours(0, 0, 0, 0);
-    date.setHours(0, 0, 0, 0);
-    if (date.getTime() === today.getTime()) return "Today";
-    if (date.getTime() === tomorrow.getTime()) return "Tomorrow";
-    if (date < today) return "Past due";
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return null;
-  }
+type Section = {
+    title: string;
+    data: string[];
+    key: string;
 };
 
-const getDateStatusColor = (dateString: string | null | undefined): string => {
-  if (!dateString) return "#999";
-  try {
-    const date = new Date(dateString);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    date.setHours(0, 0, 0, 0);
-    if (date < today) return "#FF3B30";
-    if (date.getTime() === today.getTime()) return "#FF9500";
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    if (date.getTime() === tomorrow.getTime()) return "#34C759";
-    return "#007AFF";
-  } catch {
-    return "#999";
-  }
-};
-
-export default function ShoppingListItem({ listId }: { listId: string }) {
-  // Get data from both stores
-  const [name] = useShoppingListValue(listId, "name");
-  const [emoji] = useShoppingListValue(listId, "emoji");
-  const [color] = useShoppingListValue(listId, "color");
-  const productCount = useShoppingListProductCount(listId);
-  const userNicknames = useShoppingListUserNicknames(listId);
-
-  // Get metadata from ShoppingListsStore (includes shopping date!)
+// Inline ShoppingListItem component to avoid import issues
+function ShoppingListItem({ listId }: { listId: string }) {
+  const router = useRouter();
   const listData = useShoppingListData(listId);
+  const productIds = useShoppingListProductIds(listId);
 
-  // Use fallbacks to ensure we always have display values
-  const displayName = name || listData.name || "";
-  const displayEmoji = emoji || listData.emoji || "📝";
-  const displayColor = color || listData.color || "#ccc";
-  const shoppingDate = listData.shoppingDate; // Get date from listData!
+  const name = listData?.name || '';
+  const emoji = listData?.emoji || '🛒';
+  const color = listData?.color || '#007AFF';
+  const description = listData?.description || '';
+  const status = listData?.status || 'regular';
+  const shoppingDate = listData?.shoppingDate || null;
+  const completedAt = listData?.completedAt || null;
 
-  const deleteCallback = useDelShoppingListCallback(listId);
-
-  const formattedDate = formatShoppingDate(shoppingDate);
-  const dateColor = getDateStatusColor(shoppingDate);
-
-  console.log('ShoppingListItem Debug:', {
-    listId,
-    shoppingDate,
-    formattedDate,
-    listDataShoppingDate: listData.shoppingDate
-  });
-
-  const RightAction = (prog: SharedValue<number>, drag: SharedValue<number>) => {
-    const styleAnimation = useAnimatedStyle(() => ({
-      transform: [{ translateX: drag.value + 200 }],
-    }));
-
-    return (
-      <Pressable onPress={deleteCallback}>
-        <Reanimated.View style={[styleAnimation, styles.rightAction]}>
-          <IconSymbol name="trash.fill" size={24} color="white" />
-        </Reanimated.View>
-      </Pressable>
-    );
+  const handlePress = () => {
+    router.push(`/list/${listId}`);
   };
 
+  // Format date for display
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  // Get status display info
+  const getStatusInfo = () => {
+    if (status === 'ongoing') {
+      return {
+        label: 'Shopping in progress',
+        color: '#34C759',
+        icon: '🛍️',
+      };
+    }
+    if (status === 'completed') {
+      return {
+        label: completedAt ? `Completed ${formatDate(completedAt)}` : 'Completed',
+        color: '#8E8E93',
+        icon: '✅',
+      };
+    }
+    if (shoppingDate) {
+      return {
+        label: `Scheduled: ${formatDate(shoppingDate)}`,
+        color: '#007AFF',
+        icon: '📅',
+      };
+    }
+    return null;
+  };
+
+  const statusInfo = getStatusInfo();
+  const isCompleted = status === 'completed';
+  const isOngoing = status === 'ongoing';
+
   return (
-    <Animated.View>
-      <ReanimatedSwipeable
-        key={listId}
-        friction={2}
-        enableTrackpadTwoFingerGesture
-        rightThreshold={40}
-        renderRightActions={RightAction}
-        overshootRight={false}
-        enableContextMenu
-      >
-        <Link href={{ pathname: "/list/[listId]", params: { listId } }}>
-          <View style={styles.swipeable}>
-            <View style={styles.leftContent}>
-              <IconCircle emoji={displayEmoji} backgroundColor={displayColor} />
-              <View style={styles.textContent}>
-                <ThemedText type="defaultSemiBold" numberOfLines={2}>
-                  {displayName}
-                </ThemedText>
-                <View style={styles.metaInfo}>
-                  <ThemedText type="defaultSemiBold" style={styles.productCount}>
-                    {productCount} product{productCount === 1 ? "" : "s"}
-                  </ThemedText>
-                  {formattedDate && (
-                    <>
-                      <ThemedText style={styles.metaDot}>•</ThemedText>
-                      <ThemedText
-                        type="defaultSemiBold"
-                        style={[styles.dateText, { color: dateColor }]}
-                      >
-                        {formattedDate}
-                      </ThemedText>
-                    </>
-                  )}
-                </View>
+    <Pressable
+      style={styles.itemContainer}
+      onPress={handlePress}
+    >
+      <View style={styles.content}>
+        <IconCircle
+          emoji={emoji}
+          backgroundColor={color}
+          size={50}
+        />
+        
+        <View style={styles.info}>
+          <View style={styles.header}>
+            <ThemedText 
+              type="defaultSemiBold" 
+              style={isCompleted ? styles.nameCompleted : styles.name}
+              numberOfLines={1}
+            >
+              {name || 'Unnamed List'}
+            </ThemedText>
+            
+            {isOngoing && (
+              <View style={styles.ongoingItemBadge}>
+                <View style={styles.pulseDotItem} />
               </View>
-              <View style={styles.rightContent}>
-                {userNicknames.length > 1 && (
-                  <View style={styles.nicknameContainer}>
-                    {userNicknames.length === 4
-                      ? userNicknames.map((nickname, index) => (
-                          <NicknameCircle
-                            key={nickname}
-                            nickname={nickname}
-                            color={displayColor}
-                            index={index}
-                          />
-                        ))
-                      : userNicknames.length > 4
-                      ? userNicknames
-                          .slice(0, 4)
-                          .map((nickname, index) => (
-                            <NicknameCircle
-                              key={nickname}
-                              nickname={nickname}
-                              color={displayColor}
-                              index={index}
-                              isEllipsis={index === 3}
-                            />
-                          ))
-                      : userNicknames.map((nickname, index) => (
-                          <NicknameCircle
-                            key={nickname}
-                            nickname={nickname}
-                            color={displayColor}
-                            index={index}
-                          />
-                        ))}
-                  </View>
-                )}
-              </View>
-            </View>
+            )}
           </View>
-        </Link>
-      </ReanimatedSwipeable>
-    </Animated.View>
+
+          <View style={styles.details}>
+            {description ? (
+              <ThemedText 
+                style={isCompleted ? styles.descriptionCompleted : styles.description}
+                numberOfLines={1}
+              >
+                {description}
+              </ThemedText>
+            ) : null}
+            
+            <ThemedText 
+              style={isCompleted ? styles.itemCountCompleted : styles.itemCount}
+            >
+              {productIds.length} {productIds.length === 1 ? 'item' : 'items'}
+            </ThemedText>
+          </View>
+
+          {statusInfo && (
+            <View style={styles.statusContainer}>
+              <ThemedText style={[styles.statusText, { color: statusInfo.color }]}>
+                {statusInfo.icon} {statusInfo.label}
+              </ThemedText>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {!isCompleted && (
+        <View style={styles.chevron}>
+          <ThemedText style={styles.chevronText}>›</ThemedText>
+        </View>
+      )}
+    </Pressable>
   );
 }
 
-export const NicknameCircle = ({
-  nickname,
-  color,
-  index = 0,
-  isEllipsis = false,
-}: {
-  nickname: string;
-  color: string;
-  index?: number;
-  isEllipsis?: boolean;
-}) => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+export default function HomeScreen(){
+    const router= useRouter();
+    const shoppingListIds = useShoppingListIds();
+    const shoppingListsValues = useShoppingListsValues();
 
-  return (
-    <ThemedText
-      type="defaultSemiBold"
-      style={[
-        styles.nicknameCircle,
-        isEllipsis && styles.ellipsisCircle,
-        {
-          backgroundColor: color,
-          borderColor: isDark ? "#000000" : "#ffffff",
-          marginLeft: index > 0 ? -6 : 0,
-        },
-      ]}
-    >
-      {isEllipsis ? "..." : nickname[0].toUpperCase()}
-    </ThemedText>
-  );
-};
+    // Categorize shopping lists into sections
+    const sections = useMemo(() => {
+        const regularLists: string[] = [];
+        const ongoingLists: string[] = [];
+        const historyLists: string[] = [];
+
+        // Use shoppingListsValues which already has the data parsed
+        shoppingListIds.forEach((listId, index) => {
+            try {
+                const listData = shoppingListsValues[index];
+                const status = listData?.values?.status || 'regular'; // Default to 'regular' if no status
+                
+                if (status === 'ongoing') {
+                    ongoingLists.push(listId);
+                } else if (status === 'completed') {
+                    historyLists.push(listId);
+                } else {
+                    regularLists.push(listId);
+                }
+            } catch (error) {
+                console.error('Error reading list data:', error);
+                regularLists.push(listId);
+            }
+        });
+
+        const result: Section[] = [];
+        
+        // Add Ongoing Shopping Lists section if there are any
+        if (ongoingLists.length > 0) {
+            result.push({
+                title: 'Ongoing Shopping Lists',
+                data: ongoingLists,
+                key: 'ongoing'
+            });
+        }
+
+        // Add regular shopping lists section
+        if (regularLists.length > 0) {
+            result.push({
+                title: 'Shopping Lists',
+                data: regularLists,
+                key: 'regular'
+            });
+        }
+
+        // Add Purchase History section if there are any
+        if (historyLists.length > 0) {
+            result.push({
+                title: 'Purchase History',
+                data: historyLists,
+                key: 'history'
+            });
+        }
+
+        return result;
+    }, [shoppingListIds, shoppingListsValues]);
+
+    const renderEmptyList = () => (
+        <BodyScrollView contentContainerStyle = {styles.emptyStateContainer}>
+            <IconCircle
+            emoji="🛒"
+            backgroundColor={
+                backgroundColors[Math.floor(Math.random() * backgroundColors.length)]
+            }
+            />
+            <Button onPress={() => router.push("/list/new")} variant="ghost">
+                Create your first list
+            </Button>
+        </BodyScrollView>
+    )
+    
+    const renderHeaderRight = ()=>{
+        return(
+            <Pressable onPress={()=>router.push("/list/new")}>
+                <IconSymbol name="plus" color={appleBlue}/>
+            </Pressable>
+        );
+    };
+
+    const renderSectionHeader = ({ section }: { section: Section }) => (
+        <View style={styles.sectionHeader}>
+            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                {section.title}
+            </ThemedText>
+            {section.key === 'ongoing' && (
+                <View style={styles.ongoingBadge}>
+                    <View style={styles.pulseDot} />
+                    <ThemedText style={styles.badgeText}>Active</ThemedText>
+                </View>
+            )}
+            {section.key === 'history' && (
+                <ThemedText style={styles.historyCount}>
+                    {section.data.length} completed
+                </ThemedText>
+            )}
+        </View>
+    );
+
+    const renderItem = ({ item: listId }: { item: string }) => (
+        <ShoppingListItem listId={listId} />
+    );
+
+    if (shoppingListIds.length === 0) {
+        return (
+            <>
+                <Stack.Screen options={{
+                    headerRight: renderHeaderRight,
+                }}/>
+                {renderEmptyList()}
+            </>
+        );
+    }
+
+    return(
+        <>
+        <Stack.Screen options={{
+            headerRight: renderHeaderRight,
+        }}/>
+        <SectionList
+            sections={sections}
+            renderItem={renderItem}
+            renderSectionHeader={renderSectionHeader}
+            keyExtractor={(item) => item}
+            contentContainerStyle={styles.listContainer}
+            contentInsetAdjustmentBehavior="automatic"
+            stickySectionHeadersEnabled={true}
+            ListEmptyComponent={renderEmptyList}
+        />
+        </>
+    );
+}
 
 const styles = StyleSheet.create({
-  rightAction: {
-    width: 200,
-    height: 65,
-    backgroundColor: appleRed,
-    alignItems: "center",
-    justifyContent: "center",
+  listContainer: {
+    paddingTop: 8,
   },
-  swipeable: {
-    width: "100%",
-    flexDirection: "row",
+  emptyStateContainer: {
     alignItems: "center",
-    justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: borderColor,
     gap: 8,
+    paddingTop: 100,
+  },
+  headerButton: {
+    padding: 8,
+    paddingRight: 0,
+    marginHorizontal: Platform.select({ web: 16, default: 0 }),
+  },
+  headerButtonLeft: {
+    paddingLeft: 0,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingTop: 16,
+    paddingBottom: 8,
+    backgroundColor: '#FFFFFF',
   },
-  leftContent: {
-    flexDirection: "row",
-    alignItems: "center",
+  sectionTitle: {
+    fontSize: 20,
+    color: '#000000',
+  },
+  ongoingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+  },
+  pulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4CAF50',
+  },
+  badgeText: {
+    fontSize: 12,
+    color: '#2E7D32',
+    fontWeight: '600',
+  },
+  historyCount: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  itemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
+  },
+  content: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
-    flexShrink: 1,
   },
-  textContent: {
-    flexShrink: 1,
-  },
-  metaInfo: {
-    flexDirection: "row",
-    alignItems: "center",
+  info: {
+    flex: 1,
     gap: 4,
   },
-  productCount: {
-    fontSize: 12,
-    color: "gray",
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  metaDot: {
-    fontSize: 12,
-    color: "#ccc",
+  name: {
+    fontSize: 17,
+    color: '#000000',
+    flex: 1,
   },
-  dateText: {
-    fontSize: 12,
-    fontWeight: "600",
+  nameCompleted: {
+    fontSize: 17,
+    color: '#8E8E93',
+    flex: 1,
   },
-  rightContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
+  ongoingItemBadge: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#34C759',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  nicknameContainer: {
-    flexDirection: "row",
-    marginRight: 4,
+  pulseDotItem: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
   },
-  nicknameCircle: {
-    fontSize: 12,
-    color: "white",
-    borderWidth: 1,
-    borderColor: "white",
-    borderRadius: 16,
-    padding: 1,
-    width: 24,
-    height: 24,
-    textAlign: "center",
-    lineHeight: 20,
+  details: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  ellipsisCircle: {
-    lineHeight: 0,
-    marginLeft: -6,
+  description: {
+    fontSize: 14,
+    color: '#8E8E93',
+    flex: 1,
+  },
+  descriptionCompleted: {
+    fontSize: 14,
+    color: '#8E8E93',
+    flex: 1,
+    opacity: 0.7,
+  },
+  itemCount: {
+    fontSize: 14,
+    color: '#8E8E93',
+  },
+  itemCountCompleted: {
+    fontSize: 14,
+    color: '#8E8E93',
+    opacity: 0.7,
+  },
+  statusContainer: {
+    marginTop: 4,
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  chevron: {
+    marginLeft: 8,
+  },
+  chevronText: {
+    fontSize: 24,
+    color: '#C7C7CC',
+    fontWeight: '300',
   },
 });

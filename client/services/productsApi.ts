@@ -26,12 +26,13 @@ export const productsApi = {
     }
 
     try {
-      console.log('🔍 Fetching products from:', `${API_BASE_URL}/api/products`);
+      const url = `${API_BASE_URL}/products`; // ✅ REMOVED /api
+      console.log('🔍 Fetching products from:', url);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${API_BASE_URL}/api/products`, {
+      const response = await fetch(url, {
         signal: controller.signal,
         headers: {
           'Accept': 'application/json',
@@ -66,12 +67,13 @@ export const productsApi = {
     }
 
     try {
-      console.log('🔍 Fetching product:', id);
+      const url = `${API_BASE_URL}/products/${id}`; // ✅ REMOVED /api
+      console.log('🔍 Fetching product:', id, 'from:', url);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+      const response = await fetch(url, {
         signal: controller.signal,
         headers: {
           'Accept': 'application/json',
@@ -107,7 +109,7 @@ export const productsApi = {
     }
 
     try {
-      const url = `${API_BASE_URL}/api/products/${productId}/prices`;
+      const url = `${API_BASE_URL}/products/${productId}/prices`; // ✅ REMOVED /api
       console.log('💰 Fetching prices for product:', productId, 'from:', url);
       
       const controller = new AbortController();

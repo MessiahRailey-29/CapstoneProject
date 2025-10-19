@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { connectDB } from './db';
 import routes from './routes';
 import { setupSyncServer } from './syncServer';
+import notificationRoutes from './routes/notificationRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -22,12 +23,29 @@ app.use(express.json());
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    timestamp: new Date().toISOString() 
+    timestamp: new Date().toISOString(),
+    mongodb: !!process.env.MONGODB_URI,
+  });
+});
+
+// Test notification endpoint
+app.get('/api/notifications/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Notification routes are working!',
+    timestamp: new Date().toISOString(),
   });
 });
 
 // API Routes
 app.use('/api', routes);
+app.use('/api/notifications', notificationRoutes);
+
+// Log registered routes
+console.log('📝 Registered routes:');
+console.log('  - /health');
+console.log('  - /api/*');
+console.log('  - /api/notifications/*');
 
 // Setup WebSocket sync server for TinyBase
 setupSyncServer(httpServer);
@@ -42,20 +60,25 @@ async function start() {
         await connectDB(mongoUri);
         console.log('✅ MongoDB features enabled');
       } catch (error) {
+        console.error('❌ MongoDB connection failed:', error);
         console.warn('⚠️ MongoDB not available - sync server will still work');
-        console.warn('Products API will be disabled');
+        console.warn('⚠️ Notification features will NOT work without MongoDB!');
       }
     } else {
       console.log('ℹ️ No MONGODB_URI set - running in sync-only mode');
+      console.warn('⚠️ Notification features require MongoDB!');
     }
     
     // Start HTTP server on all interfaces
     const port = Number(PORT);
     httpServer.listen(port, '0.0.0.0', () => {
-      console.log(`🚀 Server running on port ${port}`);
-      console.log(`📡 Health: http://localhost:${port}/health`);
-      console.log(`📡 Network: http://192.168.1.142:${port}/health`);
-      console.log(`🔄 Sync: ws://192.168.1.142:${port}/sync/`);
+      console.log('');
+      console.log('🚀 Server running on port', port);
+      console.log('📡 Health: http://localhost:' + port + '/health');
+      console.log('📡 Network: http://192.168.254.109:' + port + '/health');
+      console.log('🔔 Notifications: http://localhost:' + port + '/api/notifications');
+      console.log('🔄 Sync: ws://192.168.254.109:' + port + '/sync/');
+      console.log('');
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

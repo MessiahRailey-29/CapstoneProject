@@ -1,63 +1,100 @@
+// components/DatabaseProductItem.tsx
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { ThemedText } from './ThemedText';
+import { StyleSheet, View, Pressable, Text } from 'react-native';
+import { ThemedText } from '@/components/ThemedText';
 import { DatabaseProduct } from '@/services/productsApi';
-import { useProductPrices } from '@/hooks/useProducts';
+
+// Category configuration
+const CATEGORY_CONFIG: Record<string, { icon: string; color: string }> = {
+  'Beverages': { icon: '🥤', color: '#FF6B6B' },
+  'Dairy': { icon: '🥛', color: '#4ECDC4' },
+  'Instant Noodles': { icon: '🍜', color: '#FFE66D' },
+  'Canned Goods': { icon: '🥫', color: '#95E1D3' },
+  'Coffee': { icon: '☕', color: '#A8763E' },
+  'Fruits': { icon: '🍎', color: '#FFA07A' },
+  'Vegetables': { icon: '🥬', color: '#90EE90' },
+  'Meat': { icon: '🥩', color: '#FF6347' },
+  'Bread': { icon: '🍞', color: '#F4A460' },
+  'Household': { icon: '🧼', color: '#87CEEB' },
+  'Snacks': { icon: '🍿', color: '#DDA0DD' },
+  'Other': { icon: '📦', color: '#C0C0C0' },
+};
 
 interface DatabaseProductItemProps {
   product: DatabaseProduct;
   onPress: (product: DatabaseProduct) => void;
+  viewMode?: 'list' | 'grid';
 }
 
-export default function DatabaseProductItem({ product, onPress }: DatabaseProductItemProps) {
-  const { prices, loading, error } = useProductPrices(product.id);
-  
-  console.log(`🏪 DatabaseProductItem for product ${product.id} (${product.name}):`, {
-    pricesCount: prices.length,
-    loading,
-    error,
-    prices: prices
-  });
-  
-  const lowestPrice = prices.length > 0 
-    ? Math.min(...prices.map(p => p.price))
-    : null;
+export default function DatabaseProductItem({ 
+  product, 
+  onPress,
+  viewMode = 'list'
+}: DatabaseProductItemProps) {
+  const categoryInfo = CATEGORY_CONFIG[product.category] || CATEGORY_CONFIG['Other'];
 
-  console.log(`💰 Lowest price for ${product.name}:`, lowestPrice);
+  if (viewMode === 'grid') {
+    return (
+      <Pressable
+        onPress={() => onPress(product)}
+        style={({ pressed }) => [
+          styles.gridContainer,
+          pressed && styles.pressed,
+        ]}
+      >
+        <View style={styles.gridContent}>
+          {/* Category Icon */}
+          <View style={[styles.gridIcon, { backgroundColor: categoryInfo.color + '20' }]}>
+            <Text style={styles.gridIconText}>{categoryInfo.icon}</Text>
+          </View>
 
-  return (
-    <Pressable
-      style={styles.container}
-      onPress={() => onPress(product)}
-    >
-      <View style={styles.content}>
-        <View style={styles.mainInfo}>
-          <ThemedText type="defaultSemiBold" style={styles.name}>
+          {/* Product Info */}
+          <ThemedText 
+            style={styles.gridName} 
+            numberOfLines={2}
+          >
             {product.name}
           </ThemedText>
-          <ThemedText type="default" style={styles.category}>
-            {product.category}
-          </ThemedText>
+
+          {/* Category Badge */}
+          <View style={[styles.gridCategoryBadge, { backgroundColor: categoryInfo.color }]}>
+            <Text style={styles.gridCategoryText}>{product.category}</Text>
+          </View>
         </View>
-        
-        <View style={styles.priceInfo}>
-          {loading ? (
-            <ThemedText type="default" style={styles.loadingText}>
-              Loading...
-            </ThemedText>
-          ) : error ? (
-            <ThemedText type="default" style={styles.errorText}>
-              Error loading
-            </ThemedText>
-          ) : lowestPrice !== null ? (
-            <ThemedText type="defaultSemiBold" style={styles.price}>
-              ₱{lowestPrice.toFixed(2)}
-            </ThemedText>
-          ) : (
-            <ThemedText type="default" style={styles.noPrice}>
-              No price
-            </ThemedText>
-          )}
+      </Pressable>
+    );
+  }
+
+  // List view (default)
+  return (
+    <Pressable
+      onPress={() => onPress(product)}
+      style={({ pressed }) => [
+        styles.listContainer,
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={styles.listContent}>
+        {/* Category Icon */}
+        <View style={[styles.listIcon, { backgroundColor: categoryInfo.color + '20' }]}>
+          <Text style={styles.listIconText}>{categoryInfo.icon}</Text>
+        </View>
+
+        {/* Product Info */}
+        <View style={styles.listInfo}>
+          <ThemedText style={styles.listName} numberOfLines={2}>
+            {product.name}
+          </ThemedText>
+          <View style={styles.listCategoryContainer}>
+            <View style={[styles.listCategoryBadge, { backgroundColor: categoryInfo.color }]}>
+              <Text style={styles.listCategoryText}>{product.category}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Arrow */}
+        <View style={styles.arrow}>
+          <Text style={styles.arrowText}>›</Text>
         </View>
       </View>
     </Pressable>
@@ -65,51 +102,113 @@ export default function DatabaseProductItem({ product, onPress }: DatabaseProduc
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: 'white',
-    borderRadius: 8,
+  // List View Styles
+  listContainer: {
+    backgroundColor: '#fff',
     marginHorizontal: 16,
-    marginVertical: 4,
+    marginVertical: 6,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
-  content: {
+  listContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
+    gap: 12,
   },
-  mainInfo: {
+  listIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listIconText: {
+    fontSize: 28,
+  },
+  listInfo: {
     flex: 1,
+    gap: 6,
   },
-  name: {
+  listName: {
     fontSize: 16,
-    marginBottom: 4,
+    fontWeight: '600',
   },
-  category: {
+  listCategoryContainer: {
+    flexDirection: 'row',
+  },
+  listCategoryBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  listCategoryText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  arrow: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowText: {
+    fontSize: 28,
+    color: '#C0C0C0',
+    fontWeight: '300',
+  },
+
+  // Grid View Styles
+  gridContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    marginVertical: 6,
+  },
+  gridContent: {
+    padding: 16,
+    alignItems: 'center',
+    gap: 12,
+  },
+  gridIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridIconText: {
+    fontSize: 32,
+  },
+  gridName: {
     fontSize: 14,
-    color: 'gray',
+    fontWeight: '600',
+    textAlign: 'center',
+    minHeight: 36,
   },
-  priceInfo: {
-    alignItems: 'flex-end',
+  gridCategoryBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  price: {
-    fontSize: 16,
-    color: '#007AFF',
+  gridCategoryText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
   },
-  loadingText: {
-    fontSize: 12,
-    color: 'gray',
-  },
-  errorText: {
-    fontSize: 12,
-    color: 'red',
-  },
-  noPrice: {
-    fontSize: 12,
-    color: 'gray',
+
+  // Shared
+  pressed: {
+    opacity: 0.7,
   },
 });

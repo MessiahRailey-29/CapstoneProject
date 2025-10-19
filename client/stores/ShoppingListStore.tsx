@@ -18,6 +18,8 @@ const VALUES_SCHEMA = {
   color: { type: "string" },
   shoppingDate: { type: "string" },
   budget: { type: "number", default: 0 },
+  status: { type: "string", default: "regular" }, // New field: 'regular', 'ongoing', 'completed'
+  completedAt: { type: "string", default: "" }, // New field for completion timestamp
   createdAt: { type: "string" },
   updatedAt: { type: "string" },
 } as const;
@@ -65,6 +67,10 @@ const {
 } = UiReact as UiReact.WithSchemas<Schemas>;
 
 const useStoreId = (listId: string) => `shoppingListStore-${listId}`;
+
+export const useShoppingListStore = (listId: string) => {
+  return useStore(useStoreId(listId));
+};
 
 export const useAddShoppingListProductCallback = (listId: string) => {
   const store = useStore(useStoreId(listId));
@@ -163,6 +169,44 @@ export const useShoppingListValue = <ValueId extends ShoppingListValueId>(
   ),
 ];
 
+// NEW: Hook to update status in the individual list store
+export const useUpdateListStatus = (listId: string) => {
+  const storeId = useStoreId(listId);
+  const store = useStore(storeId);
+  
+  return useCallback((newStatus: 'regular' | 'ongoing' | 'completed') => {
+    if (!store) {
+      console.warn('⚠️ Store not initialized yet for:', listId);
+      return;
+    }
+    
+    console.log('📝 Updating status in ShoppingListStore:', listId, 'to:', newStatus);
+    
+    try {
+      // Update status value in the store
+      store.setValue('status', newStatus);
+      store.setValue('updatedAt', new Date().toISOString());
+      
+      // If completing, set completedAt
+      if (newStatus === 'completed') {
+        const currentCompletedAt = store.getValue('completedAt');
+        if (!currentCompletedAt) {
+          store.setValue('completedAt', new Date().toISOString());
+        }
+      }
+      
+      // Clear completedAt if restoring to regular
+      if (newStatus === 'regular') {
+        store.setValue('completedAt', '');
+      }
+      
+      console.log('✅ Status updated in ShoppingListStore, sync should trigger');
+    } catch (error) {
+      console.error('❌ Error updating status in ShoppingListStore:', error);
+    }
+  }, [store, listId]);
+};
+
 export const useShoppingListProductIds = (
   listId: string,
   cellId: ShoppingListProductCellId = "createdAt",
@@ -260,11 +304,11 @@ export default function ShoppingListStore({
           });
         }
         
-        // Initialize values
+        // Initialize values (including new status field)
         if (parsedData.values) {
           const validValueKeys: (keyof typeof VALUES_SCHEMA)[] = [
             'name', 'description', 'emoji', 'color', 'shoppingDate', 
-            'budget', 'createdAt', 'updatedAt'
+            'budget', 'status', 'completedAt', 'createdAt', 'updatedAt'
           ];
           
           validValueKeys.forEach(key => {
@@ -318,6 +362,8 @@ export default function ShoppingListStore({
         },
       };
       
+      console.log('🔄 Syncing store data to valuesCopy:', storeData);
+      
       const serializedData = JSON.stringify(storeData);
       debouncedSetValuesCopyRef.current(serializedData, setValuesCopyRef.current);
     } catch (error) {
@@ -333,9 +379,13 @@ export default function ShoppingListStore({
     const productsListenerId = store.addTableListener('products', syncStoreData);
     const collaboratorsListenerId = store.addTableListener('collaborators', syncStoreData);
     
+    // Add listener for status changes
+    const statusListenerId = store.addValueListener('status', syncStoreData);
+    
     return () => {
       store.delListener(productsListenerId);
       store.delListener(collaboratorsListenerId);
+      store.delListener(statusListenerId);
     };
   }, [store, syncStoreData]);
 
@@ -361,3 +411,5 @@ export default function ShoppingListStore({
 
   return null;
 }
+
+export { useStore };

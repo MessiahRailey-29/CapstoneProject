@@ -1,5 +1,5 @@
 // app/(home)/(tabs)/index.tsx
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
@@ -11,48 +11,99 @@ import { CategoryChart } from '@/components/Dashboard/CategoryChart';
 import { MonthlyTrend } from '@/components/Dashboard/MonthlyTrend';
 import { useInventoryStorageCounts } from '@/stores/InventoryStore';
 import { StorageOverview } from '@/components/Dashboard/StorageOverview';
+import { useRecommendations } from '@/hooks/useRecommendations';
+import RecommendationsByStrategy from '@/components/RecommendationsByStrategy';
+import ShoppingListSelectorModal from '@/components/ShoppingListSelectorModal';
+import { recommendationsApi } from '@/services/recommendationsApi';
+import { NotificationBell } from '@/components/NotificationBell';
 
 export default function Homepage() {
   const router = useRouter();
   const { user } = useUser();
+  const userId = useMemo(() => user?.id || 'user_1', [user?.id]);
   const [refreshing, setRefreshing] = React.useState(false);
   const storageCounts = useInventoryStorageCounts();
-  const analytics = useExpenseAnalytics();
+  const analytics = useExpenseAnalytics();  
+  // Modal state for product selection
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<{
+    productId: number;
+    productName: string;
+    price: number;
+    store: string;
+  } | null>(null);
+
+  // Get ML recommendations
+  const { recommendations, loading: recsLoading, refresh: refreshRecs } = useRecommendations(
+    userId,
+    20
+  );
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
+    refreshRecs();
     setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+  }, [refreshRecs]);
 
-  const monthTrend = analytics.previousMonthSpent !== 0
-    ? ((analytics.currentMonthSpent - analytics.previousMonthSpent) / analytics.previousMonthSpent) * 100
-    : 0;
+  const monthTrend =
+    analytics.previousMonthSpent !== 0
+      ? ((analytics.currentMonthSpent - analytics.previousMonthSpent) / analytics.previousMonthSpent) * 100
+      : 0;
+
+  // Handle product selection → open modal instead of directly adding
+  const handleProductSelect = React.useCallback(
+    (productId: number, productName: string, price: number, store: string) => {
+      setSelectedProduct({ productId, productName, price, store });
+      setModalVisible(true);
+    },
+    []
+  );
+
+  // Handle successful add to shopping list
+  const handleAddSuccess = React.useCallback(async () => {
+    if (user?.id && selectedProduct) {
+      await recommendationsApi.trackPurchase(
+        user.id,
+        selectedProduct.productId,
+        'tracked', // The modal will handle list-specific data
+        1,
+        selectedProduct.store,
+        selectedProduct.price
+      );
+      refreshRecs();
+    }
+  }, [user?.id, selectedProduct, refreshRecs]);
 
   return (
     <>
       <Stack.Screen
         options={{
-          headerTitle: "Home",
+          headerTitle: 'Home',
           headerLargeTitle: true,
-        }} 
+          // 🔔 ADD NOTIFICATION BELL TO HEADER
+          headerRight: () => <NotificationBell />,
+        }}
       />
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <ThemedText type="title" style={styles.welcomeText}>
             Welcome back, {user?.firstName || 'Friend'}!
           </ThemedText>
-          <ThemedText style={styles.welcomeSubtext}>
-            Here's your grocery spending overview
-          </ThemedText>
+          <ThemedText style={styles.welcomeSubtext}>Here's your grocery spending overview</ThemedText>
         </View>
+
+        {/* ML Recommendations by Strategy (now opens modal) */}
+        <RecommendationsByStrategy
+          recommendations={recommendations}
+          onProductSelect={handleProductSelect}
+          loading={recsLoading}
+        />
 
         {/* Quick Stats Cards */}
         <View style={styles.cardsGrid}>
@@ -66,7 +117,7 @@ export default function Homepage() {
               color="#007AFF"
             />
           </View>
-          
+
           <View style={styles.cardColumn}>
             <ExpenseCard
               title="Total Spent"
@@ -84,11 +135,13 @@ export default function Homepage() {
               title="Last Month"
               amount={analytics.previousMonthSpent}
               icon="clock"
-              subtitle={new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleDateString('en-US', { month: 'long' })}
+              subtitle={new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleDateString('en-US', {
+                month: 'long',
+              })}
               color="#FF9500"
             />
           </View>
-          
+
           <View style={styles.cardColumn}>
             <ExpenseCard
               title="Avg per Item"
@@ -99,10 +152,12 @@ export default function Homepage() {
             />
           </View>
         </View>
+
         {/* Storage Overview */}
         <View style={styles.section}>
           <StorageOverview storageCounts={storageCounts} />
         </View>
+
         {/* Category Breakdown Chart */}
         <View style={styles.section}>
           <CategoryChart categories={analytics.categoryBreakdown} />
@@ -117,36 +172,21 @@ export default function Homepage() {
         <View style={styles.section}>
           <View style={styles.actionsCard}>
             <ThemedText style={styles.actionsTitle}>Quick Actions</ThemedText>
-            
+
             <View style={styles.quickActions}>
-              <Button 
-                onPress={() => router.push('/(index)/(tabs)/shopping-lists')}
-                style={styles.actionButton}
-              >
+              <Button onPress={() => router.push('/(index)/(tabs)/shopping-lists')} style={styles.actionButton}>
                 View Shopping Lists
               </Button>
-              
-              <Button 
-                onPress={() => router.push('/(index)/list/new')}
-                variant="outline"
-                style={styles.actionButton}
-              >
+
+              <Button onPress={() => router.push('/(index)/list/new')} variant="outline" style={styles.actionButton}>
                 Create New List
               </Button>
-              
-              <Button 
-                onPress={() => router.push('/(index)/(tabs)/inventory')}
-                variant="outline"
-                style={styles.actionButton}
-              >
+
+              <Button onPress={() => router.push('/(index)/(tabs)/inventory')} variant="outline" style={styles.actionButton}>
                 View Inventory
               </Button>
-              
-              <Button 
-                onPress={() => router.push('/(index)/(tabs)/product-browser')}
-                variant="outline"
-                style={styles.actionButton}
-              >
+
+              <Button onPress={() => router.push('/(index)/(tabs)/product-browser')} variant="outline" style={styles.actionButton}>
                 Browse Products
               </Button>
             </View>
@@ -156,21 +196,29 @@ export default function Homepage() {
         {/* Empty State */}
         {analytics.totalItems === 0 && (
           <View style={styles.emptyStateContainer}>
-            <ThemedText style={styles.emptyStateTitle}>
-              Start Your First Shopping Trip!
-            </ThemedText>
+            <ThemedText style={styles.emptyStateTitle}>Start Your First Shopping Trip!</ThemedText>
             <ThemedText style={styles.emptyStateText}>
               Create a shopping list, add products, and use "Shop Now" to track your expenses.
             </ThemedText>
-            <Button
-              onPress={() => router.push('/(index)/list/new')}
-              style={styles.emptyStateButton}
-            >
+            <Button onPress={() => router.push('/(index)/list/new')} style={styles.emptyStateButton}>
               Create Your First List
             </Button>
           </View>
         )}
       </ScrollView>
+
+      {/* 🛒 Shopping List Selector Modal */}
+      {selectedProduct && (
+        <ShoppingListSelectorModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          productId={selectedProduct.productId}
+          productName={selectedProduct.productName}
+          price={selectedProduct.price}
+          store={selectedProduct.store}
+          onSuccess={handleAddSuccess}
+        />
+      )}
     </>
   );
 }
