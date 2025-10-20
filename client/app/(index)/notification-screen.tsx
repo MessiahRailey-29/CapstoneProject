@@ -174,14 +174,6 @@ const handleNotificationPress = async (notificationId: string, data: any) => {
             ))
           )}
         </ScrollView>
-
-        {/* Settings Button */}
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={() => router.push('/(index)/notification-settings')}
-        >
-          <ThemedText style={styles.settingsButtonText}>⚙️ Notification Settings</ThemedText>
-        </TouchableOpacity>
       </View>
     </>
   );

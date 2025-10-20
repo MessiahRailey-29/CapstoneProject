@@ -19,10 +19,6 @@ router.get('/:userId', async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(parseInt(limit as string));
 
-    // 🐛 DEBUG LOG
-    console.log(`📊 Fetched ${notifications.length} notifications for ${userId}`);
-    console.log(`   Unread: ${notifications.filter(n => !n.isRead).length}`);
-
     res.json({
       success: true,
       notifications,

@@ -1,6 +1,6 @@
-// app/(home)/(tabs)/inventory.tsx
-import React, { useState } from "react";
-import { StyleSheet, View, FlatList, Text, Pressable, ScrollView } from "react-native";
+// app/(home)/(tabs)/inventory.tsx - Updated with swipe-to-delete
+import React, { useState, useRef } from "react";
+import { StyleSheet, View, FlatList, Text, Pressable, ScrollView, Animated, Alert } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import { 
@@ -13,6 +13,8 @@ import {
 import { getStorageDisplayInfo } from "@/utils/storageMapping";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import * as Haptics from "expo-haptics";
+import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const STORAGE_LOCATIONS = getStorageDisplayInfo();
 
@@ -27,6 +29,8 @@ function InventoryItem({ itemId, storage }: { itemId: string; storage: StorageLo
   const [storageLocation, setStorageLocation] = useInventoryItemCell(itemId, "storageLocation");
   const deleteItem = useDelInventoryItemCallback(itemId);
 
+  const swipeableRef = useRef<Swipeable>(null);
+
   const formattedDate = new Date(purchasedAt as string).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -34,10 +38,28 @@ function InventoryItem({ itemId, storage }: { itemId: string; storage: StorageLo
   });
 
   const handleDelete = () => {
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    deleteItem();
+    Alert.alert(
+      "Delete Item",
+      `Are you sure you want to delete "${name}" from your inventory?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => swipeableRef.current?.close(),
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            if (process.env.EXPO_OS === "ios") {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }
+            deleteItem();
+            console.log('🗑️ Deleted inventory item:', itemId);
+          },
+        },
+      ]
+    );
   };
 
   const handleChangeStorage = (newStorage: StorageLocation) => {
@@ -47,59 +69,90 @@ function InventoryItem({ itemId, storage }: { itemId: string; storage: StorageLo
     setStorageLocation(newStorage);
   };
 
+  // Render right actions (delete button)
+  const renderRightActions = (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
+    const scale = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <View style={styles.swipeActionsContainer}>
+        <Animated.View style={[styles.deleteAction, { transform: [{ scale }] }]}>
+          <Pressable
+            style={styles.deleteButtonSwipe}
+            onPress={handleDelete}
+          >
+            <IconSymbol name="trash" size={24} color="#FFFFFF" />
+            <ThemedText style={styles.deleteText}>Delete</ThemedText>
+          </Pressable>
+        </Animated.View>
+      </View>
+    );
+  };
+
   return (
-    <View style={styles.itemContainer}>
-      <View style={styles.itemContent}>
-        <View style={styles.itemHeader}>
-          <View style={styles.itemHeaderLeft}>
-            <ThemedText style={styles.itemName}>{name}</ThemedText>
-            {/* Storage Badge */}
-            <View style={styles.storageBadgeContainer}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {STORAGE_LOCATIONS.map((loc) => (
-                  <Pressable
-                    key={loc.name}
-                    onPress={() => handleChangeStorage(loc.name)}
-                    style={[
-                      styles.storageBadge,
-                      storageLocation === loc.name && {
-                        backgroundColor: loc.color,
-                      },
-                    ]}
-                  >
-                    <Text style={styles.storageBadgeIcon}>{loc.icon}</Text>
-                    {storageLocation === loc.name && (
-                      <Text style={styles.storageBadgeText}>{loc.name}</Text>
-                    )}
-                  </Pressable>
-                ))}
-              </ScrollView>
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      friction={2}
+      rightThreshold={40}
+    >
+      <View style={styles.itemContainer}>
+        <View style={styles.itemContent}>
+          <View style={styles.itemHeader}>
+            <View style={styles.itemHeaderLeft}>
+              <ThemedText style={styles.itemName}>{name}</ThemedText>
+              {/* Storage Badge */}
+              <View style={styles.storageBadgeContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {STORAGE_LOCATIONS.map((loc) => (
+                    <Pressable
+                      key={loc.name}
+                      onPress={() => handleChangeStorage(loc.name)}
+                      style={[
+                        styles.storageBadge,
+                        storageLocation === loc.name && {
+                          backgroundColor: loc.color,
+                        },
+                      ]}
+                    >
+                      <Text style={styles.storageBadgeIcon}>{loc.icon}</Text>
+                      {storageLocation === loc.name && (
+                        <Text style={styles.storageBadgeText}>{loc.name}</Text>
+                      )}
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
             </View>
           </View>
-          <Pressable onPress={handleDelete} style={styles.deleteButton}>
-            <IconSymbol name="trash" size={20} color="#FF3B30" />
-          </Pressable>
-        </View>
-        
-        <View style={styles.itemDetails}>
-          <Text style={styles.itemDetailText}>
-            {quantity} {units}
-          </Text>
-          {category ? (
-            <Text style={styles.itemDetailText}> • {category}</Text>
+          
+          <View style={styles.itemDetails}>
+            <Text style={styles.itemDetailText}>
+              {quantity} {units}
+            </Text>
+            {category ? (
+              <Text style={styles.itemDetailText}> • {category}</Text>
+            ) : null}
+          </View>
+
+          {selectedStore ? (
+            <Text style={styles.itemStore}>
+              From: {selectedStore}
+              {selectedPrice ? ` - ₱${selectedPrice.toFixed(2)}` : ''}
+            </Text>
           ) : null}
+
+          <Text style={styles.itemDate}>Purchased: {formattedDate}</Text>
         </View>
-
-        {selectedStore ? (
-          <Text style={styles.itemStore}>
-            From: {selectedStore}
-            {selectedPrice ? ` - ₱${selectedPrice.toFixed(2)}` : ''}
-          </Text>
-        ) : null}
-
-        <Text style={styles.itemDate}>Purchased: {formattedDate}</Text>
       </View>
-    </View>
+    </Swipeable>
   );
 }
 
@@ -111,100 +164,102 @@ export default function InventoryScreen() {
   const totalItems = Object.values(storageCounts).reduce((sum, count) => sum + count, 0);
 
   return (
-    <View style={styles.container}>
-      {/* Storage Tabs */}
-      <View style={styles.tabsContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsContent}
-        >
-          {STORAGE_LOCATIONS.map((storage) => {
-            const count = storageCounts[storage.name];
-            const isActive = selectedStorage === storage.name;
-            
-            return (
-              <Pressable
-                key={storage.name}
-                onPress={() => {
-                  if (process.env.EXPO_OS === "ios") {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }
-                  setSelectedStorage(storage.name);
-                }}
-                style={[
-                  styles.tab,
-                  isActive && { 
-                    backgroundColor: storage.color,
-                    borderColor: storage.color,
-                  },
-                ]}
-              >
-                <Text style={[
-                  styles.tabIcon,
-                  isActive && styles.tabIconActive
-                ]}>
-                  {storage.icon}
-                </Text>
-                <ThemedText style={[
-                  styles.tabText,
-                  isActive && styles.tabTextActive
-                ]}>
-                  {storage.name}
-                </ThemedText>
-                <View style={[
-                  styles.badge,
-                  isActive && styles.badgeActive
-                ]}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        {/* Storage Tabs */}
+        <View style={styles.tabsContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabsContent}
+          >
+            {STORAGE_LOCATIONS.map((storage) => {
+              const count = storageCounts[storage.name];
+              const isActive = selectedStorage === storage.name;
+              
+              return (
+                <Pressable
+                  key={storage.name}
+                  onPress={() => {
+                    if (process.env.EXPO_OS === "ios") {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }
+                    setSelectedStorage(storage.name);
+                  }}
+                  style={[
+                    styles.tab,
+                    isActive && { 
+                      backgroundColor: storage.color,
+                      borderColor: storage.color,
+                    },
+                  ]}
+                >
                   <Text style={[
-                    styles.badgeText,
-                    isActive && styles.badgeTextActive
+                    styles.tabIcon,
+                    isActive && styles.tabIconActive
                   ]}>
-                    {count}
+                    {storage.icon}
                   </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
+                  <ThemedText style={[
+                    styles.tabText,
+                    isActive && styles.tabTextActive
+                  ]}>
+                    {storage.name}
+                  </ThemedText>
+                  <View style={[
+                    styles.badge,
+                    isActive && styles.badgeActive
+                  ]}>
+                    <Text style={[
+                      styles.badgeText,
+                      isActive && styles.badgeTextActive
+                    ]}>
+                      {count}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
 
-      {/* Items List */}
-      {totalItems === 0 ? (
-        <BodyScrollView
-          contentContainerStyle={styles.emptyContainer}
-        >
-          <Text style={styles.emptyIcon}>🛒</Text>
-          <ThemedText style={styles.emptyTitle}>No items yet</ThemedText>
-          <ThemedText style={styles.emptySubtitle}>
-            Items you purchase from your shopping lists will appear here
-          </ThemedText>
-        </BodyScrollView>
-      ) : itemIds.length === 0 ? (
-        <BodyScrollView
-          contentContainerStyle={styles.emptyContainer}
-        >
-          <Text style={styles.emptyIcon}>
-            {STORAGE_LOCATIONS.find(s => s.name === selectedStorage)?.icon}
-          </Text>
-          <ThemedText style={styles.emptyTitle}>
-            No items in {selectedStorage}
-          </ThemedText>
-          <ThemedText style={styles.emptySubtitle}>
-            Items will appear here when you add them to this storage location
-          </ThemedText>
-        </BodyScrollView>
-      ) : (
-        <FlatList
-          data={itemIds}
-          renderItem={({ item: itemId }) => (
-            <InventoryItem itemId={itemId} storage={selectedStorage} />
-          )}
-          keyExtractor={(itemId) => itemId}
-          contentContainerStyle={styles.listContent}
-        />
-      )}
-    </View>
+        {/* Items List */}
+        {totalItems === 0 ? (
+          <BodyScrollView
+            contentContainerStyle={styles.emptyContainer}
+          >
+            <Text style={styles.emptyIcon}>🛒</Text>
+            <ThemedText style={styles.emptyTitle}>No items yet</ThemedText>
+            <ThemedText style={styles.emptySubtitle}>
+              Items you purchase from your shopping lists will appear here
+            </ThemedText>
+          </BodyScrollView>
+        ) : itemIds.length === 0 ? (
+          <BodyScrollView
+            contentContainerStyle={styles.emptyContainer}
+          >
+            <Text style={styles.emptyIcon}>
+              {STORAGE_LOCATIONS.find(s => s.name === selectedStorage)?.icon}
+            </Text>
+            <ThemedText style={styles.emptyTitle}>
+              No items in {selectedStorage}
+            </ThemedText>
+            <ThemedText style={styles.emptySubtitle}>
+              Items will appear here when you add them to this storage location
+            </ThemedText>
+          </BodyScrollView>
+        ) : (
+          <FlatList
+            data={itemIds}
+            renderItem={({ item: itemId }) => (
+              <InventoryItem itemId={itemId} storage={selectedStorage} />
+            )}
+            keyExtractor={(itemId) => itemId}
+            contentContainerStyle={styles.listContent}
+          />
+        )}
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -340,9 +395,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  deleteButton: {
-    padding: 8,
-  },
   itemDetails: {
     flexDirection: "row",
     alignItems: "center",
@@ -359,5 +411,31 @@ const styles = StyleSheet.create({
   itemDate: {
     fontSize: 12,
     color: "#999",
+  },
+  // Swipe action styles
+  swipeActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginBottom: 12,
+  },
+  deleteAction: {
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 100,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  deleteButtonSwipe: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  deleteText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });

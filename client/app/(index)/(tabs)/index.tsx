@@ -16,6 +16,7 @@ import RecommendationsByStrategy from '@/components/RecommendationsByStrategy';
 import ShoppingListSelectorModal from '@/components/ShoppingListSelectorModal';
 import { recommendationsApi } from '@/services/recommendationsApi';
 import { NotificationBell } from '@/components/NotificationBell';
+import { useNickname } from '@/hooks/useNickname';
 
 export default function Homepage() {
   const router = useRouter();
@@ -23,7 +24,11 @@ export default function Homepage() {
   const userId = useMemo(() => user?.id || 'user_1', [user?.id]);
   const [refreshing, setRefreshing] = React.useState(false);
   const storageCounts = useInventoryStorageCounts();
-  const analytics = useExpenseAnalytics();  
+  const analytics = useExpenseAnalytics();
+  
+  // Get nickname with auto-refresh
+  const { nickname } = useNickname();
+  
   // Modal state for product selection
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<{
@@ -93,7 +98,7 @@ export default function Homepage() {
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <ThemedText type="title" style={styles.welcomeText}>
-            Welcome back, {user?.firstName || 'Friend'}!
+            Hey there, {nickname}!
           </ThemedText>
           <ThemedText style={styles.welcomeSubtext}>Here's your grocery spending overview</ThemedText>
         </View>

@@ -1,14 +1,23 @@
+// Updated shopping-lists.tsx with swipe-to-delete functionality
+
 import IconCircle from "@/components/IconCircle";
 import {ThemedText} from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import { Button } from "@/components/ui/button";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { appleBlue, backgroundColors } from "@/constants/Colors";
-import { useShoppingListIds, useShoppingListsValues, useShoppingListData } from "@/stores/ShoppingListsStore";
+import { 
+  useShoppingListIds, 
+  useShoppingListsValues, 
+  useShoppingListData,
+  useDelShoppingListCallback 
+} from "@/stores/ShoppingListsStore";
 import { useShoppingListProductIds } from "@/stores/ShoppingListStore";
 import { Stack, useRouter } from "expo-router";
-import {Platform, Pressable, StyleSheet, View, FlatList, Animated} from "react-native";
+import {Platform, Pressable, StyleSheet, View, FlatList, Animated, Alert} from "react-native";
 import { useMemo, useState, useRef, useEffect } from "react";
+import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 type TabType = 'active' | 'ongoing' | 'history';
 
@@ -16,11 +25,12 @@ interface ShoppingListItemProps {
     listId: string;
 }
 
-// Inline ShoppingListItem component
+// Inline ShoppingListItem component with swipe-to-delete
 const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
   const router = useRouter();
   const listData = useShoppingListData(listId);
   const productIds = useShoppingListProductIds(listId);
+  const deleteList = useDelShoppingListCallback(listId);
 
   const name = listData?.name || '';
   const emoji = listData?.emoji || '🛒';
@@ -30,8 +40,58 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
   const shoppingDate = listData?.shoppingDate || null;
   const completedAt = listData?.completedAt || null;
 
+  const swipeableRef = useRef<Swipeable>(null);
+
   const handlePress = () => {
     router.push(`/list/${listId}`);
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Delete List",
+      `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => swipeableRef.current?.close(),
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            deleteList();
+            console.log('🗑️ Deleted list:', listId);
+          },
+        },
+      ]
+    );
+  };
+
+  // Render right actions (delete button)
+  const renderRightActions = (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
+    const scale = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <View style={styles.swipeActionsContainer}>
+        <Animated.View style={[styles.deleteAction, { transform: [{ scale }] }]}>
+          <Pressable
+            style={styles.deleteButton}
+            onPress={handleDelete}
+          >
+            <IconSymbol name="trash" size={24} color="#FFFFFF" />
+            <ThemedText style={styles.deleteText}>Delete</ThemedText>
+          </Pressable>
+        </Animated.View>
+      </View>
+    );
   };
 
   // Format date for display
@@ -76,67 +136,75 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
   const isOngoing = status === 'ongoing';
 
   return (
-    <Pressable
-      style={styles.itemContainer}
-      onPress={handlePress}
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      friction={2}
+      rightThreshold={40}
     >
-      <View style={styles.content}>
-        <IconCircle
-          emoji={emoji}
-          backgroundColor={color}
-          size={50}
-        />
-        
-        <View style={styles.info}>
-          <View style={styles.header}>
-            <ThemedText 
-              type="defaultSemiBold" 
-              style={isCompleted ? styles.nameCompleted : styles.name}
-              numberOfLines={1}
-            >
-              {name || 'Unnamed List'}
-            </ThemedText>
-            
-            {isOngoing && (
-              <View style={styles.ongoingItemBadge}>
-                <View style={styles.pulseDotItem} />
+      <Pressable
+        style={styles.itemContainer}
+        onPress={handlePress}
+      >
+        <View style={styles.content}>
+          <IconCircle
+            emoji={emoji}
+            backgroundColor={color}
+            size={50}
+          />
+          
+          <View style={styles.info}>
+            <View style={styles.header}>
+              <ThemedText 
+                type="defaultSemiBold" 
+                style={isCompleted ? styles.nameCompleted : styles.name}
+                numberOfLines={1}
+              >
+                {name || 'Unnamed List'}
+              </ThemedText>
+              
+              {isOngoing && (
+                <View style={styles.ongoingItemBadge}>
+                  <View style={styles.pulseDotItem} />
+                </View>
+              )}
+            </View>
+
+            <View style={styles.details}>
+              {description ? (
+                <ThemedText 
+                  style={isCompleted ? styles.descriptionCompleted : styles.description}
+                  numberOfLines={1}
+                >
+                  {description}
+                </ThemedText>
+              ) : null}
+              
+              <ThemedText 
+                style={isCompleted ? styles.itemCountCompleted : styles.itemCount}
+              >
+                {productIds.length} {productIds.length === 1 ? 'item' : 'items'}
+              </ThemedText>
+            </View>
+
+            {statusInfo && (
+              <View style={styles.statusContainer}>
+                <ThemedText style={[styles.statusText, { color: statusInfo.color }]}>
+                  {statusInfo.icon} {statusInfo.label}
+                </ThemedText>
               </View>
             )}
           </View>
+        </View>
 
-          <View style={styles.details}>
-            {description ? (
-              <ThemedText 
-                style={isCompleted ? styles.descriptionCompleted : styles.description}
-                numberOfLines={1}
-              >
-                {description}
-              </ThemedText>
-            ) : null}
-            
-            <ThemedText 
-              style={isCompleted ? styles.itemCountCompleted : styles.itemCount}
-            >
-              {productIds.length} {productIds.length === 1 ? 'item' : 'items'}
-            </ThemedText>
+        {!isCompleted && (
+          <View style={styles.chevron}>
+            <ThemedText style={styles.chevronText}>›</ThemedText>
           </View>
-
-          {statusInfo && (
-            <View style={styles.statusContainer}>
-              <ThemedText style={[styles.statusText, { color: statusInfo.color }]}>
-                {statusInfo.icon} {statusInfo.label}
-              </ThemedText>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {!isCompleted && (
-        <View style={styles.chevron}>
-          <ThemedText style={styles.chevronText}>›</ThemedText>
-        </View>
-      )}
-    </Pressable>
+        )}
+      </Pressable>
+    </Swipeable>
   );
 }
 
@@ -281,7 +349,7 @@ export default function HomeScreen(){
     };
 
     return(
-        <>
+        <GestureHandlerRootView style={{ flex: 1 }}>
             <Stack.Screen options={{
                 headerRight: renderHeaderRight,
             }}/>
@@ -332,7 +400,7 @@ export default function HomeScreen(){
                     />
                 )}
             </View>
-        </>
+        </GestureHandlerRootView>
     );
 }
 
@@ -505,5 +573,28 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#C7C7CC',
     fontWeight: '300',
+  },
+  // Swipe action styles
+  swipeActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  deleteAction: {
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 100,
+  },
+  deleteButton: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  deleteText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });

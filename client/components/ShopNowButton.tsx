@@ -32,8 +32,6 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
   
   const store = useShoppingListStore(listId);
 
-  console.log("📘 ShopNowButton rendered - Status:", currentStatus, "ListId:", listId);
-
   const productsData = useMemo(() => {
     if (!store || !productIds || productIds.length === 0) {
       return [];
@@ -249,7 +247,6 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
     );
   }
 
-  console.log("🔍 Rendering REGULAR buttons");
   return (
     <View style={styles.container}>
       <Pressable onPress={handleShopNow} style={styles.shopButton}>

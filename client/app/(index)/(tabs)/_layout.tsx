@@ -1,8 +1,5 @@
 import { Tabs } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import AntDesign from '@expo/vector-icons/AntDesign';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function TabsLayout() {
   return (
@@ -30,7 +27,7 @@ export default function TabsLayout() {
           title: 'Home',
           headerTitle: 'Home',
           tabBarIcon: ({ color, size }) => (
-            <AntDesign name="home" size={24} color={color} />
+            <IconSymbol name="house.fill" color={color} size={size} />
           ),
         }}
       />
@@ -40,7 +37,7 @@ export default function TabsLayout() {
           title: 'Lists',
           headerTitle: 'Shopping Lists',
           tabBarIcon: ({ color, size }) => (
-            <FontAwesome5 name="clipboard-list" size={24} color={color} />
+            <IconSymbol name="list.bullet.clipboard" color={color} size={size} />
           ),
         }}
       />
@@ -50,7 +47,7 @@ export default function TabsLayout() {
           title: 'Inventory',
           headerTitle: 'My Inventory',
           tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="inventory" size={24} color="black" />
+            <IconSymbol name="basket.fill" color={color} size={size} />
           ),
         }}
       />
@@ -60,7 +57,7 @@ export default function TabsLayout() {
           title: 'Browse',
           headerTitle: 'Browse Products',
           tabBarIcon: ({ color, size }) => (
-            <AntDesign name="eye" size={24} color={color} />
+            <IconSymbol name="eye" color={color} size={size} />
           ),
         }}
       />

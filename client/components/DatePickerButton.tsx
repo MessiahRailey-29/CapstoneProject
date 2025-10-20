@@ -57,7 +57,7 @@ export default function DatePickerButton({
         onPress={() => setShowPicker(true)}
       >
         <Text style={[styles.dateText, { color: selectedDate ? '#000' : '#999' }]}>
-          📅 {formatDate(selectedDate)}
+          ðŸ“… {formatDate(selectedDate)}
         </Text>
       </TouchableOpacity>
       

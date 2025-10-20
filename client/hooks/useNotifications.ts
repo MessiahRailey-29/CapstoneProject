@@ -396,7 +396,7 @@ useEffect(() => {
   
   const interval = setInterval(() => {
     fetchNotifications();
-  }, 500); // Every 30 seconds
+  }, 30000); // Every 30 seconds
   
   return () => {
     clearInterval(interval);

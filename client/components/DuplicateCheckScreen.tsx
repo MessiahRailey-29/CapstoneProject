@@ -4,10 +4,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BodyScrollView } from '@/components/ui/BodyScrollView';
 import Button from '@/components/ui/button';
 import { StatusBar } from 'expo-status-bar';
-import ComparisonSettings from '@/components/ComparisonSettings';
 import DuplicateResults from '@/components/DuplicateResults';
 import { useDuplicateDetection } from '@/hooks/useDuplicateDetection';
-import { ComparisonSettings as IComparisonSettings } from '@/services/DuplicateDetectionService';
 import { useShoppingListStore } from '@/stores/ShoppingListStore';
 
 export default function DuplicateCheckScreen() {
@@ -20,13 +18,11 @@ export default function DuplicateCheckScreen() {
     duplicates,
     settings,
     stats,
-    updateSettings,
     runDuplicateDetection,
     hasProducts,
     productNameToIdMap,
   } = useDuplicateDetection(listId);
 
-  // 🔥 FIXED: Get the store using the new hook
   const store = useShoppingListStore(listId);
 
   // Safety check: ensure productNameToIdMap exists
@@ -37,16 +33,11 @@ export default function DuplicateCheckScreen() {
     setShowResults(true);
   };
 
-  const handleSettingsChange = (newSettings: IComparisonSettings) => {
-    updateSettings(newSettings);
-  };
-
-  // 🔥 FIXED: Use store.delRow directly - no hooks needed!
   const handleSkipProduct = useCallback((productName: string) => {
     const productId = safeProductNameToIdMap.get(productName);
     
     if (!productId || !store) {
-      console.warn('❌ Product or store not found:', productName);
+      console.warn('⚠ Product or store not found:', productName);
       return;
     }
 
@@ -63,12 +54,11 @@ export default function DuplicateCheckScreen() {
     }
   }, [safeProductNameToIdMap, store, runDuplicateDetection]);
 
-  // 🔥 FIXED: Use store.setCell directly - no hooks needed!
   const handleReduceQuantity = useCallback((productName: string, newQuantity: number) => {
     const productId = safeProductNameToIdMap.get(productName);
     
     if (!productId || !store) {
-      console.warn('❌ Product or store not found:', productName);
+      console.warn('⚠ Product or store not found:', productName);
       return;
     }
 
@@ -87,6 +77,10 @@ export default function DuplicateCheckScreen() {
 
   const handleDismiss = () => {
     router.back();
+  };
+
+  const handleGoToSettings = () => {
+    router.push('/(index)/(tabs)/profile');
   };
 
   if (!hasProducts) {
@@ -126,8 +120,8 @@ export default function DuplicateCheckScreen() {
           options={{
             headerTitle: "Duplicate Results",
             headerLeft: () => (
-              <Button variant="ghost" onPress={() => setShowResults(false)}>
-                Settings
+              <Button variant="ghost" onPress={router.back}>
+                Back
               </Button>
             ),
           }}
@@ -166,10 +160,46 @@ export default function DuplicateCheckScreen() {
           </Text>
         </View>
 
-        <ComparisonSettings
-          settings={settings}
-          onSettingsChange={handleSettingsChange}
-        />
+        {/* Current Settings Info Box */}
+        <View style={styles.settingsInfoBox}>
+          <View style={styles.settingsHeader}>
+            <Text style={styles.settingsTitle}>Current Detection Settings</Text>
+            <Button 
+              variant="ghost" 
+              onPress={handleGoToSettings}
+              textStyle={styles.settingsLinkText}
+            >
+              Change in Profile
+            </Button>
+          </View>
+          
+          <View style={styles.settingsGrid}>
+            <View style={styles.settingItem}>
+              <Text style={styles.settingLabel}>Comparing against:</Text>
+              <Text style={styles.settingValue}>
+                {settings.option === 'last-1' ? 'Last 1 list' :
+                 settings.option === 'last-3' ? 'Last 3 lists' :
+                 settings.option === 'last-5' ? 'Last 5 lists' :
+                 settings.option === 'all' ? 'All lists' :
+                 `Last ${settings.customDays} days`}
+              </Text>
+            </View>
+            
+            <View style={styles.settingItem}>
+              <Text style={styles.settingLabel}>Similarity threshold:</Text>
+              <Text style={styles.settingValue}>
+                {Math.round(settings.similarityThreshold * 100)}%
+              </Text>
+            </View>
+
+            <View style={styles.settingItem}>
+              <Text style={styles.settingLabel}>Include purchased:</Text>
+              <Text style={styles.settingValue}>
+                {settings.includeCompleted ? 'Yes' : 'No'}
+              </Text>
+            </View>
+          </View>
+        </View>
 
         {stats.totalDuplicates > 0 && (
           <View style={styles.statsContainer}>
@@ -231,11 +261,53 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 22,
   },
+  settingsInfoBox: {
+    backgroundColor: '#f0f8ff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#007AFF30',
+  },
+  settingsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  settingsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  settingsLinkText: {
+    color: '#007AFF',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
+  settingsGrid: {
+    gap: 8,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  settingLabel: {
+    fontSize: 14,
+    color: '#333',
+  },
+  settingValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
   statsContainer: {
     backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
-    margin: 16,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
