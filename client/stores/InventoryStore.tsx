@@ -7,6 +7,7 @@ import { useCreateClientPersisterAndStart } from "@/stores/persistence/useCreate
 import { useUser } from "@clerk/clerk-expo";
 import { useCreateServerSynchronizerAndStart } from "./synchronization/useCreateServerSynchronizerAndStart";
 import { getStorageForCategory, StorageLocation } from "@/utils/storageMapping";
+import { useAddPurchaseHistoryCallback } from "./PurchaseHistoryStore";
 
 const STORE_ID_PREFIX = "inventoryStore-";
 
@@ -45,7 +46,8 @@ const useStoreId = () => STORE_ID_PREFIX + useUser().user?.id;
 // Add items to inventory
 export const useAddInventoryItemsCallback = () => {
   const store = useStore(useStoreId());
-  
+  const addPurchaseHistory = useAddPurchaseHistoryCallback();
+
   return useCallback(
     (items: Array<{
       name: string;
@@ -87,11 +89,12 @@ export const useAddInventoryItemsCallback = () => {
         addedIds.push(id);
         console.log(`✅ Added "${item.name}" to ${suggestedStorage}`);
       });
+      addPurchaseHistory(items, listId, userId);
       
       console.log(`✅ Added ${addedIds.length} items to inventory`);
       return addedIds;
     },
-    [store]
+    [store, addPurchaseHistory]
   );
 };
 

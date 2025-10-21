@@ -4,58 +4,71 @@ import { Notification, NotificationSettings, ShoppingSchedule, LowStockTracking 
 
 /**
  * Shopping Reminder Cron Job
- * Runs every hour to check for upcoming shopping trips
- * Sends reminders based on user's preferred timing (default: 2 hours before)
+ * Runs every hour to check for shopping reminders that should be sent TODAY
+ * Sends notification on the actual scheduled day (not hours before)
  */
 export function startShoppingReminderCron() {
   cron.schedule('0 * * * *', async () => {
     console.log('🔔 [CRON] Checking for shopping reminders...');
     
     try {
+      // Use UTC+8 timezone (Philippines)
       const now = new Date();
+      const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+      const today = new Date(phTime.getFullYear(), phTime.getMonth(), phTime.getDate());
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
       
-      // Find all schedules that are upcoming and haven't sent reminder yet
+      console.log(`📅 [CRON] PH Time: ${phTime.toISOString()}`);
+      console.log(`📅 [CRON] Today: ${today.toISOString()}`);
+      console.log(`📅 [CRON] Tomorrow: ${tomorrow.toISOString()}`);
+      
+      // Find all schedules that should trigger TODAY (not sent yet)
       const schedules = await ShoppingSchedule.find({
-        scheduledDate: { $gte: now },
+        scheduledDate: { 
+          $gte: today,    // On or after today 00:00:00
+          $lt: tomorrow   // Before tomorrow 00:00:00
+        },
         reminderSent: false,
         completed: false,
       });
 
-      console.log(`📋 [CRON] Found ${schedules.length} upcoming shopping schedules`);
+      console.log(`📋 [CRON] Found ${schedules.length} schedule(s) for today`);
 
       for (const schedule of schedules) {
         try {
           // Get user's notification settings
           const settings = await NotificationSettings.findOne({ userId: schedule.userId });
-          const hoursBefore = settings?.reminderTiming?.hoursBefore || 2;
           
-          // Calculate when to send the reminder
-          const reminderTime = new Date(schedule.scheduledDate);
-          reminderTime.setHours(reminderTime.getHours() - hoursBefore);
-          
-          // If it's time to send the reminder
-          if (now >= reminderTime) {
-            // Check if user wants shopping reminders
-            if (settings?.enabled && settings?.preferences?.shoppingReminders !== false) {
-              await Notification.create({
-                userId: schedule.userId,
-                type: 'shopping_reminder',
-                title: '🛒 Shopping Reminder',
-                message: `Your shopping trip is scheduled in ${hoursBefore} hours!`,
-                data: { 
-                  listId: schedule.listId, 
-                  scheduledDate: schedule.scheduledDate 
-                },
-                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-              });
-              
-              schedule.reminderSent = true;
-              await schedule.save();
-              
-              console.log(`✅ [CRON] Sent shopping reminder for schedule ${schedule._id}`);
-            } else {
-              console.log(`⏭️ [CRON] Skipping reminder for ${schedule.userId} - notifications disabled`);
+          // Check if user wants shopping reminders
+          if (settings?.enabled && settings?.preferences?.shoppingReminders !== false) {
+            await Notification.create({
+              userId: schedule.userId,
+              type: 'shopping_reminder',
+              title: '🛒 Shopping Reminder',
+              message: `Time to go shopping!`,
+              data: { 
+                listId: schedule.listId, 
+                scheduledDate: schedule.scheduledDate 
+              },
+              isRead: false,
+              isSent: true, // ✅ Mark as sent so it appears in notification list
+              createdAt: new Date(),
+              expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+            });
+            
+            schedule.reminderSent = true;
+            await schedule.save();
+            
+            console.log(`✅ [CRON] Sent shopping reminder for schedule ${schedule._id} (list ${schedule.listId})`);
+            
+            // TODO: Send push notification here if user has push token
+            if (settings.pushToken) {
+              console.log(`📲 [CRON] Would send push notification to: ${settings.pushToken.substring(0, 20)}...`);
+              // await sendPushNotification(settings.pushToken, notification);
             }
+          } else {
+            console.log(`⏭️ [CRON] Skipping reminder for ${schedule.userId} - notifications disabled`);
           }
         } catch (error) {
           console.error(`❌ [CRON] Error processing schedule ${schedule._id}:`, error);
@@ -107,6 +120,9 @@ export function startLowStockAlertCron() {
                 productId: tracking.productId, 
                 productName: tracking.productName 
               },
+              isRead: false,
+              isSent: true,
+              createdAt: new Date(),
               expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
             });
             

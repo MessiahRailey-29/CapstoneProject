@@ -190,45 +190,73 @@ router.delete('/:notificationId', async (req, res) => {
   }
 });
 
-// Schedule shopping reminder
+// Schedule shopping reminder - FIXED VERSION (Don't create notification yet)
 router.post('/:userId/schedule-reminder', async (req, res) => {
   try {
     const { userId } = req.params;
     const { listId, scheduledDate } = req.body;
 
-    // Create expiration date (30 days from now)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-
-    const notification = new Notification({
-      userId: userId,
-      type: 'shopping_reminder',
-      title: '🛒 Shopping Reminder',
-      message: `Time to go shopping!`,
-      data: { listId },
-      isRead: false,
-      isSent: false,
-      scheduledFor: new Date(scheduledDate),
-      createdAt: new Date(),
-      expiresAt: expiresAt,
-    });
-
-    await notification.save();
-    
-    // 🐛 DEBUG LOG
-    console.log('✅ Created shopping reminder:', {
+    // ✅ Delete any existing schedules for this list
+    await ShoppingSchedule.deleteMany({
       userId,
-      isRead: notification.isRead,
-      _id: notification._id
+      listId
+    });
+    
+    console.log(`🗑️ Deleted old schedule(s) for list ${listId}`);
+
+    // ✅ Create a SCHEDULE record (not a notification yet!)
+    const schedule = new ShoppingSchedule({
+      userId,
+      listId,
+      scheduledDate: new Date(scheduledDate),
+      reminderSent: false,
+      createdAt: new Date()
     });
 
-    res.json({ success: true, notification });
+    await schedule.save();
+    
+    console.log('✅ Created shopping schedule:', {
+      userId,
+      listId,
+      scheduledDate: schedule.scheduledDate,
+      reminderSent: schedule.reminderSent,
+      _id: schedule._id
+    });
+
+    // Return success (notification will be created later by cron job)
+    res.json({ success: true, schedule });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error('❌ Error creating reminder:', errorMessage);
+    console.error('❌ Error creating schedule:', errorMessage);
     res.status(500).json({ success: false, error: errorMessage });
   }
 });
+
+// ✅ Cancel reminder (delete schedule)
+router.post('/:userId/cancel-reminder', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { listId } = req.body;
+
+    // Delete the schedule for this list
+    const result = await ShoppingSchedule.deleteMany({
+      userId,
+      listId
+    });
+
+    console.log(`✅ Cancelled schedule for list ${listId}`);
+
+    res.json({
+      success: true,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('❌ Error cancelling schedule:', errorMessage);
+    res.status(500).json({ success: false, error: errorMessage });
+  }
+});
+
 
 // Create duplicate warning
 router.post('/:userId/duplicate-warning', async (req, res) => {

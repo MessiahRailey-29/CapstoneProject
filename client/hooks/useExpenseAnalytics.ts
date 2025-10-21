@@ -1,6 +1,6 @@
 // hooks/useExpenseAnalytics.ts
 import { useMemo } from 'react';
-import { useInventoryItems } from '@/stores/InventoryStore';
+import { usePurchaseHistoryItems } from '@/stores/PurchaseHistoryStore';
 
 export interface CategoryExpense {
   category: string;
@@ -42,10 +42,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export function useExpenseAnalytics(): ExpenseAnalytics {
-  const inventoryItems = useInventoryItems();
+  const purchaseHistoryItems = usePurchaseHistoryItems();
 
   return useMemo(() => {
-    if (!inventoryItems || inventoryItems.length === 0) {
+    if (!purchaseHistoryItems || purchaseHistoryItems.length === 0) {
       return {
         totalSpent: 0,
         totalItems: 0,
@@ -58,18 +58,18 @@ export function useExpenseAnalytics(): ExpenseAnalytics {
     }
 
     // Calculate total spent
-    const totalSpent = inventoryItems.reduce((sum, item) => {
+    const totalSpent = purchaseHistoryItems.reduce((sum, item) => {
       const price = (item.selectedPrice as number) || 0;
       const quantity = (item.quantity as number) || 1;
       return sum + (price * quantity);
     }, 0);
 
-    const totalItems = inventoryItems.length;
+    const totalItems = purchaseHistoryItems.length;
 
     // Category breakdown
     const categoryMap = new Map<string, { total: number; count: number }>();
     
-    inventoryItems.forEach(item => {
+    purchaseHistoryItems.forEach(item => {
       const category = (item.category as string) || 'Other';
       const price = (item.selectedPrice as number) || 0;
       const quantity = (item.quantity as number) || 1;
@@ -99,7 +99,7 @@ export function useExpenseAnalytics(): ExpenseAnalytics {
     // Monthly trend
     const monthlyMap = new Map<string, { total: number; count: number }>();
     
-    inventoryItems.forEach(item => {
+    purchaseHistoryItems.forEach(item => {
       const date = new Date(item.purchasedAt as string);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const price = (item.selectedPrice as number) || 0;
@@ -149,5 +149,5 @@ export function useExpenseAnalytics(): ExpenseAnalytics {
       previousMonthSpent,
       averageItemPrice,
     };
-  }, [inventoryItems]);
+  }, [purchaseHistoryItems]);
 }

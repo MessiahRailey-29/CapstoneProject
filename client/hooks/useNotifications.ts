@@ -261,6 +261,30 @@ export function useNotifications(userId: string) {
     }
   }, [userId, fetchNotifications]);
 
+// Cancel shopping reminder
+  const cancelShoppingReminder = useCallback(async (listId: string) => {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/notifications/${userId}/cancel-reminder`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ listId }),
+        }
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        await fetchNotifications();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error cancelling reminder:', error);
+      return false;
+    }
+  }, [userId, fetchNotifications]);
+
   // Create duplicate warning
   const createDuplicateWarning = useCallback(async (productName: string, listId: string) => {
     try {
@@ -440,6 +464,7 @@ useEffect(() => {
     
     // Notification creators
     scheduleShoppingReminder,
+    cancelShoppingReminder,
     createDuplicateWarning,
     trackPurchase,
     

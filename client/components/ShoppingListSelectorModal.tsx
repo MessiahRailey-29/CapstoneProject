@@ -6,12 +6,11 @@ import {
   View,
   Pressable,
   ScrollView,
-  TextInput,
   Alert,
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { useShoppingListIds, useShoppingListsValues, useAddShoppingListCallback } from '@/stores/ShoppingListsStore';
+import { useShoppingListIds, useShoppingListsValues } from '@/stores/ShoppingListsStore';
 import { useAddProductWithNotifications } from '@/hooks/useAddProductWithNotifications';
 import { useRouter } from 'expo-router';
 
@@ -142,46 +141,23 @@ export default function ShoppingListSelectorModal({
   const router = useRouter();
   const shoppingListIds = useShoppingListIds();
   const shoppingListsValues = useShoppingListsValues();
-  const addShoppingList = useAddShoppingListCallback();
-  const [showCreateNew, setShowCreateNew] = useState(false);
-  const [newListName, setNewListName] = useState('');
 
-  // Handle creating new list
+  // 🔔 UPDATED: Navigate to create list page instead of creating inline
   const handleCreateNewList = () => {
-    if (!newListName.trim()) {
-      Alert.alert('Error', 'Please enter a list name');
-      return;
-    }
-
-    const newListId = addShoppingList(
-      newListName.trim(),
-      `Created for ${productName}`,
-      '🛒',
-      '#007AFF',
-      null,
-      0
-    );
-
-    if (newListId) {
-      setNewListName('');
-      setShowCreateNew(false);
-      
-      // Close modal and navigate to the new list
-      Alert.alert(
-        'Success',
-        'List created! Add your product from the list page.',
-        [
-          {
-            text: 'Go to List',
-            onPress: () => {
-              onClose();
-              router.push(`/(index)/list/${newListId}`);
-            },
-          },
-          { text: 'OK', onPress: onClose },
-        ]
-      );
-    }
+    onClose(); // Close the modal first
+    
+    // Navigate to the create list page
+    // You can pass the product info as params if you want to add it automatically
+    router.push({
+      pathname: '/(index)/list/new/create',
+      params: {
+        // Optional: Pass product info to auto-add after list creation
+        pendingProductId: productId.toString(),
+        pendingProductName: productName,
+        pendingProductPrice: price.toString(),
+        pendingProductStore: store,
+      },
+    });
   };
 
   return (
@@ -210,54 +186,24 @@ export default function ShoppingListSelectorModal({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={true}
           >
-            {/* Create New List Section */}
-            {!showCreateNew ? (
-              <Pressable
-                style={styles.createNewButton}
-                onPress={() => setShowCreateNew(true)}
-              >
-                <View style={styles.createNewIcon}>
-                  <IconSymbol name="plus.circle.fill" size={24} color="#007AFF" />
-                </View>
-                <View style={styles.createNewContent}>
-                  <ThemedText style={styles.createNewText}>
-                    Create New List
-                  </ThemedText>
-                  <ThemedText style={styles.createNewSubtext}>
-                    Start a fresh shopping list
-                  </ThemedText>
-                </View>
-                <IconSymbol name="chevron.right" size={20} color="#999" />
-              </Pressable>
-            ) : (
-              <View style={styles.createNewForm}>
-                <ThemedText style={styles.formTitle}>New Shopping List</ThemedText>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter list name..."
-                  value={newListName}
-                  onChangeText={setNewListName}
-                  autoFocus
-                />
-                <View style={styles.formButtons}>
-                  <Pressable
-                    style={[styles.formButton, styles.cancelButton]}
-                    onPress={() => {
-                      setShowCreateNew(false);
-                      setNewListName('');
-                    }}
-                  >
-                    <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.formButton, styles.createButton]}
-                    onPress={handleCreateNewList}
-                  >
-                    <ThemedText style={styles.createButtonText}>Create List</ThemedText>
-                  </Pressable>
-                </View>
+            {/* Create New List Button - Now redirects to create page */}
+            <Pressable
+              style={styles.createNewButton}
+              onPress={handleCreateNewList}
+            >
+              <View style={styles.createNewIcon}>
+                <IconSymbol name="plus.circle.fill" size={24} color="#007AFF" />
               </View>
-            )}
+              <View style={styles.createNewContent}>
+                <ThemedText style={styles.createNewText}>
+                  Create New List
+                </ThemedText>
+                <ThemedText style={styles.createNewSubtext}>
+                  Set budget, date, and customize your list
+                </ThemedText>
+              </View>
+              <IconSymbol name="chevron.right" size={20} color="#007AFF" />
+            </Pressable>
 
             {/* Divider */}
             {shoppingListIds.length > 0 && (
@@ -378,53 +324,6 @@ const styles = StyleSheet.create({
   createNewSubtext: {
     fontSize: 13,
     color: '#666',
-  },
-  createNewForm: {
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-  },
-  formTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  formButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  formButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  cancelButtonText: {
-    color: '#666',
-    fontWeight: '600',
-  },
-  createButton: {
-    backgroundColor: '#007AFF',
-  },
-  createButtonText: {
-    color: '#fff',
-    fontWeight: '600',
   },
   divider: {
     flexDirection: 'row',

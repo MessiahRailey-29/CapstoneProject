@@ -17,6 +17,7 @@ import ShoppingListSelectorModal from '@/components/ShoppingListSelectorModal';
 import { recommendationsApi } from '@/services/recommendationsApi';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useNickname } from '@/hooks/useNickname';
+import { ShoppingListExpenses } from '@/components/Dashboard/ShoppingListExpenses';
 
 export default function Homepage() {
   const router = useRouter();
@@ -109,6 +110,11 @@ export default function Homepage() {
           onProductSelect={handleProductSelect}
           loading={recsLoading}
         />
+
+        {/*Shopping Lists Budget Tracking */}
+        <View style={styles.section}>
+          <ShoppingListExpenses />
+        </View>
 
         {/* Quick Stats Cards */}
         <View style={styles.cardsGrid}>

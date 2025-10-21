@@ -7,6 +7,7 @@ import { Redirect, Stack, useRouter } from "expo-router";
 import { Provider as TinyBaseProvider } from 'tinybase/ui-react';
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { NotificationBell } from "@/components/NotificationBell";
+import PurchaseHistoryStore from "@/stores/PurchaseHistoryStore";
 
 export default function HomeRoutesLayout(){
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function HomeRoutesLayout(){
     <TinyBaseProvider>
       <ShoppingListsStore />
       <InventoryStore />
+      <PurchaseHistoryStore /> 
       <ListCreationProvider>
         <Stack
           screenOptions={{

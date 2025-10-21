@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import React, { useEffect, useState } from "react";
-import { Link, Stack, useRouter } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { Link, Stack, useRouter, useLocalSearchParams } from "expo-router";
+import { StyleSheet, Text, View, Alert } from "react-native";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import Button from "@/components/ui/button";
 import TextInput from "@/components/ui/text-input";
@@ -14,8 +14,18 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useUser } from "@clerk/clerk-expo";
 
 export default function CreateListScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  
+  // Check if there's a pending product to add after list creation
+  const pendingProductId = params.pendingProductId ? Number(params.pendingProductId) : null;
+  const pendingProductName = params.pendingProductName as string | undefined;
+  const pendingProductPrice = params.pendingProductPrice ? Number(params.pendingProductPrice) : null;
+  const pendingProductStore = params.pendingProductStore as string | undefined;
+
   const [listName, setListName] = useState("");
   const [listDescription, setListDescription] = useState("");
+  
   const { 
     selectedEmoji, 
     setSelectedEmoji, 
@@ -27,12 +37,40 @@ export default function CreateListScreen() {
     setBudget 
   } = useListCreation();
 
-  const router = useRouter();
   const useAddShoppingList = useAddShoppingListCallback();
   
-  // 🔔 ADD: Get notification functions
+  // 🔔 Get notification functions
   const { user } = useUser();
   const { scheduleShoppingReminder } = useNotifications(user?.id || '');
+
+  // 🔔 Helper function to navigate to list with pending product params
+  const navigateToListWithProduct = (
+    listId: string,
+    productName: string,
+    productId: number,
+    price: number,
+    store: string
+  ) => {
+    console.log('🔔 Navigating to list with pending product:', {
+      listId,
+      productName,
+      productId,
+      price,
+      store
+    });
+    
+    router.replace({
+      pathname: "/list/[listId]",
+      params: { 
+        listId,
+        // Pass the pending product info to the list page to handle adding
+        addProductId: productId.toString(),
+        addProductName: productName,
+        addProductPrice: price.toString(),
+        addProductStore: store,
+      },
+    });
+  };
 
   useEffect(() => {
     setSelectedEmoji(emojies[Math.floor(Math.random() * emojies.length)]);
@@ -72,8 +110,13 @@ export default function CreateListScreen() {
       budget
     );
 
+    if (!listId) {
+      Alert.alert('Error', 'Failed to create list');
+      return;
+    }
+
     // 🔔 SCHEDULE SHOPPING REMINDER if date is set
-    if (selectedDate && listId) {
+    if (selectedDate) {
       try {
         const reminderScheduled = await scheduleShoppingReminder(listId, selectedDate);
         if (reminderScheduled) {
@@ -84,12 +127,24 @@ export default function CreateListScreen() {
       }
     }
 
-    // Small delay to let the store initialize
+    // 🔔 NEW: Check if there's a pending product to add
+    // Pass it to the list page to handle adding
     setTimeout(() => {
-      router.replace({
-        pathname: "/list/[listId]",
-        params: { listId },
-      });
+      if (pendingProductId && pendingProductName && pendingProductPrice && pendingProductStore) {
+        navigateToListWithProduct(
+          listId,
+          pendingProductName,
+          pendingProductId,
+          pendingProductPrice,
+          pendingProductStore
+        );
+      } else {
+        // No pending product, just navigate normally
+        router.replace({
+          pathname: "/list/[listId]",
+          params: { listId },
+        });
+      }
     }, 100);
   };
 
@@ -161,6 +216,15 @@ export default function CreateListScreen() {
         }}
       />
       <BodyScrollView contentContainerStyle={styles.scrollViewContent}>
+        {/* Show indicator if creating list for a recommended product */}
+        {pendingProductName && (
+          <View style={styles.pendingProductBanner}>
+            <Text style={styles.pendingProductText}>
+              Creating list for: <Text style={styles.pendingProductName}>{pendingProductName}</Text>
+            </Text>
+          </View>
+        )}
+
         <View style={styles.inputContainer}>
           <TextInput
             placeholder="Grocery Essentials"
@@ -233,7 +297,7 @@ export default function CreateListScreen() {
           variant="ghost"
           textStyle={styles.createButtonText}
         >
-          Create list
+          {pendingProductName ? 'Create list and add product' : 'Create list'}
         </Button>
         <Button
           onPress={handleCreateTestLists}
@@ -250,6 +314,22 @@ export default function CreateListScreen() {
 const styles = StyleSheet.create({
   scrollViewContent: {
     padding: 16,
+  },
+  pendingProductBanner: {
+    backgroundColor: '#E3F2FD',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007AFF',
+  },
+  pendingProductText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  pendingProductName: {
+    fontWeight: '600',
+    color: '#007AFF',
   },
   inputContainer: {
     flexDirection: "row",

@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, View } from "react-native";
+import { Pressable, View, Alert } from "react-native";
 import Animated from "react-native-reanimated";
 import ShoppingListProductItem from "@/components/ShoppingListProductItem";
 import BudgetSummary from "@/components/BudgetSummary";
@@ -16,10 +16,21 @@ import {
 import { useShoppingListData } from "@/stores/ShoppingListsStore";
 import ShopNowButton from "@/components/ShopNowButton";
 import AntDesign from '@expo/vector-icons/AntDesign';
+import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotifications";
 
 export default function ListScreen() {
   const router = useRouter();
-  const { listId } = useLocalSearchParams() as { listId: string };
+  const params = useLocalSearchParams();
+  const listId = params.listId as string;
+
+  // 🔔 NEW: Get pending product params from URL
+  const addProductId = params.addProductId ? Number(params.addProductId) : null;
+  const addProductName = params.addProductName as string | undefined;
+  const addProductPrice = params.addProductPrice ? Number(params.addProductPrice) : null;
+  const addProductStore = params.addProductStore as string | undefined;
+  
+  // Track if we've already added the product (prevent double-adding)
+  const hasAddedProduct = useRef(false);
 
   // Raw values from valuesCopy (always available)
   const listData = useShoppingListData(listId);
@@ -29,6 +40,9 @@ export default function ListScreen() {
   const [emoji] = useShoppingListValue(listId, "emoji");
   const [description] = useShoppingListValue(listId, "description");
   const productIds = useShoppingListProductIds(listId);
+
+  // 🔔 Get the add product function - safe to call here since we're in a component
+  const addProduct = useAddProductWithNotifications(listId);
 
   // Safe fallbacks
   const displayName = name || listData.name || "";
@@ -47,13 +61,76 @@ export default function ListScreen() {
     listData,
   });
 
+  // 🔔 NEW: Auto-add pending product when page loads
+  useEffect(() => {
+    // Check all conditions
+    if (
+      !hasAddedProduct.current && // Haven't added yet
+      addProduct && // Function is ready
+      addProductId && // Have product ID
+      addProductName && // Have product name
+      addProductPrice !== null && // Have price (could be 0)
+      addProductStore // Have store
+    ) {
+      // Mark as added to prevent duplicate attempts
+      hasAddedProduct.current = true;
+      
+      console.log('🔔 Auto-adding pending product:', {
+        id: addProductId,
+        name: addProductName,
+        price: addProductPrice,
+        store: addProductStore
+      });
+      
+      // Add product after a short delay to ensure list is fully loaded
+      const timer = setTimeout(async () => {
+        try {
+          const productAddedId = await addProduct(
+            addProductName,
+            1, // quantity
+            'pc', // units
+            '', // notes
+            addProductStore, // selectedStore
+            addProductPrice, // selectedPrice
+            addProductId, // databaseProductId
+            '' // category
+          );
+
+          if (productAddedId) {
+            console.log('✅ Product auto-added successfully:', productAddedId);
+            Alert.alert(
+              'Product Added',
+              `${addProductName} has been added to your list!`,
+              [{ text: 'OK' }]
+            );
+          } else {
+            console.log('⚠️ Product was duplicate or failed to add');
+            // If null was returned, it might be a duplicate
+            // The hook should have created a notification already
+          }
+        } catch (error) {
+          console.error('❌ Error auto-adding product:', error);
+          Alert.alert(
+            'Error',
+            'Failed to add product. Please try adding it manually.',
+            [{ text: 'OK' }]
+          );
+        }
+      }, 800); // Wait 800ms for list to fully initialize
+      
+      return () => clearTimeout(timer);
+    }
+  }, [addProduct, addProductId, addProductName, addProductPrice, addProductStore, listId]);
+
+  // Add this debug logging
+  console.log("🔍 Current list status:", status);
+  console.log("🔍 List data:", listData);
+
   const newProductHref = {
     pathname: "/list/[listId]/product/new",
     params: { listId },
   } as const;
-// Add this debug logging
-console.log("📍 Current list status:", status);
-console.log("📍 List data:", listData);
+
   const ListHeaderComponent = () => (
     <View>
       {displayDescription ? (

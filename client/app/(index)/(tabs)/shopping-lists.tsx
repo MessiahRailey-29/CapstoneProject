@@ -1,5 +1,4 @@
-// Updated shopping-lists.tsx with swipe-to-delete functionality
-
+// app/(home)/(tabs)/shopping-lists.tsx - Enhanced with filter and sort
 import IconCircle from "@/components/IconCircle";
 import {ThemedText} from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
@@ -14,12 +13,15 @@ import {
 } from "@/stores/ShoppingListsStore";
 import { useShoppingListProductIds } from "@/stores/ShoppingListStore";
 import { Stack, useRouter } from "expo-router";
-import {Platform, Pressable, StyleSheet, View, FlatList, Animated, Alert} from "react-native";
+import {Platform, Pressable, StyleSheet, View, FlatList, Animated, Alert, Modal, ScrollView} from "react-native";
 import { useMemo, useState, useRef, useEffect } from "react";
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as Haptics from "expo-haptics";
 
 type TabType = 'active' | 'ongoing' | 'history';
+type SortOption = 'name' | 'date' | 'items' | 'budget';
+type FilterOption = 'all' | 'scheduled' | 'unscheduled';
 
 interface ShoppingListItemProps {
     listId: string;
@@ -39,6 +41,7 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
   const status = listData?.status || 'regular';
   const shoppingDate = listData?.shoppingDate || null;
   const completedAt = listData?.completedAt || null;
+  const budget = listData?.budget || 0;
 
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -186,6 +189,12 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
               >
                 {productIds.length} {productIds.length === 1 ? 'item' : 'items'}
               </ThemedText>
+              
+              {budget > 0 && (
+                <ThemedText style={styles.budgetText}>
+                  • ₱{budget.toFixed(2)}
+                </ThemedText>
+              )}
             </View>
 
             {statusInfo && (
@@ -214,7 +223,10 @@ export default function HomeScreen(){
     const shoppingListsValues = useShoppingListsValues();
     
     const [activeTab, setActiveTab] = useState<TabType>('active');
-    const scrollX = useRef(new Animated.Value(0)).current;
+    const [sortBy, setSortBy] = useState<SortOption>('date');
+    const [filterBy, setFilterBy] = useState<FilterOption>('all');
+    const [showSortModal, setShowSortModal] = useState(false);
+    const [showFilterModal, setShowFilterModal] = useState(false);
 
     // Categorize shopping lists
     const { regularLists, ongoingLists, historyLists } = useMemo(() => {
@@ -247,18 +259,78 @@ export default function HomeScreen(){
         };
     }, [shoppingListIds, shoppingListsValues]);
 
-    // Get current tab data
+    // Filter lists based on filter option
+    const filterLists = (lists: string[]) => {
+        if (filterBy === 'all') return lists;
+        
+        return lists.filter((listId) => {
+            const index = shoppingListIds.indexOf(listId);
+            const listData = shoppingListsValues[index];
+            const shoppingDate = listData?.values?.shoppingDate;
+            
+            if (filterBy === 'scheduled') {
+                return !!shoppingDate;
+            } else if (filterBy === 'unscheduled') {
+                return !shoppingDate;
+            }
+            return true;
+        });
+    };
+
+    // Sort lists based on sort option
+    const sortLists = (lists: string[]) => {
+        return [...lists].sort((a, b) => {
+            const indexA = shoppingListIds.indexOf(a);
+            const indexB = shoppingListIds.indexOf(b);
+            const dataA = shoppingListsValues[indexA];
+            const dataB = shoppingListsValues[indexB];
+            
+            switch (sortBy) {
+                case 'name':
+                    const nameA = dataA?.values?.name || '';
+                    const nameB = dataB?.values?.name || '';
+                    return nameA.localeCompare(nameB);
+                    
+                case 'date':
+                    const dateA = dataA?.values?.shoppingDate || dataA?.values?.createdAt || '';
+                    const dateB = dataB?.values?.shoppingDate || dataB?.values?.createdAt || '';
+                    return new Date(dateB).getTime() - new Date(dateA).getTime();
+                    
+                case 'items':
+                    // This would need actual product counts - simplified for now
+                    return 0;
+                    
+                case 'budget':
+                    const budgetA = dataA?.values?.budget || 0;
+                    const budgetB = dataB?.values?.budget || 0;
+                    return budgetB - budgetA;
+                    
+                default:
+                    return 0;
+            }
+        });
+    };
+
+    // Get current tab data with filters and sorting applied
     const getCurrentTabData = () => {
+        let lists: string[];
         switch (activeTab) {
             case 'active':
-                return regularLists;
+                lists = regularLists;
+                break;
             case 'ongoing':
-                return ongoingLists;
+                lists = ongoingLists;
+                break;
             case 'history':
-                return historyLists;
+                lists = historyLists;
+                break;
             default:
-                return [];
+                lists = [];
         }
+        
+        const filtered = filterLists(lists);
+        const sorted = sortLists(filtered);
+        return sorted;
     };
 
     const currentTabData = getCurrentTabData();
@@ -268,7 +340,9 @@ export default function HomeScreen(){
         let icon = '🛒';
         
         if (activeTab === 'active') {
-            message = 'No shopping lists yet';
+            message = filterBy !== 'all' 
+                ? `No ${filterBy} shopping lists`
+                : 'No shopping lists yet';
             icon = '🛒';
         } else if (activeTab === 'ongoing') {
             message = 'No active shopping trips';
@@ -282,7 +356,7 @@ export default function HomeScreen(){
             <View style={styles.emptyStateContainer}>
                 <ThemedText style={styles.emptyIcon}>{icon}</ThemedText>
                 <ThemedText style={styles.emptyText}>{message}</ThemedText>
-                {activeTab === 'active' && (
+                {activeTab === 'active' && filterBy === 'all' && (
                     <Button onPress={() => router.push("/list/new")} variant="ghost">
                         Create your first list
                     </Button>
@@ -348,6 +422,113 @@ export default function HomeScreen(){
         );
     };
 
+    // Sort Modal Component
+    const SortModal = () => (
+        <Modal
+            visible={showSortModal}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowSortModal(false)}
+        >
+            <Pressable 
+                style={styles.modalOverlay}
+                onPress={() => setShowSortModal(false)}
+            >
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <ThemedText style={styles.modalTitle}>Sort By</ThemedText>
+                        <Pressable onPress={() => setShowSortModal(false)}>
+                            <IconSymbol name="xmark" size={24} color="#8E8E93" />
+                        </Pressable>
+                    </View>
+                    
+                    <View style={styles.optionsList}>
+                        {[
+                            { value: 'date', label: 'Date', icon: '📅' },
+                            { value: 'name', label: 'Name (A-Z)', icon: '🔤' },
+                            { value: 'items', label: 'Number of Items', icon: '🔢' },
+                            { value: 'budget', label: 'Budget', icon: '💰' },
+                        ].map((option) => (
+                            <Pressable
+                                key={option.value}
+                                style={[
+                                    styles.optionItem,
+                                    sortBy === option.value && styles.optionItemActive
+                                ]}
+                                onPress={() => {
+                                    if (process.env.EXPO_OS === "ios") {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    }
+                                    setSortBy(option.value as SortOption);
+                                    setShowSortModal(false);
+                                }}
+                            >
+                                <ThemedText style={styles.optionIcon}>{option.icon}</ThemedText>
+                                <ThemedText style={styles.optionLabel}>{option.label}</ThemedText>
+                                {sortBy === option.value && (
+                                    <IconSymbol name="checkmark" size={20} color="#007AFF" />
+                                )}
+                            </Pressable>
+                        ))}
+                    </View>
+                </View>
+            </Pressable>
+        </Modal>
+    );
+
+    // Filter Modal Component
+    const FilterModal = () => (
+        <Modal
+            visible={showFilterModal}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowFilterModal(false)}
+        >
+            <Pressable 
+                style={styles.modalOverlay}
+                onPress={() => setShowFilterModal(false)}
+            >
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <ThemedText style={styles.modalTitle}>Filter By</ThemedText>
+                        <Pressable onPress={() => setShowFilterModal(false)}>
+                            <IconSymbol name="xmark" size={24} color="#8E8E93" />
+                        </Pressable>
+                    </View>
+                    
+                    <View style={styles.optionsList}>
+                        {[
+                            { value: 'all', label: 'All Lists', icon: '📋' },
+                            { value: 'scheduled', label: 'Scheduled Only', icon: '📅' },
+                            { value: 'unscheduled', label: 'Unscheduled Only', icon: '📝' },
+                        ].map((option) => (
+                            <Pressable
+                                key={option.value}
+                                style={[
+                                    styles.optionItem,
+                                    filterBy === option.value && styles.optionItemActive
+                                ]}
+                                onPress={() => {
+                                    if (process.env.EXPO_OS === "ios") {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    }
+                                    setFilterBy(option.value as FilterOption);
+                                    setShowFilterModal(false);
+                                }}
+                            >
+                                <ThemedText style={styles.optionIcon}>{option.icon}</ThemedText>
+                                <ThemedText style={styles.optionLabel}>{option.label}</ThemedText>
+                                {filterBy === option.value && (
+                                    <IconSymbol name="checkmark" size={20} color="#007AFF" />
+                                )}
+                            </Pressable>
+                        ))}
+                    </View>
+                </View>
+            </Pressable>
+        </Modal>
+    );
+
     return(
         <GestureHandlerRootView style={{ flex: 1 }}>
             <Stack.Screen options={{
@@ -387,6 +568,43 @@ export default function HomeScreen(){
                     />
                 </View>
 
+                {/* Filter and Sort Bar */}
+                {activeTab === 'active' && (
+                    <View style={styles.filterSortBar}>
+                        <Pressable 
+                            style={styles.filterSortButton}
+                            onPress={() => {
+                                if (process.env.EXPO_OS === "ios") {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                }
+                                setShowFilterModal(true);
+                            }}
+                        >
+                            <IconSymbol name="line.3.horizontal.decrease.circle" size={20} color="#007AFF" />
+                            <ThemedText style={styles.filterSortButtonText}>
+                                Filter: {filterBy === 'all' ? 'All' : filterBy === 'scheduled' ? 'Scheduled' : 'Unscheduled'}
+                            </ThemedText>
+                        </Pressable>
+
+                        <View style={styles.filterSortDivider} />
+
+                        <Pressable 
+                            style={styles.filterSortButton}
+                            onPress={() => {
+                                if (process.env.EXPO_OS === "ios") {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                }
+                                setShowSortModal(true);
+                            }}
+                        >
+                            <IconSymbol name="arrow.up.arrow.down" size={20} color="#007AFF" />
+                            <ThemedText style={styles.filterSortButtonText}>
+                                Sort: {sortBy === 'date' ? 'Date' : sortBy === 'name' ? 'Name' : sortBy === 'items' ? 'Items' : 'Budget'}
+                            </ThemedText>
+                        </Pressable>
+                    </View>
+                )}
+
                 {/* Content */}
                 {currentTabData.length === 0 ? (
                     renderEmptyList()
@@ -400,6 +618,10 @@ export default function HomeScreen(){
                     />
                 )}
             </View>
+
+            {/* Modals */}
+            <SortModal />
+            <FilterModal />
         </GestureHandlerRootView>
     );
 }
@@ -467,6 +689,36 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#007AFF',
     borderRadius: 2,
+  },
+  filterSortBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F8F9FA',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
+  },
+  filterSortButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  filterSortButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+    flex: 1,
+  },
+  filterSortDivider: {
+    width: 12,
   },
   listContainer: {
     paddingTop: 8,
@@ -559,6 +811,11 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     opacity: 0.7,
   },
+  budgetText: {
+    fontSize: 14,
+    color: '#34C759',
+    fontWeight: '600',
+  },
   statusContainer: {
     marginTop: 4,
   },
@@ -596,5 +853,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginTop: 4,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  optionsList: {
+    paddingVertical: 8,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  optionItemActive: {
+    backgroundColor: '#F8F9FA',
+  },
+  optionIcon: {
+    fontSize: 24,
+  },
+  optionLabel: {
+    fontSize: 16,
+    flex: 1,
   },
 });
