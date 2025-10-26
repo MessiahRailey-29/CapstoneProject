@@ -5,7 +5,13 @@ import { useRouter } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
 
-export function NotificationBell() {
+import { ViewStyle } from 'react-native';
+
+interface NotificationBellProps {
+  style?: ViewStyle;
+}
+
+export function NotificationBell({ style }: NotificationBellProps) {
   const router = useRouter();
   const { user } = useUser();
 
@@ -17,15 +23,15 @@ export function NotificationBell() {
   };
 
   return (
-    <TouchableOpacity onPress={handlePress} style={styles.container}>
+    <TouchableOpacity onPress={handlePress} style={[styles.container, style]}>
       <View style={styles.iconContainer}>
         {/* Bell Icon - Simple SVG-like drawing */}
-        <View style={styles.bellIcon}>
+        <View style={[styles.bellIcon, { transform: [{ rotate: '-180deg' }] }]}>
           <View style={styles.bellTop} />
           <View style={styles.bellBody} />
           <View style={styles.bellClapper} />
         </View>
-        
+
         {/* Unread Badge */}
         {unreadCount > 0 && (
           <View style={styles.badge}>

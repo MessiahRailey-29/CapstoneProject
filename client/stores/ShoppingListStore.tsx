@@ -259,7 +259,7 @@ export const useShoppingListProductCell = <
 export const useShoppingListProductCreatedByNickname = (
   listId: string,
   productId: string
-) => {
+): string | undefined => {
   const userId = useRemoteRowId(
     "createdByNickname",
     productId,
@@ -284,15 +284,34 @@ export default function ShoppingListStore({
   const [userId, nickname] = useUserIdAndNickname();
   const [valuesCopy, setValuesCopy] = useValuesCopy(listId);
   const initialized = useRef(false);
+  const hasReceivedSyncData = useRef(false);
 
   const store = useCreateMergeableStore(() =>
     createMergeableStore().setSchema(TABLES_SCHEMA, VALUES_SCHEMA)
   );
 
+  // FIRST: Initialize from existing valuesCopy (if we have it)
   useEffect(() => {
     if (!initialized.current && valuesCopy && valuesCopy !== '{}') {
       try {
         const parsedData = JSON.parse(valuesCopy);
+        
+        console.log('🔍 Initializing ShoppingListStore with valuesCopy:', parsedData);
+        
+        // Check if this is just the placeholder "Loading..." data
+        const isPlaceholder = parsedData.values?.name === "Loading...";
+        
+        if (isPlaceholder) {
+          console.log('⏳ Placeholder data detected - NOT initializing store');
+          console.log('⏳ Waiting for WebSocket sync to populate real data...');
+          // Mark as initialized but DON'T set any values
+          // This prevents us from sending default values via sync
+          initialized.current = true;
+          return;
+        }
+        
+        // Real data - initialize store
+        console.log('✅ Real data detected, initializing store...');
         
         if (parsedData.tables?.products) {
           Object.entries(parsedData.tables.products).forEach(([productId, product]) => {
@@ -312,25 +331,42 @@ export default function ShoppingListStore({
         
         if (parsedData.values) {
           const validValueKeys: (keyof typeof VALUES_SCHEMA)[] = [
-            'name', 'description', 'emoji', 'color', 'shoppingDate', 
-            'budget', 'status', 'completedAt', 'createdAt', 'updatedAt'
+            'name', 'description', 'emoji', 'color', 'shoppingDate', 'budget', 
+            'status', 'completedAt', 'createdAt', 'updatedAt'
           ];
           
+          console.log('📝 About to set values from parsedData.values:', parsedData.values);
+          
           validValueKeys.forEach(key => {
+            // Only set if the value exists in parsedData
             if (key in parsedData.values && parsedData.values[key] !== undefined) {
-              store.setValue(key, parsedData.values[key]);
+              const value = parsedData.values[key];
+              console.log(`  - Setting ${key}:`, value, typeof value);
+              store.setValue(key, value);
+              
+              // CRITICAL: Verify it was set
+              const verifyValue = store.getValue(key);
+              console.log(`  - Verified ${key} in store:`, verifyValue);
+            } else {
+              console.log(`  - Skipping ${key} (not in parsedData or undefined)`);
             }
           });
         }
         
+        console.log('✅ Initialized from existing valuesCopy');
+        console.log('💰 Final store budget after init:', store.getValue('budget'));
+        console.log('📊 All store values:', store.getValues());
+        hasReceivedSyncData.current = true;
         initialized.current = true;
         
       } catch (error) {
         console.error('❌ INITIALIZATION ERROR:', error);
+        initialized.current = true;
       }
     }
   }, [valuesCopy, store]);
 
+  // Debounced sync back to parent
   const debouncedSetValuesCopyRef = useRef(
     debounce((storeData: string, setter: (data: string) => void) => {
       if (initialized.current) {
@@ -353,6 +389,13 @@ export default function ShoppingListStore({
   const syncStoreData = useCallback(() => {
     if (!initialized.current || !store) return;
     
+    // CRITICAL: Don't sync if we're still on placeholder data
+    const currentName = store.getValue('name');
+    if (currentName === 'Loading...' || !currentName) {
+      console.log('⏳ Still on placeholder, skipping sync to prevent overwriting');
+      return;
+    }
+    
     try {
       const storeData = {
         tables: {
@@ -366,6 +409,23 @@ export default function ShoppingListStore({
         },
       };
       
+      // Mark that we've received real data
+      const budget = store.getValue('budget');
+      const name = store.getValue('name');
+      
+      // If we receive real data (not the placeholder), update immediately
+      if (name && name !== "Loading..." && !hasReceivedSyncData.current) {
+        console.log('✅ Received synced data - Budget:', budget, 'Name:', name);
+        hasReceivedSyncData.current = true;
+        
+        // IMPORTANT: Force immediate update for first sync (bypass debounce)
+        const serializedData = JSON.stringify(storeData);
+        setValuesCopyRef.current(serializedData);
+        console.log('🔄 Forced immediate sync of budget:', budget);
+        return;
+      }
+      
+      // For subsequent updates, use debounced version
       const serializedData = JSON.stringify(storeData);
       debouncedSetValuesCopyRef.current(serializedData, setValuesCopyRef.current);
     } catch (error) {
@@ -373,7 +433,16 @@ export default function ShoppingListStore({
     }
   }, [store]);
 
-  useValuesListener(syncStoreData, [], false, store);
+  // Listen to ALL value changes, not just when initialized with data
+  useValuesListener((store) => {
+    const currentName = store?.getValue('name');
+    console.log('👂 Values changed, name is:', currentName);
+    
+    // Only sync if we have real data
+    if (currentName && currentName !== 'Loading...') {
+      syncStoreData();
+    }
+  }, [], false, store);
   
   useEffect(() => {
     if (!store || !initialized.current) return;
@@ -381,11 +450,26 @@ export default function ShoppingListStore({
     const productsListenerId = store.addTableListener('products', syncStoreData);
     const collaboratorsListenerId = store.addTableListener('collaborators', syncStoreData);
     const statusListenerId = store.addValueListener('status', syncStoreData);
+    const budgetListenerId = store.addValueListener('budget', (store, valueId, newBudget) => {
+      console.log('💰 Budget changed in store:', newBudget);
+      syncStoreData();
+    });
+    const nameListenerId = store.addValueListener('name', (store, valueId, newName) => {
+      console.log('📝 Name changed in store:', newName);
+      
+      // When name changes from "Loading..." to real name, trigger immediate sync
+      if (newName && newName !== 'Loading...') {
+        console.log('✅ Real data arrived from WebSocket sync!');
+        syncStoreData();
+      }
+    });
     
     return () => {
       store.delListener(productsListenerId);
       store.delListener(collaboratorsListenerId);
       store.delListener(statusListenerId);
+      store.delListener(budgetListenerId);
+      store.delListener(nameListenerId);
     };
   }, [store, syncStoreData]);
 
@@ -396,6 +480,7 @@ export default function ShoppingListStore({
     }
   });
   
+  // THIS IS THE KEY: The sync will populate the store from other clients
   useCreateServerSynchronizerAndStart(storeId, store);
   useProvideStore(storeId, store);
 

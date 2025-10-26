@@ -24,86 +24,95 @@ interface TextInputProps extends Omit<RNTextInputProps, "style"> {
   disabled?: boolean;
 }
 
-export const TextInput: React.FC<TextInputProps> = ({
-  label,
-  error,
-  variant = "default",
-  size = "md",
-  containerStyle,
-  inputStyle,
-  disabled = false,
-  ...props
-}) => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(
+  (
+    {
+      label,
+      error,
+      variant = "default",
+      size = "md",
+      containerStyle,
+      inputStyle,
+      disabled = false,
+      ...props
+    },
+    ref
+  ) => {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === "dark";
 
-  const sizeStyles: Record<
-    InputSize,
-    { height?: number; fontSize: number; padding: number }
-  > = {
-    sm: { fontSize: 16, padding: 8 },
-    md: { height: 50, fontSize: 16, padding: 14 },
-    lg: { height: 55, fontSize: 32, padding: 16 },
-  };
-
-  const getVariantStyle = () => {
-    const baseStyle: ViewStyle = {
-      borderRadius: 12,
-      backgroundColor: isDark ? zincColors[900] : "rgb(229, 229, 234)",
+    const sizeStyles: Record<
+      InputSize,
+      { height?: number; fontSize: number; padding: number }
+    > = {
+      sm: { fontSize: 16, padding: 8 },
+      md: { height: 50, fontSize: 16, padding: 14 },
+      lg: { height: 55, fontSize: 32, padding: 16 },
     };
 
-    switch (variant) {
-      case "filled":
-        return {
-          ...baseStyle,
-          backgroundColor: isDark ? zincColors[700] : zincColors[100],
-        };
-      case "outlined":
-        return {
-          ...baseStyle,
-          borderWidth: 1,
-          borderColor: isDark ? zincColors[600] : zincColors[200],
-        };
-      case "ghost":
-        return {
-          ...baseStyle,
-          backgroundColor: "transparent",
-        };
-      default:
-        return baseStyle;
-    }
-  };
+    const getVariantStyle = () => {
+      const baseStyle: ViewStyle = {
+        borderRadius: 12,
+        backgroundColor: isDark ? zincColors[900] : "rgb(229, 229, 234)",
+      };
 
-  const getTextColor = () => {
-    if (disabled) {
-      return isDark ? zincColors[500] : zincColors[400];
-    }
-    return isDark ? zincColors[50] : zincColors[900];
-  };
+      switch (variant) {
+        case "filled":
+          return {
+            ...baseStyle,
+            backgroundColor: isDark ? zincColors[700] : zincColors[100],
+          };
+        case "outlined":
+          return {
+            ...baseStyle,
+            borderWidth: 1,
+            borderColor: isDark ? zincColors[600] : zincColors[200],
+          };
+        case "ghost":
+          return {
+            ...baseStyle,
+            backgroundColor: "transparent",
+          };
+        default:
+          return baseStyle;
+      }
+    };
 
-  return (
-    <View style={[styles.container, containerStyle]}>
-      {label && <ThemedText style={styles.label}>{label}</ThemedText>}
-      <View style={[getVariantStyle(), disabled && styles.disabled]}>
-        <RNTextInput
-          style={[
-            {
-              height: sizeStyles[size].height,
-              fontSize: sizeStyles[size].fontSize,
-              padding: sizeStyles[size].padding,
-              color: getTextColor(),
-            },
-            inputStyle,
-          ]}
-          placeholderTextColor={isDark ? zincColors[500] : zincColors[400]}
-          editable={!disabled}
-          {...props}
-        />
+    const getTextColor = () => {
+      if (disabled) {
+        return isDark ? zincColors[500] : zincColors[400];
+      }
+      return isDark ? zincColors[50] : zincColors[900];
+    };
+
+    return (
+      <View style={[styles.container, containerStyle]}>
+        {label && <ThemedText style={styles.label}>{label}</ThemedText>}
+        <View style={[getVariantStyle(), disabled && styles.disabled]}>
+          <RNTextInput
+            ref={ref}
+            style={[
+              {
+                height: sizeStyles[size].height,
+                fontSize: sizeStyles[size].fontSize,
+                padding: sizeStyles[size].padding,
+                color: getTextColor(),
+              },
+              inputStyle,
+            ]}
+            placeholderTextColor={isDark ? zincColors[500] : zincColors[400]}
+            editable={!disabled}
+            blurOnSubmit={false}
+            {...props}
+          />
+        </View>
+        {error && <ThemedText style={styles.error}>{error}</ThemedText>}
       </View>
-      {error && <ThemedText style={styles.error}>{error}</ThemedText>}
-    </View>
-  );
-};
+    );
+  }
+);
+
+TextInput.displayName = 'TextInput';
 
 const styles = StyleSheet.create({
   container: {

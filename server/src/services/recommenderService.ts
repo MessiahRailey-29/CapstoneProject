@@ -18,6 +18,13 @@ interface Recommendation {
   price: number;
 }
 
+// Helper function to extract city from full location string
+function extractCity(location: string): string {
+  // Extract city name from format like "Batangas City, Batangas, PH"
+  const parts = location.split(',');
+  return parts[0]?.trim() || 'Batangas City';
+}
+
 export class RecommenderService {
   /**
    * Main recommendation engine
@@ -38,7 +45,7 @@ export class RecommenderService {
       this.getSeasonalRecommendations(),
       this.getLocationBasedRecommendations(userId),
       this.getPeerRecommendations(userId),
-      this.getTrendingProducts(),
+      this.getTrendingProducts(userId),
     ]);
 
     // Combine and score recommendations
@@ -114,7 +121,7 @@ export class RecommenderService {
   }
 
   /**
-   * Seasonal recommendations
+   * Seasonal recommendations (Philippine weather patterns)
    */
   private async getSeasonalRecommendations(): Promise<Recommendation[]> {
     const currentSeason = this.getCurrentSeason(new Date().getMonth() + 1);
@@ -139,6 +146,8 @@ export class RecommenderService {
     const productMap = new Map(products.map((p) => [p.id, p]));
     const priceMap = new Map(prices.map((p: any) => [p._id, p]));
 
+    const seasonName = this.getSeasonDisplayName(currentSeason);
+
     return seasonal
       .map((item) => {
         const product = productMap.get(item.productId);
@@ -150,7 +159,7 @@ export class RecommenderService {
           productName: product.name,
           category: product.category,
           score: item.seasonalityScore,
-          reasons: [`Popular in ${currentSeason}`, 'Seasonal item'],
+          reasons: [`Perfect for ${seasonName}`, 'Seasonal favorite'],
           store: priceInfo?.store || 'Multiple stores',
           price: priceInfo?.minPrice || 0,
         };
@@ -159,22 +168,34 @@ export class RecommenderService {
   }
 
   /**
-   * Location-based recommendations
+   * Location-based recommendations (Batangas cities)
    */
   private async getLocationBasedRecommendations(
     userId: string
   ): Promise<Recommendation[]> {
     const userProfile = await UserProfile.findOne({ userId });
-    if (!userProfile?.location) {
-      return [];
-    }
+    
+    // Default to Batangas City if no profile found
+    const userLocation = userProfile?.location || 'Batangas City, Batangas, PH';
+    const userCity = extractCity(userLocation);
 
-    const stats = await LocationProductStats.find({
-      location: userProfile.location,
+    // First try to get city-specific stats
+    let stats = await LocationProductStats.find({
+      city: userCity,
       uniqueUsers: { $gte: 3 },
     })
       .sort({ purchaseCount: -1 })
       .limit(20);
+
+    // If not enough city-specific data, fall back to full location
+    if (stats.length < 5) {
+      stats = await LocationProductStats.find({
+        location: { $regex: userCity, $options: 'i' },
+        uniqueUsers: { $gte: 3 },
+      })
+        .sort({ purchaseCount: -1 })
+        .limit(20);
+    }
 
     const productIds = stats.map((s) => s.productId);
     const products = await Product.find({ id: { $in: productIds } });
@@ -191,10 +212,10 @@ export class RecommenderService {
           category: product.category,
           score: Math.min(item.uniqueUsers / 20, 1),
           reasons: [
-            `Popular in ${userProfile.location}`,
-            `${item.uniqueUsers} nearby users bought this`,
+            `Popular in ${userCity}`,
+            `${item.uniqueUsers} nearby shoppers bought this`,
           ],
-          store: 'Multiple stores',
+          store: item.popularStores?.[0] || 'Multiple stores',
           price: item.avgPrice || 0,
         };
       })
@@ -202,22 +223,37 @@ export class RecommenderService {
   }
 
   /**
-   * Peer-based collaborative filtering
+   * Peer-based collaborative filtering (location-aware)
    */
   private async getPeerRecommendations(userId: string): Promise<Recommendation[]> {
     const userProducts = await PurchaseHistory.distinct('productId', { userId });
+    const userProfile = await UserProfile.findOne({ userId });
+    const userCity = userProfile?.location ? extractCity(userProfile.location) : null;
 
     if (userProducts.length < 3) {
       return [];
     }
 
+    // Find similar users (optionally from same city for better relevance)
+    const matchQuery: any = {
+      userId: { $ne: userId },
+      productId: { $in: userProducts },
+    };
+
+    // If user has a location, prefer peers from same city
+    if (userCity) {
+      const sameLocationUsers = await UserProfile.find({
+        location: { $regex: userCity, $options: 'i' },
+        userId: { $ne: userId }
+      }).distinct('userId');
+
+      if (sameLocationUsers.length > 0) {
+        matchQuery.userId = { $in: sameLocationUsers };
+      }
+    }
+
     const similarUsers = await PurchaseHistory.aggregate([
-      {
-        $match: {
-          userId: { $ne: userId },
-          productId: { $in: userProducts },
-        },
-      },
+      { $match: matchQuery },
       {
         $group: {
           _id: '$userId',
@@ -270,6 +306,8 @@ export class RecommenderService {
     const products = await Product.find({ id: { $in: productIds } });
     const productMap = new Map(products.map((p) => [p.id, p]));
 
+    const locationSuffix = userCity ? ` from ${userCity}` : '';
+
     return recommendations
       .map((item: any) => {
         const product = productMap.get(item._id);
@@ -281,8 +319,8 @@ export class RecommenderService {
           category: product.category,
           score: Math.min(item.peerCount / similarUsers.length, 1),
           reasons: [
-            'Users similar to you bought this',
-            `${item.peerCount} similar users purchased`,
+            `Shoppers like you${locationSuffix} love this`,
+            `${item.peerCount} similar shoppers purchased`,
           ],
           store: item.commonStore || 'Multiple stores',
           price: item.avgPrice || 0,
@@ -292,17 +330,26 @@ export class RecommenderService {
   }
 
   /**
-   * Trending products
+   * Trending products (location-aware)
    */
-  private async getTrendingProducts(): Promise<Recommendation[]> {
+  private async getTrendingProducts(userId?: string): Promise<Recommendation[]> {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+    // Try to get location-specific trends if user provided
+    let matchQuery: any = {
+      timestamp: { $gte: sevenDaysAgo },
+    };
+
+    if (userId) {
+      const userProfile = await UserProfile.findOne({ userId });
+      if (userProfile?.location) {
+        const userCity = extractCity(userProfile.location);
+        matchQuery.location = { $regex: userCity, $options: 'i' };
+      }
+    }
+
     const trending = await PurchaseHistory.aggregate([
-      {
-        $match: {
-          timestamp: { $gte: sevenDaysAgo },
-        },
-      },
+      { $match: matchQuery },
       {
         $group: {
           _id: '$productId',
@@ -353,7 +400,7 @@ export class RecommenderService {
           category: product.category,
           score: Math.min(item.recentPurchases / 50, 1),
           reasons: [
-            'Trending this week',
+            'Trending this week in Batangas',
             `${item.recentPurchases} recent purchases`,
           ],
           store: priceInfo?.store || 'Multiple stores',
@@ -413,6 +460,10 @@ export class RecommenderService {
     store?: string,
     price?: number
   ): Promise<void> {
+    // Get user's location for better tracking
+    const userProfile = await UserProfile.findOne({ userId });
+    const location = userProfile?.location || 'Batangas City, Batangas, PH';
+
     await PurchaseHistory.create({
       userId,
       productId,
@@ -420,16 +471,57 @@ export class RecommenderService {
       quantity,
       store,
       price,
+      location,
       timestamp: new Date(),
     });
+
+    // Update location stats
+    await this.updateLocationStats(location, productId, store);
   }
 
   /**
-   * Get current season for Philippines
+   * Update location statistics
+   */
+  private async updateLocationStats(
+    location: string,
+    productId: number,
+    store?: string
+  ): Promise<void> {
+    const city = extractCity(location);
+
+    await LocationProductStats.findOneAndUpdate(
+      { location, city, productId },
+      {
+        $inc: { purchaseCount: 1 },
+        $addToSet: store ? { popularStores: store } : {},
+        $set: { lastUpdated: new Date() },
+      },
+      { upsert: true }
+    );
+  }
+
+  /**
+   * Get current season for Philippines (Batangas climate)
    */
   private getCurrentSeason(month: number): string {
+    // November - February: Cool dry season (Amihan)
     if (month >= 11 || month <= 2) return 'dry_cool';
+    // March - May: Hot dry season (Summer)
     if (month >= 3 && month <= 5) return 'dry_hot';
+    // June - October: Wet season (Southwest Monsoon/Habagat)
     return 'wet';
+  }
+
+  /**
+   * Get display name for season
+   */
+  private getSeasonDisplayName(season: string): string {
+    const names: Record<string, string> = {
+      'dry_cool': 'cool season (Amihan)',
+      'dry_hot': 'summer season',
+      'wet': 'rainy season (Habagat)',
+      'all-year': 'any season',
+    };
+    return names[season] || season;
   }
 }

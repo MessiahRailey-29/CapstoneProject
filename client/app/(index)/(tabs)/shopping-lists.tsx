@@ -1,22 +1,22 @@
-// app/(home)/(tabs)/shopping-lists.tsx - Enhanced with filter and sort
+// Updated shopping-lists.tsx with swipe-to-delete functionality
 import IconCircle from "@/components/IconCircle";
-import {ThemedText} from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import { Button } from "@/components/ui/button";
 import { IconSymbol } from "@/components/ui/IconSymbol";
-import { appleBlue, backgroundColors } from "@/constants/Colors";
-import { 
-  useShoppingListIds, 
-  useShoppingListsValues, 
+import {
+  useShoppingListIds,
+  useShoppingListsValues,
   useShoppingListData,
-  useDelShoppingListCallback 
+  useDelShoppingListCallback
 } from "@/stores/ShoppingListsStore";
 import { useShoppingListProductIds } from "@/stores/ShoppingListStore";
 import { Stack, useRouter } from "expo-router";
-import {Platform, Pressable, StyleSheet, View, FlatList, Animated, Alert, Modal, ScrollView} from "react-native";
+import { Platform, Pressable, StyleSheet, View, FlatList, Animated, Alert, useColorScheme, Modal } from "react-native";
 import { useMemo, useState, useRef, useEffect } from "react";
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Colors, appleBlue, backgroundColors } from "@/constants/Colors";
 import * as Haptics from "expo-haptics";
 
 type TabType = 'active' | 'ongoing' | 'history';
@@ -24,7 +24,7 @@ type SortOption = 'name' | 'date' | 'items' | 'budget';
 type FilterOption = 'all' | 'scheduled' | 'unscheduled';
 
 interface ShoppingListItemProps {
-    listId: string;
+  listId: string;
 }
 
 // Inline ShoppingListItem component with swipe-to-delete
@@ -34,6 +34,10 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
   const productIds = useShoppingListProductIds(listId);
   const deleteList = useDelShoppingListCallback(listId);
 
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
+
   const name = listData?.name || '';
   const emoji = listData?.emoji || '🛒';
   const color = listData?.color || '#007AFF';
@@ -41,7 +45,6 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
   const status = listData?.status || 'regular';
   const shoppingDate = listData?.shoppingDate || null;
   const completedAt = listData?.completedAt || null;
-  const budget = listData?.budget || 0;
 
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -101,8 +104,8 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null;
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
@@ -156,17 +159,17 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
             backgroundColor={color}
             size={50}
           />
-          
+
           <View style={styles.info}>
             <View style={styles.header}>
-              <ThemedText 
-                type="defaultSemiBold" 
+              <ThemedText
+                type="defaultSemiBold"
                 style={isCompleted ? styles.nameCompleted : styles.name}
                 numberOfLines={1}
               >
                 {name || 'Unnamed List'}
               </ThemedText>
-              
+
               {isOngoing && (
                 <View style={styles.ongoingItemBadge}>
                   <View style={styles.pulseDotItem} />
@@ -176,25 +179,19 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
 
             <View style={styles.details}>
               {description ? (
-                <ThemedText 
+                <ThemedText
                   style={isCompleted ? styles.descriptionCompleted : styles.description}
                   numberOfLines={1}
                 >
                   {description}
                 </ThemedText>
               ) : null}
-              
-              <ThemedText 
+
+              <ThemedText
                 style={isCompleted ? styles.itemCountCompleted : styles.itemCount}
               >
                 {productIds.length} {productIds.length === 1 ? 'item' : 'items'}
               </ThemedText>
-              
-              {budget > 0 && (
-                <ThemedText style={styles.budgetText}>
-                  • ₱{budget.toFixed(2)}
-                </ThemedText>
-              )}
             </View>
 
             {statusInfo && (
@@ -217,685 +214,699 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
   );
 }
 
-export default function HomeScreen(){
-    const router = useRouter();
-    const shoppingListIds = useShoppingListIds();
-    const shoppingListsValues = useShoppingListsValues();
-    
-    const [activeTab, setActiveTab] = useState<TabType>('active');
-    const [sortBy, setSortBy] = useState<SortOption>('date');
-    const [filterBy, setFilterBy] = useState<FilterOption>('all');
-    const [showSortModal, setShowSortModal] = useState(false);
-    const [showFilterModal, setShowFilterModal] = useState(false);
+export default function HomeScreen() {
+  const router = useRouter();
+  const shoppingListIds = useShoppingListIds();
+  const shoppingListsValues = useShoppingListsValues();
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
 
-    // Categorize shopping lists
-    const { regularLists, ongoingLists, historyLists } = useMemo(() => {
-        const regular: string[] = [];
-        const ongoing: string[] = [];
-        const history: string[] = [];
+  const [activeTab, setActiveTab] = useState<TabType>('active');
+  const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [filterBy, setFilterBy] = useState<FilterOption>('all');
+  const [showSortModal, setShowSortModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const scrollX = useRef(new Animated.Value(0)).current;
 
-        shoppingListIds.forEach((listId, index) => {
-            try {
-                const listData = shoppingListsValues[index];
-                const status = listData?.values?.status || 'regular';
-                
-                if (status === 'ongoing') {
-                    ongoing.push(listId);
-                } else if (status === 'completed') {
-                    history.push(listId);
-                } else {
-                    regular.push(listId);
-                }
-            } catch (error) {
-                console.error('Error reading list data:', error);
-                regular.push(listId);
-            }
-        });
+  // Categorize shopping lists
+  const { regularLists, ongoingLists, historyLists } = useMemo(() => {
+    const regular: string[] = [];
+    const ongoing: string[] = [];
+    const history: string[] = [];
 
-        return { 
-            regularLists: regular, 
-            ongoingLists: ongoing, 
-            historyLists: history 
-        };
-    }, [shoppingListIds, shoppingListsValues]);
+    shoppingListIds.forEach((listId, index) => {
+      try {
+        const listData = shoppingListsValues[index];
+        const status = listData?.values?.status || 'regular';
 
-    // Filter lists based on filter option
-    const filterLists = (lists: string[]) => {
-        if (filterBy === 'all') return lists;
-        
-        return lists.filter((listId) => {
-            const index = shoppingListIds.indexOf(listId);
-            const listData = shoppingListsValues[index];
-            const shoppingDate = listData?.values?.shoppingDate;
-            
-            if (filterBy === 'scheduled') {
-                return !!shoppingDate;
-            } else if (filterBy === 'unscheduled') {
-                return !shoppingDate;
-            }
-            return true;
-        });
-    };
-
-    // Sort lists based on sort option
-    const sortLists = (lists: string[]) => {
-        return [...lists].sort((a, b) => {
-            const indexA = shoppingListIds.indexOf(a);
-            const indexB = shoppingListIds.indexOf(b);
-            const dataA = shoppingListsValues[indexA];
-            const dataB = shoppingListsValues[indexB];
-            
-            switch (sortBy) {
-                case 'name':
-                    const nameA = dataA?.values?.name || '';
-                    const nameB = dataB?.values?.name || '';
-                    return nameA.localeCompare(nameB);
-                    
-                case 'date':
-                    const dateA = dataA?.values?.shoppingDate || dataA?.values?.createdAt || '';
-                    const dateB = dataB?.values?.shoppingDate || dataB?.values?.createdAt || '';
-                    return new Date(dateB).getTime() - new Date(dateA).getTime();
-                    
-                case 'items':
-                    // This would need actual product counts - simplified for now
-                    return 0;
-                    
-                case 'budget':
-                    const budgetA = dataA?.values?.budget || 0;
-                    const budgetB = dataB?.values?.budget || 0;
-                    return budgetB - budgetA;
-                    
-                default:
-                    return 0;
-            }
-        });
-    };
-
-    // Get current tab data with filters and sorting applied
-    const getCurrentTabData = () => {
-        let lists: string[];
-        switch (activeTab) {
-            case 'active':
-                lists = regularLists;
-                break;
-            case 'ongoing':
-                lists = ongoingLists;
-                break;
-            case 'history':
-                lists = historyLists;
-                break;
-            default:
-                lists = [];
-        }
-        
-        const filtered = filterLists(lists);
-        const sorted = sortLists(filtered);
-        return sorted;
-    };
-
-    const currentTabData = getCurrentTabData();
-
-    const renderEmptyList = () => {
-        let message = '';
-        let icon = '🛒';
-        
-        if (activeTab === 'active') {
-            message = filterBy !== 'all' 
-                ? `No ${filterBy} shopping lists`
-                : 'No shopping lists yet';
-            icon = '🛒';
-        } else if (activeTab === 'ongoing') {
-            message = 'No active shopping trips';
-            icon = '🛍️';
+        if (status === 'ongoing') {
+          ongoing.push(listId);
+        } else if (status === 'completed') {
+          history.push(listId);
         } else {
-            message = 'No purchase history';
-            icon = '📋';
+          regular.push(listId);
         }
+      } catch (error) {
+        console.error('Error reading list data:', error);
+        regular.push(listId);
+      }
+    });
 
-        return (
-            <View style={styles.emptyStateContainer}>
-                <ThemedText style={styles.emptyIcon}>{icon}</ThemedText>
-                <ThemedText style={styles.emptyText}>{message}</ThemedText>
-                {activeTab === 'active' && filterBy === 'all' && (
-                    <Button onPress={() => router.push("/list/new")} variant="ghost">
-                        Create your first list
-                    </Button>
-                )}
-            </View>
-        );
+    return {
+      regularLists: regular,
+      ongoingLists: ongoing,
+      historyLists: history
     };
-    
-    const renderHeaderRight = () => {
-        return(
-            <Pressable onPress={() => router.push("/list/new")}>
-                <IconSymbol name="plus" color={appleBlue}/>
-            </Pressable>
-        );
-    };
+  }, [shoppingListIds, shoppingListsValues]);
 
-    const renderItem = ({ item: listId }: { item: string }) => (
-        <ShoppingListItem listId={listId} />
+  // Filter lists based on filter option
+  const filterLists = (lists: string[]) => {
+    if (filterBy === 'all') return lists;
+
+    return lists.filter((listId) => {
+      const index = shoppingListIds.indexOf(listId);
+      const listData = shoppingListsValues[index];
+      const shoppingDate = listData?.values?.shoppingDate;
+
+      if (filterBy === 'scheduled') {
+        return !!shoppingDate;
+      } else if (filterBy === 'unscheduled') {
+        return !shoppingDate;
+      }
+      return true;
+    });
+  };
+
+  // Sort lists based on sort option
+  const sortLists = (lists: string[]) => {
+    return [...lists].sort((a, b) => {
+      const indexA = shoppingListIds.indexOf(a);
+      const indexB = shoppingListIds.indexOf(b);
+      const dataA = shoppingListsValues[indexA];
+      const dataB = shoppingListsValues[indexB];
+
+      switch (sortBy) {
+        case 'name':
+          const nameA = dataA?.values?.name || '';
+          const nameB = dataB?.values?.name || '';
+          return nameA.localeCompare(nameB);
+
+        case 'date':
+          const dateA = dataA?.values?.shoppingDate || dataA?.values?.createdAt || '';
+          const dateB = dataB?.values?.shoppingDate || dataB?.values?.createdAt || '';
+          return new Date(dateB).getTime() - new Date(dateA).getTime();
+
+        case 'items':
+          // This would need actual product counts - simplified for now
+          return 0;
+
+        case 'budget':
+          const budgetA = dataA?.values?.budget || 0;
+          const budgetB = dataB?.values?.budget || 0;
+          return budgetB - budgetA;
+
+        default:
+          return 0;
+      }
+    });
+  };
+
+  // Get current tab data with filters and sorting applied
+  const getCurrentTabData = () => {
+    let lists: string[];
+    switch (activeTab) {
+      case 'active':
+        lists = regularLists;
+        break;
+      case 'ongoing':
+        lists = ongoingLists;
+        break;
+      case 'history':
+        lists = historyLists;
+        break;
+      default:
+        lists = [];
+    }
+
+    const filtered = filterLists(lists);
+    const sorted = sortLists(filtered);
+    return sorted;
+  };
+
+  const currentTabData = getCurrentTabData();
+
+  const renderEmptyList = () => {
+    let message = '';
+    let icon = '🛒';
+
+    if (activeTab === 'active') {
+      message = 'No shopping lists yet';
+      icon = '🛒';
+    } else if (activeTab === 'ongoing') {
+      message = 'No active shopping trips';
+      icon = '🛍️';
+    } else {
+      message = 'No purchase history';
+      icon = '📋';
+    }
+
+    return (
+      <View style={styles.emptyStateContainer}>
+        <ThemedText style={styles.emptyIcon}>{icon}</ThemedText>
+        <ThemedText style={styles.emptyText}>{message}</ThemedText>
+        {activeTab === 'active' && (
+          <Button onPress={() => router.push("/list/new")} variant="ghost">
+            Create your first list
+          </Button>
+        )}
+      </View>
     );
+  };
 
-    // Tab button component
-    const TabButton = ({ 
-        type, 
-        label, 
-        count 
-    }: { 
-        type: TabType; 
-        label: string; 
-        count: number;
-    }) => {
-        const isActive = activeTab === type;
-        
-        return (
-            <Pressable
+  const renderHeaderRight = () => {
+    return (
+      <Pressable onPress={() => router.push("/list/new")} style={{ paddingRight: 18, paddingTop: 5 }}>
+        <IconSymbol name="plus" color={appleBlue} />
+      </Pressable>
+    );
+  };
+
+  const renderItem = ({ item: listId }: { item: string }) => (
+    <ShoppingListItem listId={listId} />
+  );
+
+  // Tab button component
+  const TabButton = ({
+    type,
+    label,
+    count
+  }: {
+    type: TabType;
+    label: string;
+    count: number;
+  }) => {
+    const isActive = activeTab === type;
+
+    return (
+      <Pressable
+        style={[
+          styles.tabButton,
+          isActive && styles.tabButtonActive
+        ]}
+        onPress={() => setActiveTab(type)}
+      >
+        <ThemedText
+          style={[
+            styles.tabLabel,
+            isActive && styles.tabLabelActive
+          ]}
+        >
+          {label}
+        </ThemedText>
+        {count > 0 && (
+          <View style={[
+            styles.countBadge,
+            isActive && styles.countBadgeActive
+          ]}>
+            <ThemedText style={[
+              styles.countText,
+              isActive && styles.countTextActive
+            ]}>
+              {count}
+            </ThemedText>
+          </View>
+        )}
+      </Pressable>
+    );
+  };
+
+  // Sort Modal Component
+  const SortModal = () => (
+    <Modal
+      visible={showSortModal}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowSortModal(false)}
+      presentationStyle="overFullScreen"
+    >
+      <Pressable
+        style={styles.modalOverlay}
+        onPress={() => setShowSortModal(false)}
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <ThemedText style={styles.modalTitle}>Sort By</ThemedText>
+            <Pressable onPress={() => setShowSortModal(false)}>
+              <IconSymbol name="xmark" size={24} color="#8E8E93" />
+            </Pressable>
+          </View>
+
+          <View style={styles.optionsList}>
+            {[
+              { value: 'date', label: 'Date', icon: '📅' },
+              { value: 'name', label: 'Name (A-Z)', icon: '🔤' },
+              { value: 'items', label: 'Number of Items', icon: '🔢' },
+              { value: 'budget', label: 'Budget', icon: '💰' },
+            ].map((option) => (
+              <Pressable
+                key={option.value}
                 style={[
-                    styles.tabButton,
-                    isActive && styles.tabButtonActive
+                  styles.optionItem,
+                  sortBy === option.value && styles.optionItemActive
                 ]}
-                onPress={() => setActiveTab(type)}
-            >
-                <ThemedText 
-                    style={[
-                        styles.tabLabel,
-                        isActive && styles.tabLabelActive
-                    ]}
-                >
-                    {label}
-                </ThemedText>
-                {count > 0 && (
-                    <View style={[
-                        styles.countBadge,
-                        isActive && styles.countBadgeActive
-                    ]}>
-                        <ThemedText style={[
-                            styles.countText,
-                            isActive && styles.countTextActive
-                        ]}>
-                            {count}
-                        </ThemedText>
-                    </View>
+                onPress={() => {
+                  if (process.env.EXPO_OS === "ios") {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
+                  setSortBy(option.value as SortOption);
+                  setShowSortModal(false);
+                }}
+              >
+                <ThemedText style={styles.optionIcon}>{option.icon}</ThemedText>
+                <ThemedText style={styles.optionLabel}>{option.label}</ThemedText>
+                {sortBy === option.value && (
+                  <IconSymbol name="checkmark" size={20} color="#007AFF" />
                 )}
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+
+
+  // Filter Modal Component
+  const FilterModal = () => (
+    <Modal
+      visible={showFilterModal}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowFilterModal(false)}
+      presentationStyle="overFullScreen"
+    >
+      <Pressable
+        style={styles.modalOverlay}
+        onPress={() => setShowFilterModal(false)}
+      ><View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <ThemedText style={styles.modalTitle}>Filter By</ThemedText>
+            <Pressable onPress={() => setShowFilterModal(false)}>
+              <IconSymbol name="xmark" size={24} color="#8E8E93" />
             </Pressable>
-        );
-    };
+          </View>
 
-    // Sort Modal Component
-    const SortModal = () => (
-        <Modal
-            visible={showSortModal}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setShowSortModal(false)}
-        >
-            <Pressable 
-                style={styles.modalOverlay}
-                onPress={() => setShowSortModal(false)}
-            >
-                <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
-                        <ThemedText style={styles.modalTitle}>Sort By</ThemedText>
-                        <Pressable onPress={() => setShowSortModal(false)}>
-                            <IconSymbol name="xmark" size={24} color="#8E8E93" />
-                        </Pressable>
-                    </View>
-                    
-                    <View style={styles.optionsList}>
-                        {[
-                            { value: 'date', label: 'Date', icon: '📅' },
-                            { value: 'name', label: 'Name (A-Z)', icon: '🔤' },
-                            { value: 'items', label: 'Number of Items', icon: '🔢' },
-                            { value: 'budget', label: 'Budget', icon: '💰' },
-                        ].map((option) => (
-                            <Pressable
-                                key={option.value}
-                                style={[
-                                    styles.optionItem,
-                                    sortBy === option.value && styles.optionItemActive
-                                ]}
-                                onPress={() => {
-                                    if (process.env.EXPO_OS === "ios") {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    }
-                                    setSortBy(option.value as SortOption);
-                                    setShowSortModal(false);
-                                }}
-                            >
-                                <ThemedText style={styles.optionIcon}>{option.icon}</ThemedText>
-                                <ThemedText style={styles.optionLabel}>{option.label}</ThemedText>
-                                {sortBy === option.value && (
-                                    <IconSymbol name="checkmark" size={20} color="#007AFF" />
-                                )}
-                            </Pressable>
-                        ))}
-                    </View>
-                </View>
-            </Pressable>
-        </Modal>
-    );
-
-    // Filter Modal Component
-    const FilterModal = () => (
-        <Modal
-            visible={showFilterModal}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setShowFilterModal(false)}
-        >
-            <Pressable 
-                style={styles.modalOverlay}
-                onPress={() => setShowFilterModal(false)}
-            >
-                <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
-                        <ThemedText style={styles.modalTitle}>Filter By</ThemedText>
-                        <Pressable onPress={() => setShowFilterModal(false)}>
-                            <IconSymbol name="xmark" size={24} color="#8E8E93" />
-                        </Pressable>
-                    </View>
-                    
-                    <View style={styles.optionsList}>
-                        {[
-                            { value: 'all', label: 'All Lists', icon: '📋' },
-                            { value: 'scheduled', label: 'Scheduled Only', icon: '📅' },
-                            { value: 'unscheduled', label: 'Unscheduled Only', icon: '📝' },
-                        ].map((option) => (
-                            <Pressable
-                                key={option.value}
-                                style={[
-                                    styles.optionItem,
-                                    filterBy === option.value && styles.optionItemActive
-                                ]}
-                                onPress={() => {
-                                    if (process.env.EXPO_OS === "ios") {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    }
-                                    setFilterBy(option.value as FilterOption);
-                                    setShowFilterModal(false);
-                                }}
-                            >
-                                <ThemedText style={styles.optionIcon}>{option.icon}</ThemedText>
-                                <ThemedText style={styles.optionLabel}>{option.label}</ThemedText>
-                                {filterBy === option.value && (
-                                    <IconSymbol name="checkmark" size={20} color="#007AFF" />
-                                )}
-                            </Pressable>
-                        ))}
-                    </View>
-                </View>
-            </Pressable>
-        </Modal>
-    );
-
-    return(
-        <GestureHandlerRootView style={{ flex: 1 }}>
-            <Stack.Screen options={{
-                headerRight: renderHeaderRight,
-            }}/>
-            
-            <View style={styles.container}>
-                {/* Tab Bar */}
-                <View style={styles.tabBar}>
-                    <TabButton 
-                        type="active" 
-                        label="Active Lists" 
-                        count={regularLists.length}
-                    />
-                    <TabButton 
-                        type="ongoing" 
-                        label="Shopping" 
-                        count={ongoingLists.length}
-                    />
-                    <TabButton 
-                        type="history" 
-                        label="History" 
-                        count={historyLists.length}
-                    />
-                </View>
-
-                {/* Active Tab Indicator */}
-                <View style={styles.tabIndicatorContainer}>
-                    <View 
-                        style={[
-                            styles.tabIndicator,
-                            {
-                                left: activeTab === 'active' ? '0%' : 
-                                     activeTab === 'ongoing' ? '33.33%' : '66.66%',
-                            }
-                        ]} 
-                    />
-                </View>
-
-                {/* Filter and Sort Bar */}
-                {activeTab === 'active' && (
-                    <View style={styles.filterSortBar}>
-                        <Pressable 
-                            style={styles.filterSortButton}
-                            onPress={() => {
-                                if (process.env.EXPO_OS === "ios") {
-                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                }
-                                setShowFilterModal(true);
-                            }}
-                        >
-                            <IconSymbol name="line.3.horizontal.decrease.circle" size={20} color="#007AFF" />
-                            <ThemedText style={styles.filterSortButtonText}>
-                                Filter: {filterBy === 'all' ? 'All' : filterBy === 'scheduled' ? 'Scheduled' : 'Unscheduled'}
-                            </ThemedText>
-                        </Pressable>
-
-                        <View style={styles.filterSortDivider} />
-
-                        <Pressable 
-                            style={styles.filterSortButton}
-                            onPress={() => {
-                                if (process.env.EXPO_OS === "ios") {
-                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                }
-                                setShowSortModal(true);
-                            }}
-                        >
-                            <IconSymbol name="arrow.up.arrow.down" size={20} color="#007AFF" />
-                            <ThemedText style={styles.filterSortButtonText}>
-                                Sort: {sortBy === 'date' ? 'Date' : sortBy === 'name' ? 'Name' : sortBy === 'items' ? 'Items' : 'Budget'}
-                            </ThemedText>
-                        </Pressable>
-                    </View>
+          <View style={styles.optionsList}>
+            {[
+              { value: 'all', label: 'All Lists', icon: '📋' },
+              { value: 'scheduled', label: 'Scheduled Only', icon: '📅' },
+              { value: 'unscheduled', label: 'Unscheduled Only', icon: '📝' },
+            ].map((option) => (
+              <Pressable
+                key={option.value}
+                style={[
+                  styles.optionItem,
+                  filterBy === option.value && styles.optionItemActive
+                ]}
+                onPress={() => {
+                  if (process.env.EXPO_OS === "ios") {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
+                  setFilterBy(option.value as FilterOption);
+                  setShowFilterModal(false);
+                }}
+              >
+                <ThemedText style={styles.optionIcon}>{option.icon}</ThemedText>
+                <ThemedText style={styles.optionLabel}>{option.label}</ThemedText>
+                {filterBy === option.value && (
+                  <IconSymbol name="checkmark" size={20} color="#007AFF" />
                 )}
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Pressable>
+    </Modal>
+  );
 
-                {/* Content */}
-                {currentTabData.length === 0 ? (
-                    renderEmptyList()
-                ) : (
-                    <FlatList
-                        data={currentTabData}
-                        renderItem={renderItem}
-                        keyExtractor={(item) => item}
-                        contentContainerStyle={styles.listContainer}
-                        contentInsetAdjustmentBehavior="automatic"
-                    />
-                )}
-            </View>
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Stack.Screen options={{
+        headerRight: renderHeaderRight,
+      }} />
 
-            {/* Modals */}
-            <SortModal />
-            <FilterModal />
-        </GestureHandlerRootView>
-    );
+      <View style={styles.container}>
+        {/* Tab Bar */}
+        <View style={styles.tabBar}>
+          <TabButton
+            type="active"
+            label="Active Lists"
+            count={regularLists.length}
+          />
+          <TabButton
+            type="ongoing"
+            label="Shopping"
+            count={ongoingLists.length}
+          />
+          <TabButton
+            type="history"
+            label="History"
+            count={historyLists.length}
+          />
+        </View>
+
+        {/* Active Tab Indicator */}
+        <View style={styles.tabIndicatorContainer}>
+          <View
+            style={[
+              styles.tabIndicator,
+              {
+                left: activeTab === 'active' ? '0%' :
+                  activeTab === 'ongoing' ? '33.33%' : '66.66%',
+              }
+            ]}
+          />
+        </View>
+
+        {/* Filter and Sort Bar */}
+        {activeTab === 'active' && (
+          <View style={styles.filterSortBar}>
+            <Pressable
+              style={styles.filterSortButton}
+              onPress={() => {
+                if (process.env.EXPO_OS === "ios") {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                setShowFilterModal(true);
+              }}
+            >
+              <IconSymbol name="line.3.horizontal.decrease.circle" size={20} color="#007AFF" />
+              <ThemedText style={styles.filterSortButtonText}>
+                Filter: {filterBy === 'all' ? 'All' : filterBy === 'scheduled' ? 'Scheduled' : 'Unscheduled'}
+              </ThemedText>
+            </Pressable>
+
+            <View style={styles.filterSortDivider} />
+
+            <Pressable
+              style={styles.filterSortButton}
+              onPress={() => {
+                if (process.env.EXPO_OS === "ios") {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                setShowSortModal(true);
+              }}
+            >
+              <IconSymbol name="arrow.up.arrow.down" size={20} color="#007AFF" />
+              <ThemedText style={styles.filterSortButtonText}>
+                Sort: {sortBy === 'date' ? 'Date' : sortBy === 'name' ? 'Name' : sortBy === 'items' ? 'Items' : 'Budget'}
+              </ThemedText>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Content */}
+        {currentTabData.length === 0 ? (
+          renderEmptyList()
+        ) : (
+          <FlatList
+            data={currentTabData}
+            renderItem={renderItem}
+            keyExtractor={(item) => item}
+            contentContainerStyle={styles.listContainer}
+            contentInsetAdjustmentBehavior="automatic"
+          />
+        )}
+      </View>
+
+      {/* Modals */}
+      <SortModal />
+      <FilterModal />
+    </GestureHandlerRootView>
+  );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
-  },
-  tabButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 6,
-  },
-  tabButtonActive: {
-    // Active state handled by indicator
-  },
-  tabLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#8E8E93',
-  },
-  tabLabelActive: {
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  countBadge: {
-    backgroundColor: '#E5E5EA',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 24,
-    alignItems: 'center',
-  },
-  countBadgeActive: {
-    backgroundColor: '#007AFF',
-  },
-  countText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#8E8E93',
-  },
-  countTextActive: {
-    color: '#FFFFFF',
-  },
-  tabIndicatorContainer: {
-    height: 3,
-    backgroundColor: '#E5E5EA',
-    position: 'relative',
-  },
-  tabIndicator: {
-    position: 'absolute',
-    width: '33.33%',
-    height: '100%',
-    backgroundColor: '#007AFF',
-    borderRadius: 2,
-  },
-  filterSortBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#F8F9FA',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
-  },
-  filterSortButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
-  filterSortButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#007AFF',
-    flex: 1,
-  },
-  filterSortDivider: {
-    width: 12,
-  },
-  listContainer: {
-    paddingTop: 8,
-  },
-  emptyStateContainer: {
-    alignItems: "center",
-    justifyContent: 'center',
-    paddingTop: 100,
-    paddingHorizontal: 32,
-    gap: 16,
-  },
-  emptyIcon: {
-    fontSize: 64,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    textAlign: 'center',
-  },
-  itemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
-  },
-  content: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  info: {
-    flex: 1,
-    gap: 4,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  name: {
-    fontSize: 17,
-    color: '#000000',
-    flex: 1,
-  },
-  nameCompleted: {
-    fontSize: 17,
-    color: '#8E8E93',
-    flex: 1,
-  },
-  ongoingItemBadge: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#34C759',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pulseDotItem: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
-  details: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  description: {
-    fontSize: 14,
-    color: '#8E8E93',
-    flex: 1,
-  },
-  descriptionCompleted: {
-    fontSize: 14,
-    color: '#8E8E93',
-    flex: 1,
-    opacity: 0.7,
-  },
-  itemCount: {
-    fontSize: 14,
-    color: '#8E8E93',
-  },
-  itemCountCompleted: {
-    fontSize: 14,
-    color: '#8E8E93',
-    opacity: 0.7,
-  },
-  budgetText: {
-    fontSize: 14,
-    color: '#34C759',
-    fontWeight: '600',
-  },
-  statusContainer: {
-    marginTop: 4,
-  },
-  statusText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  chevron: {
-    marginLeft: 8,
-  },
-  chevronText: {
-    fontSize: 24,
-    color: '#C7C7CC',
-    fontWeight: '300',
-  },
-  // Swipe action styles
-  swipeActionsContainer: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  deleteAction: {
-    backgroundColor: '#FF3B30',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 100,
-  },
-  deleteButton: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  deleteText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 40,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  optionsList: {
-    paddingVertical: 8,
-  },
-  optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  optionItemActive: {
-    backgroundColor: '#F8F9FA',
-  },
-  optionIcon: {
-    fontSize: 24,
-  },
-  optionLabel: {
-    fontSize: 16,
-    flex: 1,
-  },
-});
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    tabBar: {
+      flexDirection: 'row',
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: '#50C878',
+    },
+    tabButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      gap: 6,
+    },
+    tabButtonActive: {
+      // Active state handled by indicator
+    },
+    tabLabel: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: '#8E8E93',
+    },
+    tabLabelActive: {
+      color: '#50C878',
+      fontWeight: '600',
+    },
+    countBadge: {
+      backgroundColor: '#E5E5EA',
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 10,
+      minWidth: 24,
+      alignItems: 'center',
+    },
+    countBadgeActive: {
+      backgroundColor: '#50C878',
+    },
+    countText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#8E8E93',
+    },
+    countTextActive: {
+      color: colors.text,
+    },
+    tabIndicatorContainer: {
+      height: 3,
+      backgroundColor: colors.background,
+      position: 'relative',
+    },
+    tabIndicator: {
+      position: 'absolute',
+      width: '33.33%',
+      height: '100%',
+      backgroundColor: '#50C878',
+      borderRadius: 2,
+    },
+    // Filter and Sort Bar
+    filterSortBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: '#E5E5EA',
+    },
+    filterSortButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#E5E5EA',
+    },
+    filterSortButtonText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: '#34C759',
+      flex: 1,
+    },
+    filterSortDivider: {
+      width: 12,
+    },
+    listContainer: {
+    },
+    emptyStateContainer: {
+      alignItems: "center",
+      justifyContent: 'center',
+      paddingTop: 100,
+      paddingHorizontal: 32,
+      gap: 16,
+    },
+    emptyIcon: {
+      fontSize: 64,
+    },
+    emptyText: {
+      fontSize: 16,
+      color: '#8E8E93',
+      textAlign: 'center',
+    },
+    itemContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: colors.background,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.borderBottomColor,
+    },
+    content: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    info: {
+      flex: 1,
+      gap: 4,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    name: {
+      fontSize: 17,
+      color: colors.text,
+      flex: 1,
+    },
+    nameCompleted: {
+      fontSize: 17,
+      color: '#8E8E93',
+      flex: 1,
+    },
+    ongoingItemBadge: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: '#34C759',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    pulseDotItem: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: '#FFFFFF',
+    },
+    details: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    description: {
+      fontSize: 14,
+      color: '#8E8E93',
+      flex: 1,
+    },
+    descriptionCompleted: {
+      fontSize: 14,
+      color: '#8E8E93',
+      flex: 1,
+      opacity: 0.7,
+    },
+    itemCount: {
+      fontSize: 14,
+      color: '#8E8E93',
+    },
+    itemCountCompleted: {
+      fontSize: 14,
+      color: '#8E8E93',
+      opacity: 0.7,
+    },
+    statusContainer: {
+      marginTop: 4,
+    },
+    statusText: {
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    chevron: {
+      marginLeft: 8,
+    },
+    chevronText: {
+      fontSize: 24,
+      color: '#C7C7CC',
+      fontWeight: '300',
+    },
+    // Swipe action styles
+    swipeActionsContainer: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+    },
+    deleteAction: {
+      backgroundColor: '#FF3B30',
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: 100,
+    },
+    deleteButton: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+    },
+    deleteText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '600',
+      marginTop: 4,
+    },
+    // Modal styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+      justifyContent: 'flex-end',
+    },
+    modalContainer: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 12,
+      borderTopRightRadius: 12,
+    },
+    modalCloseButton: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      zIndex: 10,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 20,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: '#E5E5EA',
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    optionsList: {
+      paddingVertical: 10,
+    },
+    optionItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      gap: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: '#E5E5EA',
+    },
+    optionItemActive: {
+      backgroundColor: '#34C759',
+      borderRadius: 8,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+    },
+    optionItemDisabled: {
+      opacity: 0.5,
+    },
+    optionIcon: {
+      fontSize: 24,
+    },
+    optionLabel: {
+      fontSize: 16,
+      flex: 1,
+    },
+  });
+}

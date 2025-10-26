@@ -1,9 +1,10 @@
 // client/components/RecommendationsByStrategy.tsx
 import React, { useMemo } from 'react';
-import { StyleSheet, View, FlatList, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, View, FlatList, Pressable, ScrollView, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Recommendation } from '@/services/recommendationsApi';
+import { Colors } from '@/constants/Colors'
 
 interface RecommendationsByStrategyProps {
   recommendations: Recommendation[];
@@ -56,6 +57,11 @@ export default function RecommendationsByStrategy({
 
     return groups;
   }, [recommendations]);
+
+    // Color scheme and styles
+        const theme = useColorScheme();
+        const colors = Colors[theme ?? 'light'];
+        const styles = createStyles(colors);
 
   if (loading) {
     return (
@@ -160,6 +166,12 @@ function RecommendationSection({
   recommendations,
   onProductSelect,
 }: RecommendationSectionProps) {
+
+    // Color scheme and styles
+        const theme = useColorScheme();
+        const colors = Colors[theme ?? 'light'];
+        const styles = createStyles(colors);
+
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -201,6 +213,10 @@ interface ProductCardProps {
 
 function ProductCard({ recommendation, accentColor, onPress }: ProductCardProps) {
   const confidencePercentage = Math.round(recommendation.score * 100);
+    // Color scheme and styles
+        const theme = useColorScheme();
+        const colors = Colors[theme ?? 'light'];
+        const styles = createStyles(colors);
 
   return (
     <Pressable
@@ -253,14 +269,17 @@ function ProductCard({ recommendation, accentColor, onPress }: ProductCardProps)
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 16,
+    borderColor: colors.borderColor,
+    borderWidth: 1,
     padding: 16,
     marginVertical: 16,
-    shadowColor: '#000',
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -318,9 +337,11 @@ const styles = StyleSheet.create({
     height: 260,
     marginRight: 12,
     padding: 14,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
+    borderColor: colors.borderColor,
+    borderWidth: 0.5,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -398,3 +419,4 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 });
+}

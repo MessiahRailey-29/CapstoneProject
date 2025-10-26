@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { BodyScrollView } from '@/components/ui/BodyScrollView';
 import { useProducts } from '@/hooks/useProducts';
 import { DatabaseProduct } from '@/services/productsApi';
+import { Ionicons } from '@expo/vector-icons';
 
 function ProductItem({ 
   product, 
@@ -34,11 +35,9 @@ function ProductItem({
         <Text style={styles.productId}>Product ID: {product.id}</Text>
       </View>
 
-      <View style={styles.arrow}>
-        <Text style={styles.arrowText}>→</Text>
-      </View>
-    </Pressable>
-  );
+      <Ionicons name="chevron-forward" size={22} color="#C0C0C0" />
+          </Pressable>
+        );
 }
 
 export default function CategoryProductsScreen() {

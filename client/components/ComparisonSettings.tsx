@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Switch } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Switch, useColorScheme } from 'react-native';
 import TextInput from '@/components/ui/text-input';
 import { ComparisonOption, ComparisonSettings as IComparisonSettings } from '@/services/DuplicateDetectionService';
+import { Colors } from '@/constants/Colors';
 
 interface ComparisonSettingsProps {
   settings: IComparisonSettings;
@@ -16,9 +17,9 @@ const COMPARISON_OPTIONS = [
   { key: 'custom', label: 'Custom timeframe', description: 'Set custom number of days' },
 ] as const;
 
-export default function ComparisonSettings({ 
-  settings, 
-  onSettingsChange 
+export default function ComparisonSettings({
+  settings,
+  onSettingsChange
 }: ComparisonSettingsProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -30,10 +31,15 @@ export default function ComparisonSettings({
     updateSettings({ option });
   };
 
+  // color scheme for styles
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Duplicate Detection Settings</Text>
-      
+
       {/* Comparison Options */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Compare Against</Text>
@@ -141,7 +147,7 @@ export default function ComparisonSettings({
       {/* Info Box */}
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>
-          💡 Duplicate detection helps you avoid overbuying by comparing your current list with previous lists. 
+          💡 Duplicate detection helps you avoid overbuying by comparing your current list with previous lists.
           Higher similarity thresholds are more strict.
         </Text>
       </View>
@@ -149,158 +155,166 @@ export default function ComparisonSettings({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    margin: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 16,
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  optionButton: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: 'white',
-  },
-  optionButtonSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#f0f8ff',
-  },
-  optionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-  },
-  radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#ccc',
-    marginRight: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioButtonSelected: {
-    borderColor: '#007AFF',
-  },
-  radioButtonInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#007AFF',
-  },
-  optionText: {
-    flex: 1,
-  },
-  optionLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 2,
-  },
-  optionLabelSelected: {
-    color: '#007AFF',
-  },
-  optionDescription: {
-    fontSize: 14,
-    color: '#666',
-  },
-  customInput: {
-    marginTop: 8,
-  },
-  advancedToggle: {
-    padding: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  advancedToggleText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#007AFF',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    marginBottom: 16,
-  },
-  switchText: {
-    flex: 1,
-    marginRight: 12,
-  },
-  switchLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 2,
-  },
-  switchDescription: {
-    fontSize: 14,
-    color: '#666',
-  },
-  thresholdSection: {
-    marginTop: 8,
-  },
-  thresholdButtons: {
-    flexDirection: 'row',
-    marginTop: 8,
-    gap: 8,
-  },
-  thresholdButton: {
-    flex: 1,
-    padding: 8,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 6,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  thresholdButtonSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  thresholdButtonText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  thresholdButtonTextSelected: {
-    color: 'white',
-  },
-  infoBox: {
-    backgroundColor: '#f0f8ff',
-    borderRadius: 8,
-    padding: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: '#007AFF',
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-});
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
+    container: {
+      borderRadius: 12,
+      padding: 16,
+      margin: 16,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 5,
+      backgroundColor: colors.background,
+      borderColor: colors.borderColor,
+      borderWidth: 1,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 16,
+    },
+    section: {
+      marginBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      marginBottom: 12,
+      color: colors.text,
+    },
+    optionButton: {
+      borderWidth: 1,
+      borderColor: colors.borderColor,
+      borderRadius: 8,
+      marginBottom: 8,
+      backgroundColor: colors.background,
+    },
+    optionButtonSelected: {
+      borderColor: colors.borderColor,
+      backgroundColor: '#34C759',
+    },
+    optionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+    },
+    radioButton: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: '#ccc',
+      marginRight: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    radioButtonSelected: {
+      borderColor: "#000",
+    },
+    radioButtonInner: {
+      width: 10,
+      height: 10,
+      borderRadius: 180,
+      backgroundColor: "#000",
+    },
+    optionText: {
+      flex: 1,
+    },
+    optionLabel: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    optionLabelSelected: {
+      color: colors.oppositeText,
+    },
+    optionDescription: {
+      fontSize: 14,
+      color: '#666',
+    },
+    customInput: {
+      marginTop: 8,
+    },
+    advancedToggle: {
+      padding: 12,
+      backgroundColor: colors.oppositeBackground,
+      borderRadius: 8,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+    },
+    advancedToggleText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: '#34C759',
+    },
+    switchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      marginBottom: 16,
+    },
+    switchText: {
+      flex: 1,
+      marginRight: 12,
+    },
+    switchLabel: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: '#333',
+      marginBottom: 2,
+    },
+    switchDescription: {
+      fontSize: 14,
+      color: '#666',
+    },
+    thresholdSection: {
+      marginTop: 8,
+    },
+    thresholdButtons: {
+      flexDirection: 'row',
+      marginTop: 8,
+      gap: 8,
+    },
+    thresholdButton: {
+      flex: 1,
+      padding: 8,
+      backgroundColor: '#f0f0f0',
+      borderRadius: 6,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+    },
+    thresholdButtonSelected: {
+      backgroundColor: '#34C759',
+      borderColor: '#34C759',
+    },
+    thresholdButtonText: {
+      fontSize: 14,
+      color: '#666',
+      fontWeight: '500',
+    },
+    thresholdButtonTextSelected: {
+      color: 'white',
+    },
+    infoBox: {
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      padding: 12,
+      borderLeftWidth: 3,
+      borderLeftColor: '#007AFF',
+      borderColor: colors.borderColor,
+      borderWidth: 1,
+    },
+    infoText: {
+      fontSize: 14,
+      color: colors.text,
+      lineHeight: 20,
+    },
+  });
+}

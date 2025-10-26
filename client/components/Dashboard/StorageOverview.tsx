@@ -1,8 +1,9 @@
 // components/Dashboard/StorageOverview.tsx
 import React from 'react';
-import { StyleSheet, View, Pressable, Text } from 'react-native';
+import { StyleSheet, View, Pressable, Text, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/Colors';
 import * as Haptics from 'expo-haptics';
 
 interface StorageOverviewProps {
@@ -24,6 +25,11 @@ const STORAGE_CONFIG = [
 export function StorageOverview({ storageCounts }: StorageOverviewProps) {
   const router = useRouter();
   const totalItems = Object.values(storageCounts).reduce((sum, count) => sum + count, 0);
+
+  // Color scheme and styles
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
 
   const handleStoragePress = (storageName: string) => {
     if (process.env.EXPO_OS === "ios") {
@@ -86,12 +92,15 @@ export function StorageOverview({ storageCounts }: StorageOverviewProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: colors.shadowColor,
+    borderColor: colors.borderColor,
+    borderWidth: 1,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -120,7 +129,9 @@ const styles = StyleSheet.create({
   storageCard: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
+    borderColor: colors.borderColor,
+    borderWidth: 0.5,
     borderRadius: 12,
     padding: 12,
     borderLeftWidth: 4,
@@ -167,3 +178,4 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
 });
+}

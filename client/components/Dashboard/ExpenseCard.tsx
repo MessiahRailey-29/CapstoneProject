@@ -1,8 +1,9 @@
 // components/Dashboard/ExpenseCard.tsx
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { Colors } from '@/constants/Colors'
 
 type ValidIconName = 
   | "calendar"
@@ -33,6 +34,12 @@ export function ExpenseCard({
 }: ExpenseCardProps) {
   const trendUp = trend && trend > 0;
   const trendDown = trend && trend < 0;
+
+  // Color scheme and styles
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
+
 
   return (
     <View style={[styles.card, { borderLeftColor: color, borderLeftWidth: 4 }]}>
@@ -66,13 +73,16 @@ export function ExpenseCard({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
+    borderColor: colors.borderColor,
+    borderWidth: 1,
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -108,3 +118,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+}

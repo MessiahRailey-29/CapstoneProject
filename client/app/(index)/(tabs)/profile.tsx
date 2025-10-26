@@ -402,7 +402,9 @@ export default function ProfileScreen() {
                             style={[styles.modalButton, styles.cancelButton, { marginTop: 16 }]}
                             onPress={() => setShowAvatarOptions(false)}
                         >
-                            <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+                            <ThemedText lightColor="#000" darkColor="#fff" style={styles.cancelButtonText}>
+                            Cancel
+                            </ThemedText>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -615,11 +617,11 @@ const styles = StyleSheet.create({
         color: '#999',
     },
     modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
     },
     modalContent: {
         backgroundColor: '#fff',
@@ -633,18 +635,20 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
         elevation: 10,
     },
-    avatarModalContent: {
+        avatarModalContent: {
         backgroundColor: '#fff',
         borderRadius: 20,
         padding: 24,
-        width: '100%',
-        maxWidth: 400,
+        width: '85%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        maxHeight: '90%',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.4,
         shadowRadius: 16,
         elevation: 10,
-    },
+        },
     modalTitle: {
         fontSize: 24,
         fontWeight: '700',

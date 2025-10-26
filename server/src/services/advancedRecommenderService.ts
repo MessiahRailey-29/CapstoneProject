@@ -1,18 +1,38 @@
 // server/src/services/advancedRecommenderService.ts
-import { PurchaseHistory, ProductAssociations, LocationProductStats } from '../models/ml';
+import { PurchaseHistory, ProductAssociations, LocationProductStats, UserProfile } from '../models/ml';
 import { Product, Price } from '../models';
+
+// Helper function to extract city from location string
+function extractCity(location: string): string {
+  const parts = location.split(',');
+  return parts[0]?.trim() || 'Batangas City';
+}
 
 export class AdvancedRecommenderService {
   /**
-   * Frequently bought together recommendations
+   * Frequently bought together recommendations (location-aware)
    */
-  async getFrequentlyBoughtTogether(productIds: number[]): Promise<any[]> {
+  async getFrequentlyBoughtTogether(productIds: number[], userId?: string): Promise<any[]> {
     if (productIds.length === 0) return [];
 
-    const associations = await ProductAssociations.find({
+    // Get user location if provided
+    let userLocation: string | null = null;
+    if (userId) {
+      const userProfile = await UserProfile.findOne({ userId });
+      userLocation = userProfile?.location || null;
+    }
+
+    // Build query - prefer location-specific associations
+    const query: any = {
       productAId: { $in: productIds },
       productBId: { $nin: productIds },
-    })
+    };
+
+    if (userLocation) {
+      query.location = { $regex: extractCity(userLocation), $options: 'i' };
+    }
+
+    const associations = await ProductAssociations.find(query)
       .sort({ confidenceScore: -1, coOccurrenceCount: -1 })
       .limit(10);
 
@@ -36,13 +56,18 @@ export class AdvancedRecommenderService {
   }
 
   /**
-   * Smart list completion
+   * Smart list completion (location and history aware)
    */
   async suggestListCompletion(
     currentProductIds: number[],
     userId: string,
     limit: number = 5
   ): Promise<any[]> {
+    // Get user profile for location context
+    const userProfile = await UserProfile.findOne({ userId });
+    const userLocation = userProfile?.location;
+    const userCity = userLocation ? extractCity(userLocation) : null;
+
     // Get user's typical shopping patterns
     const userPatterns = await PurchaseHistory.aggregate([
       {
@@ -66,18 +91,43 @@ export class AdvancedRecommenderService {
     ]);
 
     // Get products frequently bought with current items
-    const associations = await this.getFrequentlyBoughtTogether(currentProductIds);
+    const associations = await this.getFrequentlyBoughtTogether(currentProductIds, userId);
+
+    // Get location-popular products not in current list
+    let locationProducts: any[] = [];
+    if (userCity) {
+      const locationStats = await LocationProductStats.find({
+        city: userCity,
+        productId: { $nin: currentProductIds },
+        uniqueUsers: { $gte: 3 },
+      })
+        .sort({ purchaseCount: -1 })
+        .limit(10);
+
+      locationProducts = locationStats.map((stat) => ({
+        productId: stat.productId,
+        localScore: stat.purchaseCount / 100,
+      }));
+    }
 
     // Combine and rank
     const scoreMap = new Map<number, number>();
 
+    // Personal history (highest weight)
     userPatterns.forEach((item: any) => {
-      scoreMap.set(item._id, item.frequency * 0.6);
+      scoreMap.set(item._id, item.frequency * 0.5);
     });
 
+    // Associations (medium weight)
     associations.forEach((item: any) => {
       const existing = scoreMap.get(item.productId) || 0;
-      scoreMap.set(item.productId, existing + (item.confidence || 0) * 0.4);
+      scoreMap.set(item.productId, existing + (item.confidence || 0) * 0.3);
+    });
+
+    // Location popularity (lower weight)
+    locationProducts.forEach((item: any) => {
+      const existing = scoreMap.get(item.productId) || 0;
+      scoreMap.set(item.productId, existing + item.localScore * 0.2);
     });
 
     // Get product details
@@ -87,6 +137,8 @@ export class AdvancedRecommenderService {
       .map(([productId]) => productId);
 
     const products = await Product.find({ id: { $in: sortedProductIds } });
+    
+    // Get prices, preferring user's location stores
     const prices = await Price.aggregate([
       { $match: { product_id: { $in: sortedProductIds } } },
       {
@@ -122,10 +174,19 @@ export class AdvancedRecommenderService {
   }
 
   /**
-   * Price savings opportunities
+   * Price savings opportunities (location-specific stores)
    */
-  async getPriceSavingsOpportunities(productIds: number[]): Promise<any[]> {
+  async getPriceSavingsOpportunities(productIds: number[], userId?: string): Promise<any[]> {
     if (productIds.length === 0) return [];
+
+    // Get user location for relevant store filtering
+    let userCity: string | null = null;
+    if (userId) {
+      const userProfile = await UserProfile.findOne({ userId });
+      if (userProfile?.location) {
+        userCity = extractCity(userProfile.location);
+      }
+    }
 
     const priceAnalysis = await Price.aggregate([
       {
@@ -160,6 +221,12 @@ export class AdvancedRecommenderService {
       // Find the store with lowest price
       const bestPriceInfo = item.prices.find((p: any) => p.price === item.lowestPrice);
 
+      // Add location context if available
+      let locationNote = '';
+      if (userCity && bestPriceInfo?.store) {
+        locationNote = ` in ${userCity}`;
+      }
+
       return {
         productId: item._id,
         productName: product?.name || 'Unknown',
@@ -169,18 +236,23 @@ export class AdvancedRecommenderService {
         storeCount: item.prices.length,
         potentialSavings,
         savingsPercentage: Math.round(savingsPercentage),
+        locationNote,
       };
     });
   }
 
   /**
-   * Time-based recommendations
+   * Time-based recommendations (location-aware)
    */
   async getTimeBasedRecommendations(userId: string): Promise<any[]> {
     const now = new Date();
     const hour = now.getHours();
     const dayOfWeek = now.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    // Get user location
+    const userProfile = await UserProfile.findOne({ userId });
+    const userCity = userProfile?.location ? extractCity(userProfile.location) : null;
 
     // Determine time range
     let startHour = 0;
@@ -206,8 +278,13 @@ export class AdvancedRecommenderService {
     }
 
     // Find purchases in this time range
+    const matchQuery: any = { userId };
+    if (userCity) {
+      matchQuery.location = { $regex: userCity, $options: 'i' };
+    }
+
     const timeBased = await PurchaseHistory.aggregate([
-      { $match: { userId } },
+      { $match: matchQuery },
       {
         $addFields: {
           hour: { $hour: '$timestamp' },
@@ -257,6 +334,8 @@ export class AdvancedRecommenderService {
     const productMap = new Map(products.map((p) => [p.id, p]));
     const priceMap = new Map(prices.map((p: any) => [p._id, p]));
 
+    const locationSuffix = userCity ? ` in ${userCity}` : '';
+
     return timeBased
       .map((item: any) => {
         const product = productMap.get(item._id);
@@ -268,7 +347,7 @@ export class AdvancedRecommenderService {
           productName: product.name,
           category: product.category,
           frequency: item.frequency,
-          reason: `You often buy this for ${timeContext}${isWeekend ? ' on weekends' : ''}`,
+          reason: `You often buy this for ${timeContext}${isWeekend ? ' on weekends' : ''}${locationSuffix}`,
           store: priceInfo?.store || 'Multiple stores',
           price: priceInfo?.minPrice || 0,
         };
@@ -277,17 +356,22 @@ export class AdvancedRecommenderService {
   }
 
   /**
-   * Novelty recommendations (new products to try)
+   * Novelty recommendations (new products to try - location-specific)
    */
   async getNoveltyRecommendations(userId: string, limit: number = 5): Promise<any[]> {
     // Get products user hasn't bought
     const userProducts = await PurchaseHistory.distinct('productId', { userId });
 
-    // Find popular products in user's location that they haven't tried
+    // Get user's location
+    const userProfile = await UserProfile.findOne({ userId });
+    const userLocation = userProfile?.location || 'Batangas City, Batangas, PH';
+    const userCity = extractCity(userLocation);
+
+    // Find popular products in user's city that they haven't tried
     const novelties = await LocationProductStats.find({
       productId: { $nin: userProducts },
       uniqueUsers: { $gte: 5 },
-      location: 'Tunasan, Calabarzon, PH',
+      city: userCity,
     })
       .sort({ purchaseCount: -1 })
       .limit(limit);
@@ -323,9 +407,9 @@ export class AdvancedRecommenderService {
           score: 0.7,
           reasons: [
             'New product to try',
-            `${item.uniqueUsers} people nearby bought this`,
+            `${item.uniqueUsers} shoppers in ${userCity} bought this`,
           ],
-          store: priceInfo?.store || 'Multiple stores',
+          store: priceInfo?.store || item.popularStores?.[0] || 'Multiple stores',
           price: priceInfo?.minPrice || 0,
         };
       })

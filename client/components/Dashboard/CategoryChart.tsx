@@ -1,15 +1,20 @@
 // components/Dashboard/CategoryChart.tsx
 import React from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { CategoryExpense } from '@/hooks/useExpenseAnalytics';
-
+import { Colors } from '@/constants/Colors'
 interface CategoryChartProps {
   categories: CategoryExpense[];
 }
 
 export function CategoryChart({ categories }: CategoryChartProps) {
   if (categories.length === 0) {
+      // Color scheme and styles
+      const theme = useColorScheme();
+      const colors = Colors[theme ?? 'light'];
+      const styles = createStyles(colors);
+
     return (
       <View style={styles.container}>
         <ThemedText style={styles.title}>Spending by Category</ThemedText>
@@ -23,6 +28,10 @@ export function CategoryChart({ categories }: CategoryChartProps) {
   }
 
   const maxAmount = Math.max(...categories.map(c => c.total));
+  // Color scheme and styles
+      const theme = useColorScheme();
+      const colors = Colors[theme ?? 'light'];
+      const styles = createStyles(colors);
 
   return (
     <View style={styles.container}>
@@ -85,12 +94,15 @@ export function CategoryChart({ categories }: CategoryChartProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
+    borderColor: colors.borderColor,
+    borderWidth: 1,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -106,7 +118,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: '#999',
+    color: colors.text,
     textAlign: 'center',
   },
   legendContainer: {
@@ -125,7 +137,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#666',
+    color: colors.text,
   },
   chartContainer: {
     gap: 12,
@@ -141,11 +153,11 @@ const styles = StyleSheet.create({
   barLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
   barCount: {
     fontSize: 10,
-    color: '#999',
+    color: colors.text,
   },
   barContainer: {
     flex: 1,
@@ -168,8 +180,9 @@ const styles = StyleSheet.create({
   percentage: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
+    color: colors.text,
     width: 50,
     textAlign: 'right',
   },
 });
+}

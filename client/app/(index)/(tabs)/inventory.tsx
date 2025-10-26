@@ -1,6 +1,6 @@
 // app/(home)/(tabs)/inventory.tsx - Fixed version
-import React, { useState, useRef } from "react";
-import { StyleSheet, View, FlatList, Text, Pressable, ScrollView, Animated, Alert } from "react-native";
+import React, { useState, useRef, useMemo, useCallback } from "react";
+import { StyleSheet, View, FlatList, Text, Pressable, ScrollView, Animated, Alert, useColorScheme } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import { 
@@ -15,6 +15,9 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import * as Haptics from "expo-haptics";
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
+import TextInput from '@/components/ui/text-input';
+import { Colors } from '@/constants/Colors'
 
 const STORAGE_LOCATIONS = getStorageDisplayInfo();
 
@@ -54,7 +57,49 @@ const STORAGE_CONFIG = [
   },
 ];
 
-function InventoryItem({ itemId, storage }: { itemId: string; storage: StorageLocation }) {
+// Hook to filter inventory items by search query
+function useFilteredInventoryItems(itemIds: string[], searchQuery: string): string[] {
+  return useMemo(() => {
+    if (!searchQuery.trim()) return itemIds;
+    // We can't filter here without accessing the data, so we'll return all IDs
+    // and let the component handle it, but we memoize to prevent unnecessary recalculations
+    return itemIds;
+  }, [itemIds, searchQuery]);
+}
+
+// Wrapper component that checks if item matches search
+function SearchableInventoryItem({ 
+  itemId, 
+  storage, 
+  searchQuery,
+  showStorage = false 
+}: { 
+  itemId: string; 
+  storage: StorageLocation; 
+  searchQuery: string;
+  showStorage?: boolean;
+}) {
+  const [name] = useInventoryItemCell(itemId, "name");
+  const [category] = useInventoryItemCell(itemId, "category");
+  
+  // Memoize the match check to prevent unnecessary re-renders
+  const matches = useMemo(() => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    const itemName = (name as string || '').toLowerCase();
+    const itemCategory = (category as string || '').toLowerCase();
+    return itemName.includes(query) || itemCategory.includes(query);
+  }, [searchQuery, name, category]);
+  
+  if (!matches) return null;
+  
+  return <InventoryItem itemId={itemId} storage={storage} showStorage={showStorage} />;
+}
+
+// Memoized version to prevent unnecessary re-renders
+const MemoizedSearchableInventoryItem = React.memo(SearchableInventoryItem);
+
+function InventoryItem({ itemId, storage, showStorage = false }: { itemId: string; storage: StorageLocation; showStorage?: boolean }) {
   const [name] = useInventoryItemCell(itemId, "name");
   const [quantity] = useInventoryItemCell(itemId, "quantity");
   const [units] = useInventoryItemCell(itemId, "units");
@@ -64,6 +109,11 @@ function InventoryItem({ itemId, storage }: { itemId: string; storage: StorageLo
   const [purchasedAt] = useInventoryItemCell(itemId, "purchasedAt");
   const [storageLocation, setStorageLocation] = useInventoryItemCell(itemId, "storageLocation");
   const deleteItem = useDelInventoryItemCallback(itemId);
+
+    //color scheme and styles
+    const scheme = useColorScheme();
+    const colors = Colors[scheme ?? 'light'];
+    const styles = createStyles(colors);
 
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -202,6 +252,10 @@ function StorageCategoryCard({
   onPress: () => void;
 }) {
   const percentage = totalItems > 0 ? (count / totalItems) * 100 : 0;
+    //color scheme and styles
+    const scheme = useColorScheme();
+    const colors = Colors[scheme ?? 'light'];
+    const styles = createStyles(colors);
 
   return (
     <Pressable 
@@ -244,7 +298,7 @@ function StorageCategoryCard({
 
       <View style={styles.categoryFooter}>
         <Text style={[styles.viewItemsText, { color: storage.color }]}>
-          {count > 0 ? `View ${count} item${count !== 1 ? 's' : ''}` : 'Empty'} →
+          {count > 0 ? `View ${count} item${count !== 1 ? 's' : ''}` : 'Empty'}
         </Text>
       </View>
     </Pressable>
@@ -253,18 +307,47 @@ function StorageCategoryCard({
 
 export default function InventoryScreen() {
   const [selectedStorage, setSelectedStorage] = useState<StorageLocation | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  
+  // Refs for TextInputs to maintain focus
+  const searchInputRef = useRef<any>(null);
+
+    //color scheme and styles
+    const scheme = useColorScheme();
+    const colors = Colors[scheme ?? 'light'];
+    const styles = createStyles(colors);
+  
+  // Debounce search to prevent re-render on every keystroke
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 150); // 150ms debounce
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   
   // ✅ CRITICAL FIX: Always call ALL hooks unconditionally at the top
   const storageCounts = useInventoryStorageCounts();
   
-  // Get item IDs for all storages (we'll filter which ones to display)
+  // Get item IDs for all storages
   const refrigeratorIds = useInventoryItemIdsByStorage('Refrigerator');
   const freezerIds = useInventoryItemIdsByStorage('Freezer');
   const pantryIds = useInventoryItemIdsByStorage('Pantry');
   const otherIds = useInventoryItemIdsByStorage('Other');
 
-  // Select which items to display based on selected storage
+  // Get all items for global search - memoized to prevent recreation
+  const allItemIds = useMemo(
+    () => [...refrigeratorIds, ...freezerIds, ...pantryIds, ...otherIds],
+    [refrigeratorIds, freezerIds, pantryIds, otherIds]
+  );
+
+  // Select which items to display
   const getItemIds = () => {
+    if (searchQuery && !selectedStorage) {
+      // Global search - show all items
+      return allItemIds;
+    }
     if (!selectedStorage) return [];
     switch (selectedStorage) {
       case 'Refrigerator': return refrigeratorIds;
@@ -287,77 +370,137 @@ export default function InventoryScreen() {
 
   const handleBackToCategories = () => {
     if (process.env.EXPO_OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     setSelectedStorage(null);
   };
 
-  // Category Overview View
-  if (!selectedStorage) {
+  const currentStorage = STORAGE_CONFIG.find(s => s.name === selectedStorage);
+  const showingSearchResults = searchQuery && !selectedStorage;
+
+  // Category View with Global Search
+  if (!selectedStorage && !showingSearchResults) {
     return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
+      <GestureHandlerRootView style={styles.container}>
+        <View style={styles.headerSection}>
+          <ThemedText style={styles.headerSubtitle}>
+            {totalItems} total items stored
+          </ThemedText>
+        </View>
+
+        {/* Global Search Bar */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            ref={searchInputRef}
+            placeholder="Search all items..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            containerStyle={styles.searchInput}
+          />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.categoriesContainer}>
+          {STORAGE_CONFIG.map((storage) => (
+            <StorageCategoryCard
+              key={storage.name}
+              storage={storage}
+              count={storageCounts[storage.name] || 0}
+              totalItems={totalItems}
+              onPress={() => handleStorageSelect(storage.name)}
+            />
+          ))}
+        </ScrollView>
+      </GestureHandlerRootView>
+    );
+  }
+
+  // Global Search Results View
+  if (showingSearchResults) {
+    return (
+      <GestureHandlerRootView style={styles.container}>
         <View style={styles.container}>
-          <View style={styles.headerSection}>
-            <ThemedText style={styles.headerTitle}>My Inventory</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              {totalItems} item{totalItems !== 1 ? 's' : ''} stored
-            </ThemedText>
+          {/* Header */}
+          <View style={styles.itemsHeader}>
+            <View style={styles.searchHeaderContent}>
+              <View>
+                <ThemedText style={styles.itemsHeaderTitle}>Search Results</ThemedText>
+                <ThemedText style={styles.itemsHeaderSubtitle}>
+                  {itemIds.length} item{itemIds.length !== 1 ? 's' : ''} found
+                </ThemedText>
+              </View>
+              <Pressable
+                onPress={() => setSearchQuery('')}
+                style={styles.clearButton}
+              >
+                <Text style={styles.clearButtonText}>Clear</Text>
+              </Pressable>
+            </View>
           </View>
 
-          {totalItems === 0 ? (
-            <BodyScrollView contentContainerStyle={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>🛒</Text>
-              <ThemedText style={styles.emptyTitle}>No items yet</ThemedText>
-              <ThemedText style={styles.emptySubtitle}>
-                Items you purchase from your shopping lists will appear here
-              </ThemedText>
-            </BodyScrollView>
-          ) : (
-            <ScrollView 
-              contentContainerStyle={styles.categoriesContainer}
-              showsVerticalScrollIndicator={false}
-            >
-              {STORAGE_CONFIG.map((storage) => {
-                const count = storageCounts[storage.name];
-                return (
-                  <StorageCategoryCard
-                    key={storage.name}
-                    storage={storage}
-                    count={count}
-                    totalItems={totalItems}
-                    onPress={() => handleStorageSelect(storage.name)}
-                  />
-                );
-              })}
-            </ScrollView>
-          )}
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <TextInput
+              ref={searchInputRef}
+              placeholder="Search all items..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              containerStyle={styles.searchInput}
+            />
+          </View>
+
+          {/* Search Results */}
+          <FlatList
+            key={`global-search-${!!debouncedSearch}`}
+            data={itemIds}
+            extraData={debouncedSearch}
+            removeClippedSubviews={false}
+            renderItem={({ item: itemId }) => (
+              <MemoizedSearchableInventoryItem 
+                itemId={itemId} 
+                storage={'Other' as StorageLocation}
+                searchQuery={debouncedSearch}
+                showStorage={true}
+              />
+            )}
+            keyExtractor={(itemId) => itemId}
+            contentContainerStyle={itemIds.length === 0 ? styles.emptyContainer : styles.listContent}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="none"
+            ListEmptyComponent={() => (
+              <View style={styles.emptyStateInner}>
+                <Text style={styles.emptyIcon}>🔍</Text>
+                <ThemedText style={styles.emptyTitle}>No items found</ThemedText>
+                <ThemedText style={styles.emptySubtitle}>
+                  Try a different search term
+                </ThemedText>
+              </View>
+            )}
+          />
         </View>
       </GestureHandlerRootView>
     );
   }
 
-  // Items List View
-  const currentStorage = STORAGE_CONFIG.find(s => s.name === selectedStorage);
-
+  // Items List View (When storage selected)
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={styles.container}>
       <View style={styles.container}>
-        {/* Back Button & Header */}
-        <View style={[styles.itemsHeader, { backgroundColor: currentStorage?.color + '15' }]}>
+        {/* Header with Back Button */}
+        <View style={styles.itemsHeader}>
           <Pressable 
-            style={styles.backButton}
             onPress={handleBackToCategories}
+            style={styles.backButton}
           >
-            <IconSymbol name="chevron.left" size={24} color={currentStorage?.color} />
-            <Text style={[styles.backButtonText, { color: currentStorage?.color }]}>
-              Back
-            </Text>
+            <Ionicons name="chevron-back" size={24} color="#007AFF" />
+            <Text style={styles.backButtonText}>Back</Text>
           </Pressable>
 
           <View style={styles.itemsHeaderInfo}>
             <Text style={styles.storageHeaderIcon}>{currentStorage?.icon}</Text>
             <View>
-              <ThemedText style={styles.itemsHeaderTitle}>{selectedStorage}</ThemedText>
+              <ThemedText style={styles.itemsHeaderTitle}>
+                {selectedStorage}
+              </ThemedText>
               <ThemedText style={styles.itemsHeaderSubtitle}>
                 {itemIds.length} item{itemIds.length !== 1 ? 's' : ''}
               </ThemedText>
@@ -365,62 +508,122 @@ export default function InventoryScreen() {
           </View>
         </View>
 
-        {/* Items List */}
-        {itemIds.length === 0 ? (
-          <BodyScrollView contentContainerStyle={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>{currentStorage?.icon}</Text>
-            <ThemedText style={styles.emptyTitle}>
-              No items in {selectedStorage}
-            </ThemedText>
-            <ThemedText style={styles.emptySubtitle}>
-              Items will appear here when you add them to this storage location
-            </ThemedText>
-          </BodyScrollView>
-        ) : (
-          <FlatList
-            data={itemIds}
-            renderItem={({ item: itemId }) => (
-              <InventoryItem itemId={itemId} storage={selectedStorage} />
-            )}
-            keyExtractor={(itemId) => itemId}
-            contentContainerStyle={styles.listContent}
+        {/* Search Bar within storage */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            ref={searchInputRef}
+            placeholder={`Search in ${selectedStorage}...`}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            containerStyle={styles.searchInput}
           />
-        )}
+        </View>
+
+        {/* Items List */}
+        <FlatList
+          key={`storage-search-${selectedStorage}-${!!debouncedSearch}`}
+          data={itemIds}
+          extraData={debouncedSearch}
+          removeClippedSubviews={false}
+          renderItem={({ item: itemId }) => (
+            <MemoizedSearchableInventoryItem 
+              itemId={itemId} 
+              storage={selectedStorage} 
+              searchQuery={debouncedSearch}
+              showStorage={false}
+            />
+          )}
+          keyExtractor={(itemId) => itemId}
+          contentContainerStyle={itemIds.length === 0 ? styles.emptyContainer : styles.listContent}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
+          ListEmptyComponent={() => {
+            if (searchQuery) {
+              return (
+                <View style={styles.emptyStateInner}>
+                  <Text style={styles.emptyIcon}>🔍</Text>
+                  <ThemedText style={styles.emptyTitle}>No items found</ThemedText>
+                  <ThemedText style={styles.emptySubtitle}>
+                    Try a different search term
+                  </ThemedText>
+                </View>
+              );
+            }
+            return (
+              <View style={styles.emptyStateInner}>
+                <Text style={styles.emptyIcon}>{currentStorage?.icon}</Text>
+                <ThemedText style={styles.emptyTitle}>
+                  No items in {selectedStorage}
+                </ThemedText>
+                <ThemedText style={styles.emptySubtitle}>
+                  Items will appear here when you add them to this storage location
+                </ThemedText>
+              </View>
+            );
+          }}
+        />
       </View>
     </GestureHandlerRootView>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
   },
   headerSection: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
     paddingVertical: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    marginBottom: 4,
+    borderBottomColor: colors.borderBottomColor,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: colors.text,
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderBottomColor,
+  },
+  searchInput: {
+    marginBottom: 0,
+    borderColor: colors.borderColor,
+    borderWidth: 1,
+    borderRadius: 13,
+  },
+  searchHeaderContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  clearButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+  },
+  clearButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   categoriesContainer: {
     padding: 16,
     gap: 16,
   },
   categoryCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 20,
     padding: 20,
-    shadowColor: '#000',
+    borderColor: colors.borderColor,
+    borderWidth: 1,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -455,7 +658,7 @@ const styles = StyleSheet.create({
   categoryCountText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
   },
   categoryInfo: {
     marginBottom: 16,
@@ -543,6 +746,13 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingHorizontal: 32,
   },
+  emptyStateInner: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 60,
+  },
   emptyIcon: {
     fontSize: 64,
   },
@@ -558,11 +768,13 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   itemContainer: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: "#000",
+    borderColor: colors.borderColor,
+    borderWidth: 1,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -603,7 +815,7 @@ const styles = StyleSheet.create({
   storageBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.text,
   },
   itemDetails: {
     flexDirection: "row",
@@ -648,3 +860,4 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
+}

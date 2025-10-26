@@ -1,15 +1,24 @@
 // components/Dashboard/MonthlyTrend.tsx
 import React from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MonthlyExpense } from '@/hooks/useExpenseAnalytics';
+import { Colors } from '@/constants/Colors';
 
 interface MonthlyTrendProps {
   monthlyData: MonthlyExpense[];
 }
 
+
 export function MonthlyTrend({ monthlyData }: MonthlyTrendProps) {
   if (monthlyData.length === 0) {
+
+    const maxAmount = Math.max(...monthlyData.map(m => m.total));
+        // Color scheme and styles
+      const theme = useColorScheme();
+      const colors = Colors[theme ?? 'light'];
+      const styles = createStyles(colors);
+
     return (
       <View style={styles.container}>
         <ThemedText style={styles.title}>Monthly Spending Trend</ThemedText>
@@ -22,7 +31,14 @@ export function MonthlyTrend({ monthlyData }: MonthlyTrendProps) {
     );
   }
 
+
+
   const maxAmount = Math.max(...monthlyData.map(m => m.total));
+        // Color scheme and styles
+      const theme = useColorScheme();
+      const colors = Colors[theme ?? 'light'];
+      const styles = createStyles(colors);
+
 
   return (
     <View style={styles.container}>
@@ -100,12 +116,15 @@ export function MonthlyTrend({ monthlyData }: MonthlyTrendProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
+    borderColor: colors.borderColor,
+    borderWidth: 1,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -152,7 +171,7 @@ const styles = StyleSheet.create({
   monthLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginTop: 4,
   },
   itemCount: {
@@ -179,6 +198,7 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
   },
 });
+}

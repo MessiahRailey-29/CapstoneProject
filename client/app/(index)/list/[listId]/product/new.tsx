@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Platform, View, FlatList, Pressable, StyleSheet, Keyboard, Alert } from "react-native";
+import { Platform, View, FlatList, Pressable, StyleSheet, Keyboard, Alert, useColorScheme } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import Button from "@/components/ui/button";
@@ -9,6 +9,9 @@ import TextInput from "@/components/ui/text-input";
 import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotifications";
 import { useProducts, useProductPrices } from "@/hooks/useProducts";
 import { DatabaseProduct, ProductPrice } from "@/services/productsApi";
+import { Colors } from "@/constants/Colors";
+
+
 
 interface SelectedStoreInfo {
   store: string;
@@ -17,6 +20,10 @@ interface SelectedStoreInfo {
 }
 
 export default function NewItemScreen() {
+
+
+
+
   const { listId } = useLocalSearchParams() as { listId: string };
   const [name, setName] = useState("");
   const [units, setUnits] = useState("kg");
@@ -55,16 +62,16 @@ export default function NewItemScreen() {
 
     // 🔔 Now automatically handles duplicate warnings!
     const productId = await addShoppingListProduct(
-      name.trim(), 
-      quantity, 
-      units, 
+      name.trim(),
+      quantity,
+      units,
       notes,
       selectedStoreInfo?.store,
       selectedStoreInfo?.price,
       selectedProduct?.id,
       selectedProduct?.category
     );
-    
+
     // 🔔 If productId is null, it means duplicate was found and notification was created
     if (productId === null) {
       Alert.alert(
@@ -74,7 +81,7 @@ export default function NewItemScreen() {
       );
       return;
     }
-    
+
     router.back();
   }, [name, quantity, units, notes, selectedStoreInfo, selectedProduct, addShoppingListProduct, router]);
 
@@ -84,7 +91,7 @@ export default function NewItemScreen() {
     setShowSuggestions(false);
     setShowStoreSelection(true);
     Keyboard.dismiss();
-    
+
     const categoryUnits = getCategoryUnits(product.category);
     if (categoryUnits) {
       setUnits(categoryUnits);
@@ -104,7 +111,7 @@ export default function NewItemScreen() {
     setName(text);
     setSelectedProduct(null);
     setSelectedStoreInfo(null);
-    
+
     if (!text.trim()) {
       setShowSuggestions(false);
     }
@@ -115,6 +122,11 @@ export default function NewItemScreen() {
     setShowStoreSelection(false);
     Keyboard.dismiss();
   }, []);
+
+    // color scheme for styles
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
 
   return (
     <>
@@ -156,7 +168,7 @@ export default function NewItemScreen() {
               onSubmitEditing={handleCreateProduct}
             />
             {(showSuggestions || showStoreSelection) && (
-              <Pressable 
+              <Pressable
                 style={styles.dismissButton}
                 onPress={handleDismissSuggestions}
               >
@@ -286,8 +298,8 @@ export default function NewItemScreen() {
                 ]}
                 onPress={() => setUnits(unit)}
               >
-                <ThemedText 
-                  type="default" 
+                <ThemedText
+                  type="default"
                   style={[
                     styles.unitChipText,
                     units === unit && styles.unitChipTextSelected
@@ -326,18 +338,18 @@ export default function NewItemScreen() {
                 style={styles.quantityButton}
                 disabled={quantity <= 1}
               >
-                <IconSymbol 
-                  name="minus.circle.fill" 
-                  color={quantity <= 1 ? "#ccc" : "#007AFF"} 
+                <IconSymbol
+                  name="minus"
+                  color={quantity <= 1 ? "#ccc" : "#007AFF"}
                   size={24}
                 />
               </Button>
-              <Button 
-                onPress={() => setQuantity(quantity + 1)} 
+              <Button
+                onPress={() => setQuantity(quantity + 1)}
                 variant="ghost"
                 style={styles.quantityButton}
               >
-                <IconSymbol name="plus.circle.fill" color="#007AFF" size={24} />
+                <IconSymbol name="plus" color="#007AFF" size={24} />
               </Button>
             </View>
           </View>
@@ -357,8 +369,8 @@ export default function NewItemScreen() {
 
         {/* Android Add Button */}
         {Platform.OS !== "ios" && (
-          <Button 
-            onPress={handleCreateProduct} 
+          <Button
+            onPress={handleCreateProduct}
             disabled={!name.trim()}
             style={styles.addButton}
           >
@@ -370,12 +382,12 @@ export default function NewItemScreen() {
   );
 }
 
-function ProductSuggestionItem({ 
-  product, 
-  onSelect, 
-  searchQuery 
-}: { 
-  product: DatabaseProduct; 
+function ProductSuggestionItem({
+  product,
+  onSelect,
+  searchQuery
+}: {
+  product: DatabaseProduct;
   onSelect: (product: DatabaseProduct) => void;
   searchQuery: string;
 }) {
@@ -383,7 +395,7 @@ function ProductSuggestionItem({
     if (!query) return text;
     const index = text.toLowerCase().indexOf(query.toLowerCase());
     if (index === -1) return text;
-    
+
     return (
       <>
         {text.substring(0, index)}
@@ -394,6 +406,11 @@ function ProductSuggestionItem({
       </>
     );
   };
+
+  // color scheme for styles
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const styles = createStyles(colors);
 
   return (
     <Pressable
@@ -415,19 +432,26 @@ function ProductSuggestionItem({
   );
 }
 
-function StoreSelectionItem({ 
-  price, 
-  onSelect, 
-  isSelected 
-}: { 
-  price: ProductPrice; 
+function StoreSelectionItem({
+  price,
+  onSelect,
+  isSelected
+}: {
+  price: ProductPrice;
   onSelect: (price: ProductPrice) => void;
   isSelected: boolean;
+  styles: ReturnType<typeof createStyles>;
 }) {
   if (!price || typeof price.price !== 'number') {
     console.warn('⚠️ Invalid price data:', price);
     return null;
   }
+
+
+  // color scheme for styles
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const styles = createStyles(colors);
 
   return (
     <Pressable
@@ -465,87 +489,261 @@ function getCategoryUnits(category: string): string | null {
     'Snacks': 'g',
     'Household': 'pcs',
   };
-  
+
   return categoryMap[category] || null;
 }
 
 const COMMON_UNITS = ['pcs', 'kg', 'g', 'L', 'mL', 'pack'];
 
-const styles = StyleSheet.create({
-  container: { padding: 16 },
-  nameSection: { marginBottom: 24 },
-  nameInputContainer: { flexDirection: 'row', alignItems: 'flex-end', position: 'relative' },
-  nameInput: { flex: 1, marginBottom: 0 },
-  dismissButton: { position: 'absolute', right: 12, bottom: 12, zIndex: 1 },
-  selectedProductBadge: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E8',
-    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, marginTop: 8, alignSelf: 'flex-start'
-  },
-  selectedText: { fontSize: 12, color: '#34C759', marginLeft: 4 },
-  selectedStoreBadge: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F4FF',
-    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, marginTop: 6, alignSelf: 'flex-start'
-  },
-  selectedStoreText: { fontSize: 12, color: '#007AFF', marginLeft: 4, flex: 1 },
-  changeStoreButton: { marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2 },
-  changeStoreText: { fontSize: 10, color: '#007AFF', textDecorationLine: 'underline' },
-  suggestionsContainer: {
-    backgroundColor: '#f8f9fa', borderRadius: 12, padding: 12, marginTop: 8, maxHeight: 400
-  },
-  suggestionsHeader: { fontSize: 14, marginBottom: 8, color: '#666' },
-  loadingContainer: { padding: 20, alignItems: 'center' },
-  noPricesContainer: { padding: 20, alignItems: 'center' },
-  noPricesText: { marginBottom: 12, color: '#666', textAlign: 'center' },
-  infoContainer: {
-    backgroundColor: '#f0f8ff', borderRadius: 8, padding: 12, marginTop: 8,
-    borderLeftWidth: 3, borderLeftColor: '#007AFF'
-  },
-  infoText: { fontSize: 12, color: '#666', textAlign: 'center' },
-  suggestionItem: {
-    backgroundColor: 'white', borderRadius: 8, marginBottom: 6,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1
-  },
-  suggestionContent: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12
-  },
-  suggestionMain: { flex: 1 },
-  suggestionName: { fontSize: 15, marginBottom: 2 },
-  suggestionCategory: { fontSize: 12, color: '#666' },
-  storeItem: {
-    backgroundColor: 'white', borderRadius: 8, marginBottom: 6,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1,
-    borderWidth: 2, borderColor: 'transparent'
-  },
-  storeItemSelected: { borderColor: '#34C759', backgroundColor: '#F0FFF0' },
-  storeContent: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16
-  },
-  storeMain: { flex: 1 },
-  storeName: { fontSize: 16, marginBottom: 4 },
-  storePrice: { fontSize: 18, color: '#007AFF' },
-  highlightedText: { backgroundColor: '#FFE066', fontWeight: 'bold' },
-  inputRow: { marginBottom: 24 },
-  unitsInput: { marginBottom: 12 },
-  commonUnitsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  unitChip: {
-    backgroundColor: '#f0f0f0', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6,
-    borderWidth: 1, borderColor: '#e0e0e0'
-  },
-  unitChipSelected: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
-  unitChipText: { fontSize: 12, color: '#666' },
-  unitChipTextSelected: { color: 'white', fontWeight: '600' },
-  quantitySection: { marginBottom: 24 },
-  quantityLabel: { marginBottom: 12 },
-  quantityControls: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#f8f9fa', borderRadius: 12, padding: 16
-  },
-  quantityDisplay: { alignItems: 'center' },
-  quantityText: { fontSize: 24, fontWeight: 'bold' },
-  quantityUnits: { fontSize: 14, color: '#666', marginTop: 2 },
-  totalPriceText: { fontSize: 12, color: '#007AFF', marginTop: 4, fontWeight: '600' },
-  quantityButtons: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  quantityButton: { padding: 4 },
-  notesInput: { height: 80, textAlignVertical: 'top' },
-  addButton: { marginTop: 24 },
-});
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
+    container: {
+      padding: 16
+    },
+    nameSection: {
+      marginBottom: 24
+    },
+    nameInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      position: 'relative'
+    },
+    nameInput: {
+      flex: 1,
+      marginBottom: 0
+    },
+    dismissButton: {
+      position: 'absolute',
+      right: 12,
+      bottom: 12,
+      zIndex: 1
+    },
+    selectedProductBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      marginTop: 8,
+      alignSelf: 'flex-start'
+    },
+    selectedText: {
+      fontSize: 12,
+      color: '#34C759',
+      marginLeft: 4
+    },
+    selectedStoreBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      marginTop: 6,
+      alignSelf: 'flex-start'
+    },
+    selectedStoreText: {
+      fontSize: 12,
+      color: '#007AFF',
+      marginLeft: 4,
+      flex: 1
+    },
+    changeStoreButton: {
+      marginLeft: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 2
+    },
+    changeStoreText: {
+      fontSize: 10,
+      color: '#007AFF',
+      textDecorationLine: 'underline'
+    },
+    suggestionsContainer: {
+      borderRadius: 12,
+      padding: 12,
+      marginTop: 8,
+    },
+    suggestionsHeader: {
+      fontSize: 14,
+      marginBottom: 8,
+      color: '#666'
+    },
+    loadingContainer: {
+      padding: 20,
+      alignItems: 'center'
+    },
+    noPricesContainer: {
+      padding: 20,
+      alignItems: 'center'
+    },
+    noPricesText: {
+      marginBottom: 12,
+      color: '#666',
+      textAlign: 'center'
+    },
+    infoContainer: {
+      borderRadius: 8,
+      padding: 12,
+      marginTop: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: '#007AFF'
+    },
+    infoText: {
+      fontSize: 12,
+      color: '#666',
+      textAlign: 'center'
+    },
+    suggestionItem: {
+      backgroundColor: 'white',
+      borderRadius: 8,
+      marginBottom: 6,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1
+    },
+    suggestionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 12
+    },
+    suggestionMain: {
+      flex: 1
+    },
+    suggestionName: {
+      fontSize: 15,
+      marginBottom: 2
+    },
+    suggestionCategory: {
+      fontSize: 12,
+      color: '#666'
+    },
+    storeItem: {
+      backgroundColor: 'white',
+      borderRadius: 8,
+      marginBottom: 6,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+      borderWidth: 2,
+      borderColor: 'transparent'
+    },
+    storeItemSelected: {
+      borderColor: '#34C759',
+      backgroundColor: '#F0FFF0'
+    },
+    storeContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16
+    },
+    storeMain: {
+      flex: 1
+    },
+    storeName: {
+      fontSize: 16,
+      marginBottom: 4
+    },
+    storePrice: {
+      fontSize: 18,
+      color: '#007AFF'
+    },
+    highlightedText: {
+      backgroundColor: '#FFE066',
+      fontWeight: 'bold'
+    },
+    inputRow: {
+      marginBottom: 24
+    },
+    unitsInput: {
+      marginBottom: 12
+    },
+    commonUnitsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8
+    },
+    unitChip: {
+      backgroundColor: '#f0f0f0',
+      borderRadius: 16,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderWidth: 1,
+      borderColor: '#e0e0e0'
+    },
+    unitChipSelected: {
+      backgroundColor: '#007AFF',
+      borderColor: '#007AFF'
+    },
+    unitChipText: {
+      fontSize: 12,
+      color: '#666'
+    },
+    unitChipTextSelected: {
+      color: 'white',
+      fontWeight: '600'
+    },
+    quantitySection: {
+      marginBottom: 24
+    },
+    quantityLabel: {
+      marginBottom: 12
+    },
+    quantityControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.background,
+      borderWidth: 0.5,
+      borderColor: '#e0e0e0',
+      borderRadius: 12,
+      padding: 16
+    },
+    quantityDisplay: {
+      alignItems: 'center'
+    },
+    quantityText: {
+      fontSize: 24,
+      fontWeight: 'bold'
+    },
+    quantityUnits: {
+      fontSize: 14,
+      color: '#666',
+      marginTop: 2
+    },
+    totalPriceText: {
+      fontSize: 12,
+      color: '#007AFF',
+      marginTop: 4,
+      fontWeight: '600'
+    },
+    quantityButtons: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    quantityButton: {
+      borderRadius: 100,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: '#007AFF',
+      padding: 4
+
+    },
+    notesInput: {
+      height: 80,
+      textAlignVertical: 'top',
+      borderColor: colors.borderColor,
+      borderWidth: 0.5,
+      borderRadius: 15,
+
+    },
+    addButton: {
+      marginTop: 24
+    },
+  });
+}

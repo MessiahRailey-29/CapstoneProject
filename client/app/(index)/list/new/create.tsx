@@ -90,8 +90,10 @@ export default function CreateListScreen() {
     if (!listName) {
       return;
     }
-
-    console.log('Creating list with budget:', {
+    
+      console.log('🔬 DEBUG - Budget from context:', budget);
+      console.log('🔬 DEBUG - Budget type:', typeof budget);
+      console.log('🔬 DEBUG - All params:', {
       listName,
       listDescription,
       selectedEmoji,

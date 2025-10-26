@@ -1,6 +1,6 @@
 // app/(home)/(tabs)/product-browser.tsx
 import React, { useState, useMemo } from 'react';
-import { FlatList, StyleSheet, View, Pressable, Text } from 'react-native';
+import { FlatList, StyleSheet, View, Pressable, Text, useColorScheme } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ThemedText } from '@/components/ThemedText';
@@ -8,6 +8,7 @@ import { BodyScrollView } from '@/components/ui/BodyScrollView';
 import TextInput from '@/components/ui/text-input';
 import { useProducts } from '@/hooks/useProducts';
 import { DatabaseProduct } from '@/services/productsApi';
+import { Colors } from '@/constants/Colors';
 
 // Category configuration with icons and colors
 const CATEGORY_CONFIG: Record<string, { icon: string; color: string; gradient: string[]; description: string }> = {
@@ -102,6 +103,10 @@ function CategoryCard({
   category: CategoryData; 
   onPress: () => void;
 }) {
+      //color scheme and styles
+      const scheme = useColorScheme();
+      const colors = Colors[scheme ?? 'light'];
+      const styles = createStyles(colors);
   return (
     <Pressable
       onPress={onPress}
@@ -136,10 +141,67 @@ function CategoryCard({
   );
 }
 
+function ProductCardWithPrices({
+  product,
+  onPress,
+}: {
+  product: DatabaseProduct;
+  onPress: () => void;
+}) {
+  // This component would need a hook to fetch prices per product
+  // For now, we'll simplify to just show the product without detailed pricing
+  const categoryConfig = CATEGORY_CONFIG[product.category] || CATEGORY_CONFIG['Other'];
+      //color scheme and styles
+      const scheme = useColorScheme();
+      const colors = Colors[scheme ?? 'light'];
+      const styles = createStyles(colors);
+  
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.productCard,
+        { borderLeftColor: categoryConfig.color },
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={styles.productHeader}>
+        <Text style={styles.productIcon}>{categoryConfig.icon}</Text>
+        <View style={styles.productInfo}>
+          <ThemedText style={styles.productName} numberOfLines={2}>
+            {product.name}
+          </ThemedText>
+          <Text style={styles.productCategory}>{product.category}</Text>
+        </View>
+      </View>
+
+      <View style={styles.productFooter}>
+        <Text style={[styles.viewDetailsText, { color: categoryConfig.color }]}>
+          Tap to view prices
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function ProductCard({
+  product,
+  onPress,
+}: {
+  product: DatabaseProduct;
+  onPress: () => void;
+}) {
+  return <ProductCardWithPrices product={product} onPress={onPress} />;
+}
+
 export default function ProductBrowserScreen() {
   const router = useRouter();
   const { products, loading, error } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
+      //color scheme and styles
+      const scheme = useColorScheme();
+      const colors = Colors[scheme ?? 'light'];
+      const styles = createStyles(colors);
 
   // Group products by category
   const categories = useMemo((): CategoryData[] => {
@@ -169,17 +231,16 @@ export default function ProductBrowserScreen() {
     return allCategories.sort((a, b) => b.count - a.count);
   }, [products]);
 
-  // Filter categories by search
-  const filteredCategories = useMemo(() => {
-    if (!searchQuery) return categories;
+  // Filter products by search (search shows actual products, not categories)
+  const searchResults = useMemo(() => {
+    if (!searchQuery) return null;
     
-    const query = searchQuery.toLowerCase();
-    return categories.filter(cat => 
-      cat.name.toLowerCase().includes(query) ||
-      cat.description.toLowerCase().includes(query) ||
-      cat.products.some(p => p.name.toLowerCase().includes(query))
+    const query = searchQuery.toLowerCase().trim();
+    return products.filter(product => 
+      product.name.toLowerCase().includes(query) ||
+      product.category.toLowerCase().includes(query)
     );
-  }, [categories, searchQuery]);
+  }, [products, searchQuery]);
 
   const handleCategoryPress = (category: CategoryData) => {
     if (process.env.EXPO_OS === 'ios') {
@@ -193,6 +254,20 @@ export default function ProductBrowserScreen() {
         categoryName: category.name,
         categoryIcon: category.icon,
         categoryColor: category.color,
+      }
+    });
+  };
+
+  const handleProductPress = (product: DatabaseProduct) => {
+    if (process.env.EXPO_OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    // Navigate to product details or add to list
+    router.push({
+      pathname: '/product-detail',
+      params: { 
+        productId: product.id,
+        productName: product.name,
       }
     });
   };
@@ -228,9 +303,6 @@ export default function ProductBrowserScreen() {
       <View style={styles.container}>
         {/* Header Section */}
         <View style={styles.headerSection}>
-          <ThemedText style={styles.catalogTitle}>
-            Browse by Category
-          </ThemedText>
           <ThemedText style={styles.catalogSubtitle}>
             {totalProducts} products • {categories.length} categories
           </ThemedText>
@@ -239,64 +311,85 @@ export default function ProductBrowserScreen() {
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <TextInput
-            placeholder="Search categories or products..."
+            placeholder="Search products..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             containerStyle={styles.searchInput}
           />
         </View>
 
-        {/* Categories Grid */}
-        <FlatList
-          data={filteredCategories}
-          renderItem={({ item }) => (
-            <CategoryCard 
-              category={item} 
-              onPress={() => handleCategoryPress(item)}
-            />
-          )}
-          numColumns={2}
-          columnWrapperStyle={styles.gridRow}
-          keyExtractor={(item) => item.name}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={() => (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>🔍</Text>
-              <ThemedText style={styles.emptyTitle}>No Categories Found</ThemedText>
-              <ThemedText style={styles.emptyText}>
-                Try a different search term
-              </ThemedText>
-              <Pressable
-                onPress={() => setSearchQuery('')}
-                style={styles.clearButton}
-              >
-                <Text style={styles.clearButtonText}>Clear Search</Text>
-              </Pressable>
-            </View>
-          )}
-        />
+        {/* Show search results (products) OR categories */}
+        {searchQuery ? (
+          // SEARCH RESULTS - Show Products
+          <FlatList
+            key="products-list" // Add key to force re-render when switching views
+            data={searchResults}
+            renderItem={({ item }) => (
+              <ProductCard 
+                product={item} 
+                onPress={() => handleProductPress(item)}
+              />
+            )}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.productListContent}
+            ListHeaderComponent={() => (
+              <View style={styles.resultsHeader}>
+                <ThemedText style={styles.resultsCount}>
+                  {searchResults?.length || 0} product{searchResults?.length !== 1 ? 's' : ''} found
+                </ThemedText>
+              </View>
+            )}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>🔍</Text>
+                <ThemedText style={styles.emptyTitle}>No Products Found</ThemedText>
+                <ThemedText style={styles.emptyText}>
+                  Try a different search term
+                </ThemedText>
+                <Pressable
+                  onPress={() => setSearchQuery('')}
+                  style={styles.clearButton}
+                >
+                  <Text style={styles.clearButtonText}>Clear Search</Text>
+                </Pressable>
+              </View>
+            )}
+          />
+        ) : (
+          // DEFAULT VIEW - Show Categories
+          <FlatList
+            key="categories-grid" // Add key to force re-render when switching views
+            data={categories}
+            renderItem={({ item }) => (
+              <CategoryCard 
+                category={item} 
+                onPress={() => handleCategoryPress(item)}
+              />
+            )}
+            numColumns={2}
+            columnWrapperStyle={styles.gridRow}
+            keyExtractor={(item) => item.name}
+            contentContainerStyle={styles.listContent}
+          />
+        )}
       </View>
     </>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
   },
   headerSection: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  catalogTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 4,
+    borderBottomColor: colors.borderBottomColor,
   },
   catalogSubtitle: {
     fontSize: 15,
@@ -305,15 +398,30 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: colors.borderBottomColor,
   },
   searchInput: {
     marginBottom: 0,
+    borderColor: colors.borderColor,
+    borderWidth: 1,
+    borderRadius: 13,
+  },
+  resultsHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  resultsCount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
   },
   listContent: {
     paddingTop: 20,
+    paddingBottom: 100,
+  },
+  productListContent: {
     paddingBottom: 100,
   },
   gridRow: {
@@ -322,12 +430,13 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 20,
     marginBottom: 16,
     overflow: 'hidden',
+    borderColor: colors.borderColor,
     borderWidth: 2,
-    shadowColor: '#000',
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
@@ -351,7 +460,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -360,7 +469,7 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.text,
   },
   categoryInfo: {
     padding: 16,
@@ -372,7 +481,7 @@ const styles = StyleSheet.create({
   },
   categoryDescription: {
     fontSize: 13,
-    color: '#666',
+    color: colors.text,
     marginBottom: 14,
     lineHeight: 18,
   },
@@ -387,7 +496,54 @@ const styles = StyleSheet.create({
   viewButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
+  },
+  productCard: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderColor: colors.borderColor,
+    borderWidth: 1,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  productHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    gap: 12,
+  },
+  productIcon: {
+    fontSize: 40,
+  },
+  productInfo: {
+    flex: 1,
+  },
+  productName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  productCategory: {
+    fontSize: 13,
+    color: '#666',
+  },
+  productFooter: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderBottomColor,
+  },
+  viewDetailsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -449,3 +605,4 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.97 }],
   },
 });
+}

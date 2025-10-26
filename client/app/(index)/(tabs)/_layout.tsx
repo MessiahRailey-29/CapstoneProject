@@ -1,26 +1,31 @@
 import { Tabs } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColorScheme, View } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { useColorScheme, View, Text } from 'react-native';
+import { borderColor, Colors } from '@/constants/Colors';
 
 
 export default function TabsLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
+
+  const renderTabLabel = (label, focused) => (
+    <Text style={{ fontSize: 12, color: focused ? '#000' : '#888' }}>
+      {focused ? null : label}
+    </Text>
+  );
+
   return (
     <Tabs
       screenOptions={{
-        tabBarShowLabel: false,
         tabBarStyle: {
           position: 'absolute',
-          bottom: insets.bottom + 10,
+          bottom: insets.bottom,
           marginHorizontal: 15,
           height: 70,
           left: 20,
           right: 20,
-          alignItems: 'center',
           elevation: 5,
           backgroundColor: colors.tabBarBackgroundColor,
           borderRadius: 45,
@@ -28,16 +33,12 @@ export default function TabsLayout() {
           shadowOffset: { width: 0, height: 10 },
           shadowOpacity: 0.1,
           shadowRadius: 5,
+          paddingBottom: 10,
         },
         tabBarHideOnKeyboard: true,
         tabBarLabelPosition: 'below-icon',
         tabBarIconStyle: {
           marginTop: 15
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          marginTop: 5,
-          marginBottom: 5,
         },
         tabBarActiveTintColor: colors.tabBarActiveTintColor,
         tabBarInactiveTintColor: colors.tabBarInactiveTintColor,
@@ -60,21 +61,30 @@ export default function TabsLayout() {
         options={{
           title: 'Home',
           headerTitle: 'Home',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            color: "#000",
+          },
+          headerStyle: {
+            backgroundColor: "#3daa58ff",
+          },
+          tabBarLabel: ({ focused }) => renderTabLabel("Home", focused),
           tabBarIcon: ({ color, focused, size }) => (
             <View
               style={{
-                backgroundColor: focused ? colors.tabBarActiveBackgroundColor : 'transparent',
+                backgroundColor: focused ? colors.tabBarActiveBackgroundColorHome : 'transparent',
                 width: size + 25,
                 height: size + 25,
-                marginTop: 0,
                 borderRadius: 30,
                 justifyContent: 'center',
                 alignItems: 'center',
+                borderColor: focused ? colors.tabBarActiveBorderColorHome : 'transparent',
+                borderWidth: focused ? 2 : 0,
               }}
             >
               <IconSymbol
                 name="house.fill"
-                color={color}
+                color={focused ? colors.tabBarActiveBorderColorHome : colors.unfocusedTabBarIcon}
                 size={size}
               />
             </View>
@@ -86,21 +96,30 @@ export default function TabsLayout() {
         options={{
           title: 'Lists',
           headerTitle: 'Shopping Lists',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            color: "#000",
+          },
+          headerStyle: {
+            backgroundColor: "#60a5fa",
+          },
+          tabBarLabel: ({ focused }) => renderTabLabel("Lists", focused),
           tabBarIcon: ({ color, focused, size }) => (
             <View
               style={{
-                backgroundColor: focused ? colors.tabBarActiveBackgroundColor : 'transparent',
+                backgroundColor: focused ? colors.tabBarActiveBackgroundColorSL : 'transparent',
                 width: size + 25,
                 height: size + 25,
-                marginTop: 0,
                 borderRadius: 30,
                 justifyContent: 'center',
                 alignItems: 'center',
+                borderColor: focused ? colors.tabBarActiveBorderColorSL : 'transparent',
+                borderWidth: focused ? 2 : 0,
               }}
             >
               <IconSymbol
                 name="list.bullet.clipboard"
-                color={color}
+                color={focused ? colors.tabBarActiveBorderColorSL : colors.unfocusedTabBarIcon}
                 size={size}
               />
             </View>
@@ -112,21 +131,30 @@ export default function TabsLayout() {
         options={{
           title: 'Inventory',
           headerTitle: 'My Inventory',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            color: "#000",
+          },
+          headerStyle: {
+            backgroundColor: "#eab308",
+          },
+          tabBarLabel: ({ focused }) => renderTabLabel("Inventory", focused),
           tabBarIcon: ({ color, focused, size }) => (
             <View
               style={{
-                backgroundColor: focused ? colors.tabBarActiveBackgroundColor : 'transparent',
+                backgroundColor: focused ? colors.tabBarActiveBackgroundColorInv : 'transparent',
                 width: size + 25,
                 height: size + 25,
-                marginTop: 0,
                 borderRadius: 30,
                 justifyContent: 'center',
                 alignItems: 'center',
+                borderColor: focused ? colors.tabBarActiveBorderColorInv : 'transparent',
+                borderWidth: focused ? 2 : 0,
               }}
             >
               <IconSymbol
                 name="basket.fill"
-                color={color}
+                color={focused ? colors.tabBarActiveBorderColorInv : colors.unfocusedTabBarIcon}
                 size={size}
               />
             </View>
@@ -138,21 +166,30 @@ export default function TabsLayout() {
         options={{
           title: 'Browse',
           headerTitle: 'Browse Products',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            color: "#000",
+          },
+          headerStyle: {
+            backgroundColor: "#f87171",
+          },
+          tabBarLabel: ({ focused }) => renderTabLabel("Browse", focused),
           tabBarIcon: ({ color, focused, size }) => (
             <View
               style={{
-                backgroundColor: focused ? colors.tabBarActiveBackgroundColor : 'transparent',
+                backgroundColor: focused ? colors.tabBarActiveBackgroundColorBrowse : 'transparent',
                 width: size + 25,
                 height: size + 25,
-                marginTop: 0,
                 borderRadius: 30,
                 justifyContent: 'center',
                 alignItems: 'center',
+                borderColor: focused ? colors.tabBarActiveBorderColorBrowse : 'transparent',
+                borderWidth: focused ? 2 : 0,
               }}
             >
               <IconSymbol
                 name="eye"
-                color={color}
+                color={focused ? colors.tabBarActiveBorderColorBrowse : colors.unfocusedTabBarIcon}
                 size={size}
               />
             </View>
@@ -164,21 +201,30 @@ export default function TabsLayout() {
         options={{
           title: 'Profile',
           headerTitle: 'Profile',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            color: "#000",
+          },
+          headerStyle: {
+            backgroundColor: "#cccccc",
+          },
+          tabBarLabel: ({ focused }) => renderTabLabel("Profile", focused),
           tabBarIcon: ({ color, focused, size }) => (
             <View
               style={{
-                backgroundColor: focused ? colors.tabBarActiveBackgroundColor : 'transparent',
+                backgroundColor: focused ? colors.tabBarActiveBackgroundColorProfile : 'transparent',
                 width: size + 25,
                 height: size + 25,
-                marginTop: 0,
                 borderRadius: 30,
                 justifyContent: 'center',
                 alignItems: 'center',
+                borderColor: focused ? colors.tabBarActiveBorderColorProfile : 'transparent',
+                borderWidth: focused ? 2 : 0,
               }}
             >
               <IconSymbol
                 name="person"
-                color={color}
+                color={focused ? colors.tabBarActiveBorderColorProfile : colors.unfocusedTabBarIcon}
                 size={size}
               />
             </View>

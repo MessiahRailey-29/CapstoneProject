@@ -26,6 +26,9 @@ const ShoppingListSchema = new mongoose.Schema({
   color: { type: String, default: '#007AFF' },
   shoppingDate: { type: Date },
   budget: { type: Number, default: 0 },
+  status: { type: String, default: 'regular' }, // 🆕 Added: 'regular', 'ongoing', 'completed'
+  completedAt: { type: Date },
+  valuesCopy: { type: String, default: '{}' }, // 🆕 Added: TinyBase sync data
   products: [{
     id: String,
     name: String,
@@ -55,6 +58,7 @@ PriceSchema.index({ product_id: 1 });
 ShoppingListSchema.index({ userId: 1 });
 ShoppingListSchema.index({ listId: 1 });
 
-export const Product = mongoose.model('Product', ProductSchema);
-export const Price = mongoose.model('Price', PriceSchema);
-export const ShoppingList = mongoose.model('ShoppingList', ShoppingListSchema);
+// ✅ Fixed: Prevent overwrite errors during hot-reload
+export const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
+export const Price = mongoose.models.Price || mongoose.model('Price', PriceSchema);
+export const ShoppingList = mongoose.models.ShoppingList || mongoose.model('ShoppingList', ShoppingListSchema);

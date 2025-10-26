@@ -8,16 +8,25 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  useColorScheme
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useUser } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
+import { borderColor, Colors } from '@/constants/Colors';
+
 
 export default function NotificationSettingsScreen() {
+  // color scheme for styles
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
+
   const { user } = useUser();
   const { settings, updateSettings, expoPushToken, loading } = useNotifications(user?.id || '');
-  
+
+
   const hasInitialized = useRef(false);
 
   const [localSettings, setLocalSettings] = useState({
@@ -44,18 +53,18 @@ export default function NotificationSettingsScreen() {
       console.log('📥 Initializing settings from server');
       setLocalSettings({
         enabled: settings.enabled ?? true,
-        preferences: { 
+        preferences: {
           shoppingReminders: settings.preferences?.shoppingReminders ?? true,
           lowStockAlerts: settings.preferences?.lowStockAlerts ?? true,
           duplicateWarnings: settings.preferences?.duplicateWarnings ?? true,
           priceDrops: settings.preferences?.priceDrops ?? true,
           sharedListUpdates: settings.preferences?.sharedListUpdates ?? true,
         },
-        reminderTiming: { 
+        reminderTiming: {
           hoursBefore: settings.reminderTiming?.hoursBefore ?? 2,
           daysOfWeek: settings.reminderTiming?.daysOfWeek ?? [],
         },
-        lowStockThreshold: { 
+        lowStockThreshold: {
           daysAfterLastPurchase: settings.lowStockThreshold?.daysAfterLastPurchase ?? 14,
         },
       });
@@ -67,12 +76,12 @@ export default function NotificationSettingsScreen() {
 
   const handleMasterToggle = async () => {
     const newValue = !localSettings.enabled;
-    
+
     console.log('Toggle master:', newValue);
-    
+
     // Update local state immediately for responsive UI
     setLocalSettings(prev => ({ ...prev, enabled: newValue }));
-    
+
     // Update server
     try {
       await updateSettings({ enabled: newValue });
@@ -86,15 +95,15 @@ export default function NotificationSettingsScreen() {
 
   const handlePreferenceToggle = async (key: string) => {
     console.log('Toggle preference:', key);
-    
+
     const newPreferences = {
       ...localSettings.preferences,
       [key]: !localSettings.preferences[key as keyof typeof localSettings.preferences],
     };
-    
+
     // Update local state immediately
     setLocalSettings(prev => ({ ...prev, preferences: newPreferences }));
-    
+
     // Update server
     try {
       await updateSettings({ preferences: newPreferences });
@@ -354,7 +363,7 @@ export default function NotificationSettingsScreen() {
                   style={[
                     styles.dayButton,
                     (localSettings.reminderTiming.daysOfWeek || []).includes(day.value) &&
-                      styles.dayButtonActive,
+                    styles.dayButtonActive,
                   ]}
                   onPress={() => handleDayOfWeekToggle(day.value)}
                 >
@@ -362,7 +371,7 @@ export default function NotificationSettingsScreen() {
                     style={[
                       styles.dayButtonText,
                       (localSettings.reminderTiming.daysOfWeek || []).includes(day.value) &&
-                        styles.dayButtonTextActive,
+                      styles.dayButtonTextActive,
                     ]}
                   >
                     {day.label}
@@ -389,7 +398,7 @@ export default function NotificationSettingsScreen() {
                 style={[
                   styles.stepperButton,
                   localSettings.lowStockThreshold.daysAfterLastPurchase <= 7 &&
-                    styles.stepperButtonDisabled,
+                  styles.stepperButtonDisabled,
                 ]}
                 onPress={() => handleDaysChange('decrease')}
                 disabled={localSettings.lowStockThreshold.daysAfterLastPurchase <= 7}
@@ -403,7 +412,7 @@ export default function NotificationSettingsScreen() {
                 style={[
                   styles.stepperButton,
                   localSettings.lowStockThreshold.daysAfterLastPurchase >= 90 &&
-                    styles.stepperButtonDisabled,
+                  styles.stepperButtonDisabled,
                 ]}
                 onPress={() => handleDaysChange('increase')}
                 disabled={localSettings.lowStockThreshold.daysAfterLastPurchase >= 90}
@@ -430,172 +439,180 @@ export default function NotificationSettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#666',
-  },
-  section: {
-    backgroundColor: '#fff',
-    marginBottom: 16,
-    paddingVertical: 16,
-  },
-  masterToggle: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  masterTextContainer: {
-    flex: 1,
-    marginRight: 12,
-  },
-  masterTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  masterSubtitle: {
-    fontSize: 14,
-    color: '#666',
-  },
-  infoBox: {
-    backgroundColor: '#e8f5e9',
-    padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#34C759',
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#2e7d32',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  settingInfo: {
-    flex: 1,
-    marginRight: 16,
-  },
-  settingLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  settingDescription: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 18,
-  },
-  valueRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    padding: 4,
-  },
-  stepperButton: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 6,
-  },
-  stepperButtonDisabled: {
-    opacity: 0.3,
-  },
-  stepperButtonText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  stepperValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginHorizontal: 12,
-    minWidth: 40,
-    textAlign: 'center',
-  },
-  daysContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  daysGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  dayButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  dayButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  dayButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  dayButtonTextActive: {
-    color: '#fff',
-  },
-  infoSection: {
-    backgroundColor: '#fff',
-    padding: 16,
-    marginBottom: 32,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  infoDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 22,
-  },
-});
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      padding: 16,
+      borderBottomColor: colors.borderBottomColor,
+      borderBottomWidth: 1,
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 16,
+      color: '#666',
+    },
+    section: {
+      backgroundColor: colors.background,
+      marginBottom: 16,
+      paddingVertical: 16,
+    },
+    masterToggle: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+    },
+    masterTextContainer: {
+      flex: 1,
+      marginRight: 12,
+    },
+    masterTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 4,
+    },
+    masterSubtitle: {
+      fontSize: 14,
+      color: '#666',
+    },
+    infoBox: {
+      backgroundColor: '#e8f5e9',
+      padding: 16,
+      marginHorizontal: 16,
+      marginBottom: 16,
+      borderRadius: 8,
+      borderLeftWidth: 4,
+      borderLeftColor: '#34C759',
+    },
+    infoText: {
+      fontSize: 14,
+      color: '#2e7d32',
+    },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      paddingHorizontal: 16,
+      marginBottom: 16,
+    },
+    settingRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: '#f0f0f0',
+    },
+    settingInfo: {
+      flex: 1,
+      marginRight: 16,
+    },
+    settingLabel: {
+      fontSize: 16,
+      fontWeight: '500',
+      marginBottom: 4,
+    },
+    settingDescription: {
+      fontSize: 13,
+      color: '#666',
+      lineHeight: 18,
+    },
+    valueRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: '#f0f0f0',
+    },
+    stepper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      padding: 4,
+      borderWidth: 1,
+      borderColor: colors.borderColor,
+    },
+    stepperButton: {
+      width: 32,
+      height: 32,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#fff',
+      borderRadius: 6,
+      borderWidth: 0.5,
+      borderColor: colors.borderColor,
+    },
+    stepperButtonDisabled: {
+      opacity: 0.3,
+    },
+    stepperButtonText: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: '#007AFF',
+    },
+    stepperValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      marginHorizontal: 12,
+      minWidth: 40,
+      textAlign: 'center',
+    },
+    daysContainer: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    daysGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 12,
+    },
+    dayButton: {
+      width: 44,
+      height: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#f0f0f0',
+      borderRadius: 22,
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    dayButtonActive: {
+      backgroundColor: '#007AFF',
+      borderColor: '#007AFF',
+    },
+    dayButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#666',
+    },
+    dayButtonTextActive: {
+      color: '#fff',
+    },
+    infoSection: {
+      backgroundColor: colors.background,
+      padding: 16,
+      marginBottom: 32,
+    },
+    infoTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      marginBottom: 12,
+    },
+    infoDescription: {
+      fontSize: 14,
+      color: '#666',
+      lineHeight: 22,
+    },
+  });
+}

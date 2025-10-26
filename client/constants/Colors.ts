@@ -3,6 +3,8 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
+import { text } from "stream/consumers";
+
 const tintColorLight = "#0a7ea4";
 const tintColorDark = "#fff";
 
@@ -28,6 +30,7 @@ export const appleGreen = "#34C759";
 export const Colors = {
   light: {
     text: "#11181C",
+    oppositeText: "#fff",
     background: "#fff",
     tint: tintColorLight,
     icon: "#687076",
@@ -35,13 +38,36 @@ export const Colors = {
     tabIconSelected: tintColorLight,
     shadowColor: '#000',
     borderColor: "#151718",
+    borderBottomColor: "#15171880",
+    oppositeBackground: "#151718",
+    oppositeBorder: "#fff",
+
+    //Focused Colors
+    radioButtonSelectedBackground: '#34C759',
+
+
+    //Unfocused Colors
+    unfocusedTabBarIcon: '#696969',
+
+    //Tab Bar Colors
     tabBarBackgroundColor: '#fff',
-    tabBarActiveBackgroundColor: '#EAF6EA',
-    tabBarActiveTintColor: '#34C759',
+    tabBarActiveBackgroundColor: '#f2f2f7ff',
+    tabBarActiveTintColor: '#000',
     tabBarInactiveTintColor: 'gray',
+    tabBarActiveBackgroundColorHome: '#3daa58ff',
+    tabBarActiveBackgroundColorSL: '#60a5fa',
+    tabBarActiveBackgroundColorInv: '#eab308',
+    tabBarActiveBackgroundColorBrowse: '#f87171',
+    tabBarActiveBackgroundColorProfile: '#cccccc',
+    tabBarActiveBorderColorHome: 'transparent',
+    tabBarActiveBorderColorSL: 'transparent',
+    tabBarActiveBorderColorInv: 'transparent',
+    tabBarActiveBorderColorBrowse: 'transparent',
+    tabBarActiveBorderColorProfile: 'transparent',
   },
   dark: {
     text: "#fff",
+    oppositeText: "#11181C",
     background: "#151718",
     tint: tintColorDark,
     icon: "#9BA1A6",
@@ -49,10 +75,31 @@ export const Colors = {
     tabIconSelected: tintColorDark,
     borderColor: "#fff",
     shadowColor: '#fff',
+    borderBottomColor: "#fff80",
+    oppositeBackground: "#fff",
+    oppositeBorder: "#151718",
+
+    //Focused Colors
+    radioButtonSelectedBackground: '#000',
+
+    //Unfocused Colors
+    unfocusedTabBarIcon: '#9c9c9c',
+
+    //Tab Bar Colors
     tabBarBackgroundColor: '#000',
-    tabBarActiveBackgroundColor: '#EAF6EA',
-    tabBarActiveTintColor: '#34C759',
+    tabBarActiveBackgroundColor: '#242424ff',
+    tabBarActiveTintColor: '#EAF6EA',
     tabBarInactiveTintColor: 'gray',
+    tabBarActiveBackgroundColorHome: '#242424ff',
+    tabBarActiveBackgroundColorSL: '#242424ff',
+    tabBarActiveBackgroundColorInv: '#242424ff',
+    tabBarActiveBackgroundColorBrowse: '#242424ff',
+    tabBarActiveBackgroundColorProfile: '#242424ff',
+    tabBarActiveBorderColorHome: '#3daa58ff',
+    tabBarActiveBorderColorSL: '#60a5fa',
+    tabBarActiveBorderColorInv: '#eab308',
+    tabBarActiveBorderColorBrowse: '#f87171',
+    tabBarActiveBorderColorProfile: '#cccccc',
   },
 };
 

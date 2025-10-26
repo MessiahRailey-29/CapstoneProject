@@ -1,9 +1,10 @@
 // client/components/RecommendationsCard.tsx
 import React from 'react';
-import { StyleSheet, View, FlatList, Pressable, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, FlatList, Pressable, ActivityIndicator, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Recommendation } from '@/services/recommendationsApi';
+import { Colors } from '@/constants/Colors';
 
 interface RecommendationsCardProps {
   recommendations: Recommendation[];
@@ -17,6 +18,12 @@ export default function RecommendationsCard({
   loading = false,
 }: RecommendationsCardProps) {
   if (loading) {
+
+    // Color scheme and styles
+        const theme = useColorScheme();
+        const colors = Colors[theme ?? 'light'];
+        const styles = createStyles(colors)
+
     return (
       <View style={styles.container}>
         <ThemedText style={styles.title}>✨ Suggested for You</ThemedText>
@@ -31,6 +38,11 @@ export default function RecommendationsCard({
   if (recommendations.length === 0) {
     return null;
   }
+
+      // Color scheme and styles
+          const theme = useColorScheme();
+          const colors = Colors[theme ?? 'light'];
+          const styles = createStyles(colors)
 
   return (
     <View style={styles.container}>
@@ -67,6 +79,11 @@ interface RecommendationItemProps {
 
 function RecommendationItem({ recommendation, onPress }: RecommendationItemProps) {
   const confidencePercentage = Math.round(recommendation.score * 100);
+
+    // Color scheme and styles
+        const theme = useColorScheme();
+        const colors = Colors[theme ?? 'light'];
+        const styles = createStyles(colors)
 
   return (
     <Pressable
@@ -112,10 +129,11 @@ function RecommendationItem({ recommendation, onPress }: RecommendationItemProps
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
     marginVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -151,7 +169,7 @@ const styles = StyleSheet.create({
     width: 180,
     marginRight: 12,
     padding: 12,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e0e0e0',
@@ -228,3 +246,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 });
+}

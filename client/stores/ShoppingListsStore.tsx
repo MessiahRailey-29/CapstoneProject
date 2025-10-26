@@ -49,9 +49,9 @@ export const useAddShoppingListCallback = () => {
           description,
           emoji,
           color,
-          budget: budget || 0,
+          budget: budget || 0,  // This is set here
           shoppingDate: shoppingDate?.toISOString() || null,
-          status: 'regular', // New field: 'regular', 'ongoing', 'completed'
+          status: 'regular',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -76,10 +76,32 @@ export const useJoinShoppingListCallback = () => {
   const store = useStore(useStoreId());
   return useCallback(
     (listId: string) => {
+      // CRITICAL: Set minimal placeholder WITHOUT budget/status/completedAt
+      // These will be synced from the creator's device
+      // Only set the fields that are required for the UI to render
       store.setRow("lists", listId, {
         id: listId,
-        valuesCopy: "{}",
+        valuesCopy: JSON.stringify({
+          tables: { 
+            products: {}, 
+            collaborators: {} 
+          },
+          values: {
+            listId,
+            name: "Loading...",
+            description: "",
+            emoji: "🛒",
+            color: "#007AFF",
+            shoppingDate: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            // DON'T set budget, status, completedAt - let them sync!
+          }
+        }),
       });
+      
+      console.log('✅ Registered list for joining:', listId);
+      console.log('⏳ Waiting for sync to populate budget and status...');
     },
     [store]
   );
@@ -110,10 +132,10 @@ export const useUpdateShoppingListStatus = () => {
         // Get current valuesCopy
         const currentValuesCopy = store.getCell("lists", listId, "valuesCopy") as string;
         
-        console.log('📝 Current valuesCopy before update:', currentValuesCopy);
+        console.log('ðŸ“ Current valuesCopy before update:', currentValuesCopy);
         
         if (!currentValuesCopy || currentValuesCopy === '{}') {
-          console.warn('⚠️ No valuesCopy found for list:', listId);
+          console.warn('âš ï¸ No valuesCopy found for list:', listId);
           return;
         }
         
@@ -151,15 +173,15 @@ export const useUpdateShoppingListStatus = () => {
         }
         
         const updatedValuesCopy = JSON.stringify(data);
-        console.log('💾 Saving updated valuesCopy:', updatedValuesCopy);
+        console.log('ðŸ’¾ Saving updated valuesCopy:', updatedValuesCopy);
         
         // Save back to store - this should trigger sync
         store.setCell("lists", listId, "valuesCopy", updatedValuesCopy);
         
-        console.log(`✅ Updated list ${listId} status to: ${newStatus}`);
-        console.log('✅ Data saved to store, sync should happen automatically');
+        console.log(`âœ… Updated list ${listId} status to: ${newStatus}`);
+        console.log('âœ… Data saved to store, sync should happen automatically');
       } catch (error) {
-        console.error('❌ Error updating list status:', error);
+        console.error('âŒ Error updating list status:', error);
       }
     },
     [store]
@@ -193,13 +215,13 @@ export const useShoppingListData = (listId: string) => {
   const valuesCopy = useCell("lists", listId, "valuesCopy", storeId) as string;
   
   try {
-    console.log('📖 Reading valuesCopy for', listId, ':', valuesCopy);
+    console.log('ðŸ“– Reading valuesCopy for', listId, ':', valuesCopy);
     
     if (!valuesCopy || valuesCopy === '{}') {
       return {
         name: '',
         description: '',
-        emoji: '🛒',
+        emoji: 'ðŸ›’',
         color: '#007AFF',
         shoppingDate: null,
         budget: 0,
@@ -211,24 +233,24 @@ export const useShoppingListData = (listId: string) => {
     }
     
     const data = JSON.parse(valuesCopy);
-    console.log('📊 Parsed list data:', data);
+    console.log('ðŸ“Š Parsed list data:', data);
     
     // Handle both old format (direct properties) and new format (nested in values)
     let values;
     if (data.values) {
       // New format with nested structure
       values = data.values;
-      console.log('📋 Using nested values structure:', values);
+      console.log('ðŸ“‹ Using nested values structure:', values);
     } else {
       // Old format or direct properties
       values = data;
-      console.log('📋 Using direct properties structure:', values);
+      console.log('ðŸ“‹ Using direct properties structure:', values);
     }
     
     const result = {
       name: values.name || '',
       description: values.description || '',
-      emoji: values.emoji || '🛒',
+      emoji: values.emoji || 'ðŸ›’',
       color: values.color || '#007AFF',
       shoppingDate: values.shoppingDate || null,
       budget: values.budget || 0,
@@ -238,17 +260,17 @@ export const useShoppingListData = (listId: string) => {
       updatedAt: values.updatedAt || '',
     };
     
-    console.log('🎯 Final list data result:', result);
-    console.log('💰 Budget from useShoppingListData:', result.budget, typeof result.budget);
-    console.log('📍 Status from useShoppingListData:', result.status);
+    console.log('ðŸŽ¯ Final list data result:', result);
+    console.log('ðŸ’° Budget from useShoppingListData:', result.budget, typeof result.budget);
+    console.log('ðŸ“ Status from useShoppingListData:', result.status);
     
     return result;
   } catch (error) {
-    console.log('❌ Error parsing list data:', error);
+    console.log('âŒ Error parsing list data:', error);
     return {
       name: '',
       description: '',
-      emoji: '🛒',
+      emoji: 'ðŸ›’',
       color: '#007AFF',
       shoppingDate: null,
       budget: 0,
