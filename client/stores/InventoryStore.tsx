@@ -102,6 +102,30 @@ export const useAddInventoryItemsCallback = () => {
 export const useDelInventoryItemCallback = (id: string) =>
   useDelRowCallback("items", id, useStoreId());
 
+// Delete all items from inventory (batch delete)
+export const useDelAllInventoryItemsCallback = () => {
+  const store = useStore(useStoreId());
+  
+  return useCallback(
+    (itemIds: string[]) => {
+      if (itemIds.length === 0) {
+        console.warn('⚠️ No items to delete');
+        return;
+      }
+
+      console.log(`🗑️ Deleting ${itemIds.length} items from inventory...`);
+      
+      // Delete each item from the store
+      itemIds.forEach(itemId => {
+        store.delRow("items", itemId);
+      });
+      
+      console.log(`✅ Successfully deleted ${itemIds.length} items from inventory`);
+    },
+    [store]
+  );
+};
+
 // Get all inventory item IDs
 export const useInventoryItemIds = (
   cellId: keyof (typeof TABLES_SCHEMA)["items"] = "purchasedAt",

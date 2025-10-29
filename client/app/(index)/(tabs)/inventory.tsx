@@ -7,6 +7,7 @@ import {
   useInventoryItemIdsByStorage, 
   useInventoryItemCell, 
   useDelInventoryItemCallback,
+  useDelAllInventoryItemsCallback,
   useInventoryStorageCounts,
   StorageLocation 
 } from "@/stores/InventoryStore";
@@ -309,6 +310,7 @@ export default function InventoryScreen() {
   const [selectedStorage, setSelectedStorage] = useState<StorageLocation | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const deleteAllItems = useDelAllInventoryItemsCallback();
   
   // Refs for TextInputs to maintain focus
   const searchInputRef = useRef<any>(null);
@@ -373,6 +375,40 @@ export default function InventoryScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     setSelectedStorage(null);
+  };
+
+  const handleDeleteAll = () => {
+    const itemsToDelete = getItemIds();
+    
+    if (itemsToDelete.length === 0) return;
+
+    const locationText = selectedStorage 
+      ? `in ${selectedStorage}` 
+      : showingSearchResults 
+        ? 'matching your search' 
+        : 'in your inventory';
+
+    Alert.alert(
+      "Delete All Items",
+      `Are you sure you want to delete all ${itemsToDelete.length} item${itemsToDelete.length !== 1 ? 's' : ''} ${locationText}? This action cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: () => {
+            if (process.env.EXPO_OS === "ios") {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            deleteAllItems(itemsToDelete);
+            console.log(`🗑️ Deleted ${itemsToDelete.length} items ${locationText}`);
+          },
+        },
+      ]
+    );
   };
 
   const currentStorage = STORAGE_CONFIG.find(s => s.name === selectedStorage);
@@ -446,6 +482,17 @@ export default function InventoryScreen() {
               onChangeText={setSearchQuery}
               containerStyle={styles.searchInput}
             />
+            {itemIds.length > 0 && (
+              <Pressable
+                onPress={handleDeleteAll}
+                style={styles.deleteAllButtonInventory}
+              >
+                <IconSymbol name="trash" size={16} color="#FF3B30" />
+                <Text style={styles.deleteAllButtonTextInventory}>
+                  Delete All ({itemIds.length})
+                </Text>
+              </Pressable>
+            )}
           </View>
 
           {/* Search Results */}
@@ -517,6 +564,17 @@ export default function InventoryScreen() {
             onChangeText={setSearchQuery}
             containerStyle={styles.searchInput}
           />
+          {itemIds.length > 0 && (
+            <Pressable
+              onPress={handleDeleteAll}
+              style={styles.deleteAllButtonInventory}
+            >
+              <IconSymbol name="trash" size={16} color="#FF3B30" />
+              <Text style={styles.deleteAllButtonTextInventory}>
+                Delete All ({itemIds.length})
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Items List */}
@@ -858,6 +916,24 @@ function createStyles(colors: typeof Colors.light) {
     fontSize: 14,
     fontWeight: '600',
     marginTop: 4,
+  },
+  deleteAllButtonInventory: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FF3B30',
+    marginTop: 8,
+  },
+  deleteAllButtonTextInventory: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF3B30',
   },
 });
 }

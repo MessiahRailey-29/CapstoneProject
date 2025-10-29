@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "7bfe348f-3215-4eec-a3d7-2407d4ed839b"
+      }
+    },
+    "android": {
+      "package": "com.messiahraileycapstone.server"
+    }
+  }
+}

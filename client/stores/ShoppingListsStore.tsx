@@ -192,6 +192,30 @@ export const useUpdateShoppingListStatus = () => {
 export const useDelShoppingListCallback = (id: string) =>
   useDelRowCallback("lists", id, useStoreId());
 
+// Returns a callback that deletes multiple shopping lists from the store (batch delete)
+export const useDelAllShoppingListsCallback = () => {
+  const store = useStore(useStoreId());
+  
+  return useCallback(
+    (listIds: string[]) => {
+      if (listIds.length === 0) {
+        console.warn('⚠️ No lists to delete');
+        return;
+      }
+
+      console.log(`🗑️ Deleting ${listIds.length} shopping lists...`);
+      
+      // Delete each list from the store
+      listIds.forEach(listId => {
+        store.delRow("lists", listId);
+      });
+      
+      console.log(`✅ Successfully deleted ${listIds.length} shopping lists`);
+    },
+    [store]
+  );
+};
+
 // Returns the IDs of all shopping lists in the store.
 export const useShoppingListIds = () => useRowIds("lists", useStoreId());
 

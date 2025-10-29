@@ -28,6 +28,12 @@ const MAPPING = {
   person: "person",
   gear: "settings",
   
+  // Biometric & Security
+  "hand.raised": "fingerprint",
+  "hand.raised.fill": "fingerprint",
+  "faceid": "face",
+  "touchid": "fingerprint",
+  
   // Lists & Tasks
   "list.bullet.clipboard": "assignment",
   "clipboard": "assignment",

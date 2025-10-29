@@ -58,7 +58,8 @@ const ShoppingScheduleSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
   listId: { type: String, required: true },
   scheduledDate: { type: Date, required: true, index: true },
-  reminderSent: { type: Boolean, default: false },
+  reminderSent: { type: Boolean, default: false }, // Same-day reminder sent
+  approachingReminderSent: { type: Boolean, default: false }, // 1-day-before reminder sent
   completed: { type: Boolean, default: false },
   completedAt: { type: Date },
   notes: { type: String },

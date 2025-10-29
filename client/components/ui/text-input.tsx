@@ -7,9 +7,11 @@ import {
   useColorScheme,
   View,
   ViewStyle,
+  Pressable,
 } from "react-native";
 import { zincColors } from "@/constants/Colors";
 import { ThemedText } from "../ThemedText";
+import { IconSymbol } from "./IconSymbol";
 
 type InputVariant = "default" | "filled" | "outlined" | "ghost";
 type InputSize = "sm" | "md" | "lg";
@@ -34,12 +36,14 @@ export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(
       containerStyle,
       inputStyle,
       disabled = false,
+      secureTextEntry,
       ...props
     },
     ref
   ) => {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === "dark";
+    const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
 
     const sizeStyles: Record<
       InputSize,
@@ -85,6 +89,10 @@ export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(
       return isDark ? zincColors[50] : zincColors[900];
     };
 
+    const togglePasswordVisibility = () => {
+      setIsPasswordVisible(!isPasswordVisible);
+    };
+
     return (
       <View style={[styles.container, containerStyle]}>
         {label && <ThemedText style={styles.label}>{label}</ThemedText>}
@@ -96,6 +104,7 @@ export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(
                 height: sizeStyles[size].height,
                 fontSize: sizeStyles[size].fontSize,
                 padding: sizeStyles[size].padding,
+                paddingRight: secureTextEntry ? 50 : sizeStyles[size].padding,
                 color: getTextColor(),
               },
               inputStyle,
@@ -103,8 +112,23 @@ export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(
             placeholderTextColor={isDark ? zincColors[500] : zincColors[400]}
             editable={!disabled}
             blurOnSubmit={false}
+            secureTextEntry={secureTextEntry && !isPasswordVisible}
             {...props}
           />
+          {secureTextEntry && (
+            <Pressable
+              onPress={togglePasswordVisibility}
+              style={styles.eyeButton}
+              accessibilityLabel={isPasswordVisible ? "Hide password" : "Show password"}
+              accessibilityRole="button"
+            >
+              <IconSymbol
+                name={isPasswordVisible ? "eye.fill" : "eye.slash.fill"}
+                size={20}
+                color={isDark ? zincColors[400] : zincColors[600]}
+              />
+            </Pressable>
+          )}
         </View>
         {error && <ThemedText style={styles.error}>{error}</ThemedText>}
       </View>
@@ -127,6 +151,16 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.5,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 40,
+    zIndex: 1,
   },
 });
 

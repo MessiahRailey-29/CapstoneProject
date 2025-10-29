@@ -33,6 +33,17 @@ export default function NewItemScreen() {
   const [selectedProduct, setSelectedProduct] = useState<DatabaseProduct | null>(null);
   const [selectedStoreInfo, setSelectedStoreInfo] = useState<SelectedStoreInfo | null>(null);
   const [showStoreSelection, setShowStoreSelection] = useState(false);
+  const [addingAnother, setAddingAnother] = useState(false);
+  const [queuedProducts, setQueuedProducts] = useState<Array<{
+    name: string;
+    quantity: number;
+    units: string;
+    notes: string;
+    store?: string;
+    price?: number;
+    databaseProductId?: number;
+    category?: string;
+  }>>([]);
 
   const router = useRouter();
   // 🔔 UPDATED: Use helper hook with automatic notification support
@@ -57,33 +68,112 @@ export default function NewItemScreen() {
     setShowStoreSelection(false);
   }, [selectedProduct]);
 
-  const handleCreateProduct = useCallback(async () => {
+  const handleAddAnother = useCallback(() => {
     if (!name.trim()) return;
 
-    // 🔔 Now automatically handles duplicate warnings!
-    const productId = await addShoppingListProduct(
-      name.trim(),
+    // Add current product to queue
+    const newProduct = {
+      name: name.trim(),
       quantity,
       units,
       notes,
-      selectedStoreInfo?.store,
-      selectedStoreInfo?.price,
-      selectedProduct?.id,
-      selectedProduct?.category
+      store: selectedStoreInfo?.store,
+      price: selectedStoreInfo?.price,
+      databaseProductId: selectedProduct?.id,
+      category: selectedProduct?.category,
+    };
+
+    setQueuedProducts(prev => [...prev, newProduct]);
+
+    // Show success feedback
+    Alert.alert(
+      "Added to Queue",
+      `"${name.trim()}" will be added to your list.`,
+      [{ text: "OK" }]
     );
 
-    // 🔔 If productId is null, it means duplicate was found and notification was created
-    if (productId === null) {
-      Alert.alert(
-        "Duplicate Product",
-        `"${name.trim()}" is already in your shopping list. Check your notifications for details.`,
-        [{ text: "OK" }]
-      );
-      return;
+    // Reset form fields
+    setName("");
+    setQuantity(1);
+    setUnits("kg");
+    setNotes("");
+    setSelectedProduct(null);
+    setSelectedStoreInfo(null);
+    setShowStoreSelection(false);
+    setShowSuggestions(false);
+  }, [name, quantity, units, notes, selectedStoreInfo, selectedProduct]);
+
+  const handleRemoveFromQueue = useCallback((index: number) => {
+    setQueuedProducts(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleCreateProduct = useCallback(async () => {
+    if (!name.trim() && queuedProducts.length === 0) return;
+
+    setAddingAnother(true);
+
+    // Add current product to the list if form is filled
+    const productsToAdd = [...queuedProducts];
+    if (name.trim()) {
+      productsToAdd.push({
+        name: name.trim(),
+        quantity,
+        units,
+        notes,
+        store: selectedStoreInfo?.store,
+        price: selectedStoreInfo?.price,
+        databaseProductId: selectedProduct?.id,
+        category: selectedProduct?.category,
+      });
     }
 
+    // Add all products
+    let addedCount = 0;
+    let duplicateCount = 0;
+
+    for (const product of productsToAdd) {
+      const productId = await addShoppingListProduct(
+        product.name,
+        product.quantity,
+        product.units,
+        product.notes,
+        product.store,
+        product.price,
+        product.databaseProductId,
+        product.category
+      );
+
+      if (productId === null) {
+        duplicateCount++;
+      } else {
+        addedCount++;
+      }
+    }
+
+    // Show result
+    if (addedCount > 0 && duplicateCount > 0) {
+      Alert.alert(
+        "Products Added",
+        `${addedCount} product${addedCount !== 1 ? 's' : ''} added successfully.\n${duplicateCount} duplicate${duplicateCount !== 1 ? 's' : ''} detected. Check notifications.`,
+        [{ text: "OK" }]
+      );
+    } else if (addedCount > 0) {
+      Alert.alert(
+        "Success!",
+        `${addedCount} product${addedCount !== 1 ? 's' : ''} added to your list.`,
+        [{ text: "OK" }]
+      );
+    } else if (duplicateCount > 0) {
+      Alert.alert(
+        "Duplicates Detected",
+        `All products are already in your list. Check notifications for details.`,
+        [{ text: "OK" }]
+      );
+    }
+
+    setAddingAnother(false);
     router.back();
-  }, [name, quantity, units, notes, selectedStoreInfo, selectedProduct, addShoppingListProduct, router]);
+  }, [name, quantity, units, notes, selectedStoreInfo, selectedProduct, queuedProducts, addShoppingListProduct, router]);
 
   const handleProductSelect = useCallback((product: DatabaseProduct) => {
     setName(product.name);
@@ -133,15 +223,30 @@ export default function NewItemScreen() {
       <Stack.Screen
         options={{
           headerLargeTitle: false,
-          headerTitle: "Add product",
+          headerTitle: queuedProducts.length > 0 
+            ? `Add product (${queuedProducts.length} queued)` 
+            : "Add product",
           headerRight: () => (
-            <Button
-              variant="ghost"
-              onPress={handleCreateProduct}
-              disabled={!name.trim()}
-            >
-              Save
-            </Button>
+            <View style={styles.headerButtons}>
+              {name.trim() && (
+                <Button
+                  variant="ghost"
+                  onPress={handleAddAnother}
+                  disabled={addingAnother}
+                  style={styles.headerButton}
+                >
+                  + Queue
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                onPress={handleCreateProduct}
+                disabled={(!name.trim() && queuedProducts.length === 0) || addingAnother}
+                style={styles.headerButtonPrimary}
+              >
+                {addingAnother ? "Adding..." : queuedProducts.length > 0 ? `Add All (${queuedProducts.length + (name.trim() ? 1 : 0)})` : "Save"}
+              </Button>
+            </View>
           ),
           headerLeft: () => (
             <Button variant="ghost" onPress={router.back}>
@@ -154,6 +259,65 @@ export default function NewItemScreen() {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
+        {/* Queued Products Section */}
+        {queuedProducts.length > 0 && (
+          <View style={styles.queuedSection}>
+            <View style={styles.queuedHeader}>
+              <ThemedText type="defaultSemiBold" style={styles.queuedTitle}>
+                Products to Add ({queuedProducts.length})
+              </ThemedText>
+              <ThemedText style={styles.queuedSubtitle}>
+                These will be added to your list
+              </ThemedText>
+            </View>
+            <View style={styles.queuedProductsContainer}>
+              {queuedProducts.map((product, index) => (
+                <View key={index} style={styles.queuedProductCard}>
+                  <View style={styles.queuedProductContent}>
+                    <View style={styles.queuedProductMain}>
+                      <ThemedText type="defaultSemiBold" style={styles.queuedProductName}>
+                        {product.name}
+                      </ThemedText>
+                      <View style={styles.queuedProductDetails}>
+                        <ThemedText style={styles.queuedProductDetail}>
+                          {product.quantity} {product.units}
+                        </ThemedText>
+                        {product.store && (
+                          <>
+                            <ThemedText style={styles.queuedProductSeparator}>•</ThemedText>
+                            <ThemedText style={styles.queuedProductDetail}>
+                              {product.store}
+                            </ThemedText>
+                          </>
+                        )}
+                        {product.price && (
+                          <>
+                            <ThemedText style={styles.queuedProductSeparator}>•</ThemedText>
+                            <ThemedText style={styles.queuedProductPrice}>
+                              ₱{(product.price * product.quantity).toFixed(2)}
+                            </ThemedText>
+                          </>
+                        )}
+                      </View>
+                      {product.notes && (
+                        <ThemedText style={styles.queuedProductNotes} numberOfLines={1}>
+                          📝 {product.notes}
+                        </ThemedText>
+                      )}
+                    </View>
+                    <Pressable
+                      onPress={() => handleRemoveFromQueue(index)}
+                      style={styles.queuedProductRemove}
+                    >
+                      <IconSymbol name="xmark.circle.fill" color="#FF3B30" size={24} />
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Product Name Input with Suggestions */}
         <View style={styles.nameSection}>
           <View style={styles.nameInputContainer}>
@@ -367,15 +531,32 @@ export default function NewItemScreen() {
           onChangeText={setNotes}
         />
 
-        {/* Android Add Button */}
+        {/* Android Add Buttons */}
         {Platform.OS !== "ios" && (
-          <Button
-            onPress={handleCreateProduct}
-            disabled={!name.trim()}
-            style={styles.addButton}
-          >
-            Add to List
-          </Button>
+          <View style={styles.buttonContainer}>
+            {name.trim() && (
+              <Button
+                onPress={handleAddAnother}
+                disabled={addingAnother}
+                variant="ghost"
+                style={styles.addAnotherButton}
+              >
+                + Add another
+              </Button>
+            )}
+            <Button
+              onPress={handleCreateProduct}
+              disabled={(!name.trim() && queuedProducts.length === 0) || addingAnother}
+              style={styles.addButton}
+            >
+              {addingAnother 
+                ? "Adding..." 
+                : queuedProducts.length > 0 
+                  ? `Add All to List (${queuedProducts.length + (name.trim() ? 1 : 0)})` 
+                  : "Add to List"
+              }
+            </Button>
+          </View>
         )}
       </BodyScrollView>
     </>
@@ -440,7 +621,6 @@ function StoreSelectionItem({
   price: ProductPrice;
   onSelect: (price: ProductPrice) => void;
   isSelected: boolean;
-  styles: ReturnType<typeof createStyles>;
 }) {
   if (!price || typeof price.price !== 'number') {
     console.warn('⚠️ Invalid price data:', price);
@@ -499,6 +679,76 @@ function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
     container: {
       padding: 16
+    },
+    queuedSection: {
+      marginBottom: 24,
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.borderColor,
+      padding: 16,
+    },
+    queuedHeader: {
+      marginBottom: 12,
+    },
+    queuedTitle: {
+      fontSize: 16,
+      marginBottom: 4,
+    },
+    queuedSubtitle: {
+      fontSize: 12,
+      color: '#666',
+    },
+    queuedProductsContainer: {
+      gap: 8,
+    },
+    queuedProductCard: {
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#E5E5EA',
+      padding: 12,
+    },
+    queuedProductContent: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+    },
+    queuedProductMain: {
+      flex: 1,
+      marginRight: 8,
+    },
+    queuedProductName: {
+      fontSize: 15,
+      marginBottom: 4,
+    },
+    queuedProductDetails: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 4,
+    },
+    queuedProductDetail: {
+      fontSize: 13,
+      color: '#666',
+    },
+    queuedProductSeparator: {
+      fontSize: 13,
+      color: '#CCC',
+    },
+    queuedProductPrice: {
+      fontSize: 13,
+      color: '#007AFF',
+      fontWeight: '600',
+    },
+    queuedProductNotes: {
+      fontSize: 12,
+      color: '#999',
+      marginTop: 4,
+      fontStyle: 'italic',
+    },
+    queuedProductRemove: {
+      padding: 4,
     },
     nameSection: {
       marginBottom: 24
@@ -743,7 +993,27 @@ function createStyles(colors: typeof Colors.light) {
 
     },
     addButton: {
-      marginTop: 24
+      marginTop: 24,
+    },
+    addAnotherButton: {
+      marginTop: 0,
+      backgroundColor: '#34C759',
+    },
+    buttonContainer: {
+      marginTop: 24,
+      gap: 12,
+    },
+    headerButtons: {
+      flexDirection: 'row',
+      gap: 8,
+      alignItems: 'center',
+    },
+    headerButton: {
+      paddingHorizontal: 8,
+    },
+    headerButtonPrimary: {
+      paddingHorizontal: 8,
+      fontWeight: '600',
     },
   });
 }

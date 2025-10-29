@@ -190,11 +190,11 @@ router.delete('/:notificationId', async (req, res) => {
   }
 });
 
-// Schedule shopping reminder - FIXED VERSION (Don't create notification yet)
+// Schedule shopping reminder - Only creates schedule, notifications handled by cron
 router.post('/:userId/schedule-reminder', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { listId, scheduledDate } = req.body;
+    const { listId, listName, emoji, scheduledDate } = req.body;
 
     // ✅ Delete any existing schedules for this list
     await ShoppingSchedule.deleteMany({
@@ -204,12 +204,13 @@ router.post('/:userId/schedule-reminder', async (req, res) => {
     
     console.log(`🗑️ Deleted old schedule(s) for list ${listId}`);
 
-    // ✅ Create a SCHEDULE record (not a notification yet!)
+    // ✅ Create a SCHEDULE record (for tracking the actual day)
     const schedule = new ShoppingSchedule({
       userId,
       listId,
       scheduledDate: new Date(scheduledDate),
       reminderSent: false,
+      approachingReminderSent: false, // Track 1-day-before reminder
       createdAt: new Date()
     });
 
@@ -220,11 +221,20 @@ router.post('/:userId/schedule-reminder', async (req, res) => {
       listId,
       scheduledDate: schedule.scheduledDate,
       reminderSent: schedule.reminderSent,
+      approachingReminderSent: schedule.approachingReminderSent,
       _id: schedule._id
     });
 
-    // Return success (notification will be created later by cron job)
-    res.json({ success: true, schedule });
+    // No immediate notification - cron will handle it based on timing
+    // Cron will send:
+    // 1. "Shopping Tomorrow" notification 1 day before
+    // 2. "Shopping Day" notification on the scheduled day
+
+    res.json({ 
+      success: true, 
+      schedule,
+      message: 'Shopping reminder scheduled successfully'
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('❌ Error creating schedule:', errorMessage);

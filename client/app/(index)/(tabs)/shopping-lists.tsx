@@ -8,7 +8,8 @@ import {
   useShoppingListIds,
   useShoppingListsValues,
   useShoppingListData,
-  useDelShoppingListCallback
+  useDelShoppingListCallback,
+  useDelAllShoppingListsCallback
 } from "@/stores/ShoppingListsStore";
 import { useShoppingListProductIds } from "@/stores/ShoppingListStore";
 import { Stack, useRouter } from "expo-router";
@@ -218,6 +219,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const shoppingListIds = useShoppingListIds();
   const shoppingListsValues = useShoppingListsValues();
+  const deleteAllLists = useDelAllShoppingListsCallback();
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
@@ -259,6 +261,44 @@ export default function HomeScreen() {
       historyLists: history
     };
   }, [shoppingListIds, shoppingListsValues]);
+
+  // Handle delete all for current tab
+  const handleDeleteAll = () => {
+    const currentLists = activeTab === 'active' ? regularLists : 
+                         activeTab === 'ongoing' ? ongoingLists : 
+                         historyLists;
+    
+    if (currentLists.length === 0) return;
+
+    const tabName = activeTab === 'active' ? 'Active' : 
+                    activeTab === 'ongoing' ? 'Ongoing' : 
+                    'Purchase History';
+
+    Alert.alert(
+      `Delete All ${tabName} Lists`,
+      `Are you sure you want to delete all ${currentLists.length} ${tabName.toLowerCase()} list${currentLists.length !== 1 ? 's' : ''}? This action cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: () => {
+            if (process.env.EXPO_OS === "ios") {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            // Use the deleteAllLists callback if available
+            // Otherwise this requires each list to be deleted individually
+            // The store should implement batch delete functionality
+            deleteAllLists(currentLists);
+            console.log(`🗑️ Deleted all ${currentLists.length} lists from ${tabName}`);
+          },
+        },
+      ]
+    );
+  };
 
   // Filter lists based on filter option
   const filterLists = (lists: string[]) => {
@@ -606,6 +646,25 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* Delete All Button */}
+        {((activeTab === 'active' && regularLists.length > 0) ||
+          (activeTab === 'ongoing' && ongoingLists.length > 0) ||
+          (activeTab === 'history' && historyLists.length > 0)) && (
+          <View style={styles.deleteAllContainer}>
+            <Pressable
+              style={styles.deleteAllButton}
+              onPress={handleDeleteAll}
+            >
+              <IconSymbol name="trash" size={18} color="#FF3B30" />
+              <ThemedText style={styles.deleteAllButtonText}>
+                Delete All ({activeTab === 'active' ? regularLists.length : 
+                            activeTab === 'ongoing' ? ongoingLists.length : 
+                            historyLists.length})
+              </ThemedText>
+            </Pressable>
+          </View>
+        )}
+
         {/* Content */}
         {currentTabData.length === 0 ? (
           renderEmptyList()
@@ -907,6 +966,30 @@ function createStyles(colors: typeof Colors.light) {
     optionLabel: {
       fontSize: 16,
       flex: 1,
+    },
+    // Delete All Button styles
+    deleteAllContainer: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: '#E5E5EA',
+    },
+    deleteAllButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#FF3B30',
+    },
+    deleteAllButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#FF3B30',
     },
   });
 }

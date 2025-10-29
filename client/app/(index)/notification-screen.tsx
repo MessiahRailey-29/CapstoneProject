@@ -13,6 +13,125 @@ import { Stack, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useUser } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useShoppingListData } from '@/stores/ShoppingListsStore';
+
+// Component to display notification with shopping list details
+function NotificationItem({ 
+  notification, 
+  onPress, 
+  onDelete 
+}: { 
+  notification: any; 
+  onPress: () => void; 
+  onDelete: () => void;
+}) {
+  const listId = notification.data?.listId;
+  const listData = useShoppingListData(listId || '');
+  
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'shopping_reminder':
+        return '🛒';
+      case 'low_stock':
+        return '📦';
+      case 'duplicate_warning':
+        return '⚠️';
+      case 'price_drop':
+        return '💰';
+      case 'shared_list_update':
+        return '👥';
+      default:
+        return '🔔';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const formatScheduledDate = (dateString: string | null) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  // For shopping reminders, enhance the display with list details
+  const isShoppingReminder = notification.type === 'shopping_reminder';
+  const hasListData = listData && listData.name;
+
+  return (
+    <TouchableOpacity
+      style={[styles.notificationCard, !notification.isRead && styles.unreadCard]}
+      onPress={onPress}
+    >
+      <View style={styles.notificationContent}>
+        <View style={styles.notificationHeader}>
+          {/* Show list emoji if available, otherwise notification icon */}
+          <ThemedText style={styles.notificationIcon}>
+            {isShoppingReminder && hasListData ? listData.emoji : getNotificationIcon(notification.type)}
+          </ThemedText>
+          
+          <View style={styles.notificationTextContainer}>
+            {/* Show list name if available */}
+            {isShoppingReminder && hasListData && (
+              <ThemedText style={styles.listName}>
+                {listData.name}
+              </ThemedText>
+            )}
+            
+            <ThemedText style={styles.notificationTitle}>
+              {notification.title}
+            </ThemedText>
+            
+            <ThemedText style={styles.notificationMessage}>
+              {notification.message}
+            </ThemedText>
+            
+            {/* Show scheduled date if available */}
+            {isShoppingReminder && listData?.shoppingDate && (
+              <View style={styles.dateContainer}>
+                <ThemedText style={styles.scheduledDate}>
+                  📅 {formatScheduledDate(listData.shoppingDate)}
+                </ThemedText>
+              </View>
+            )}
+            
+            <ThemedText style={styles.notificationTime}>
+              {formatDate(notification.createdAt)}
+            </ThemedText>
+          </View>
+          
+          {!notification.isRead && <View style={styles.unreadDot} />}
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+      >
+        <ThemedText style={styles.deleteButtonText}>×</ThemedText>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+}
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -63,38 +182,6 @@ const handleNotificationPress = async (notificationId: string, data: any) => {
     );
   };
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'shopping_reminder':
-        return '🛒';
-      case 'low_stock':
-        return '📦';
-      case 'duplicate_warning':
-        return '⚠️';
-      case 'price_drop':
-        return '💰';
-      case 'shared_list_update':
-        return '👥';
-      default:
-        return '🔔';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
   return (
     <>
       <Stack.Screen
@@ -136,41 +223,12 @@ const handleNotificationPress = async (notificationId: string, data: any) => {
             </View>
           ) : (
             notifications.map((notification) => (
-              <TouchableOpacity
+              <NotificationItem
                 key={notification._id}
-                style={[styles.notificationCard, !notification.isRead && styles.unreadCard]}
+                notification={notification}
                 onPress={() => handleNotificationPress(notification._id, notification.data)}
-              >
-                <View style={styles.notificationContent}>
-                  <View style={styles.notificationHeader}>
-                    <ThemedText style={styles.notificationIcon}>
-                      {getNotificationIcon(notification.type)}
-                    </ThemedText>
-                    <View style={styles.notificationTextContainer}>
-                      <ThemedText style={styles.notificationTitle}>
-                        {notification.title}
-                      </ThemedText>
-                      <ThemedText style={styles.notificationMessage}>
-                        {notification.message}
-                      </ThemedText>
-                      <ThemedText style={styles.notificationTime}>
-                        {formatDate(notification.createdAt)}
-                      </ThemedText>
-                    </View>
-                    {!notification.isRead && <View style={styles.unreadDot} />}
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    deleteNotification(notification._id);
-                  }}
-                >
-                  <ThemedText style={styles.deleteButtonText}>×</ThemedText>
-                </TouchableOpacity>
-              </TouchableOpacity>
+                onDelete={() => deleteNotification(notification._id)}
+              />
             ))
           )}
         </ScrollView>
@@ -244,6 +302,12 @@ const styles = StyleSheet.create({
   notificationTextContainer: {
     flex: 1,
   },
+  listName: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+    color: '#000',
+  },
   notificationTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -258,6 +322,15 @@ const styles = StyleSheet.create({
   notificationTime: {
     fontSize: 12,
     color: '#999',
+  },
+  dateContainer: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  scheduledDate: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#007AFF',
   },
   unreadDot: {
     width: 8,
