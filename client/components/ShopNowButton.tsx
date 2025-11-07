@@ -53,46 +53,65 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
     });
   }, [store, productIds]);
 
-  const handleShopNow = () => {
-    if (productIds.length === 0) {
-      Alert.alert("Empty List", "Add some products to your list before shopping!");
-      return;
-    }
 
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+const handleShopNow = () => {
+  if (productIds.length === 0) {
+    Alert.alert("Empty List", "Add some products to your list before shopping!");
+    return;
+  }
 
-    Alert.alert(
-      "Start Shopping",
-      `Ready to shop for ${productIds.length} item(s)?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Start",
-          style: "default",
-          onPress: () => {
-            updateStatusInListStore('ongoing');
+  if (process.env.EXPO_OS === "ios") {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }
+
+  Alert.alert(
+    "Start Shopping",
+    `Ready to shop for ${productIds.length} item(s)?`,
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Start",
+        style: "default",
+        onPress: () => {
+          console.log("🛒 Starting shopping session...");
+          console.log("📦 Products before status change:", productIds.length);
+          
+          // CRITICAL: Verify products exist in store before changing status
+          if (store) {
+            const currentProducts = store.getTable("products");
+            console.log("📦 Products in store:", Object.keys(currentProducts).length);
+            console.log("📦 Product IDs:", Object.keys(currentProducts).join(', '));
+          }
+          
+          // Update status in the individual list store FIRST
+          // This ensures the products are preserved in the sync
+          updateStatusInListStore('ongoing');
+          
+          // Small delay to ensure sync completes
+          setTimeout(() => {
+            // Then update in the parent store
             updateStatusInListsStore(listId, 'ongoing');
-
+            
             if (process.env.EXPO_OS === "ios") {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
 
-            console.log("🛒 Shopping started for list:", listId);
+            console.log("✅ Shopping started for list:", listId);
 
+            // Navigate after both updates
             setTimeout(() => {
               console.log("🛒 Navigating to shopping guide for list:", listId);
               router.push(`/(index)/list/${listId}/shopping-guide`);
             }, 100);
-          },
+          }, 200);
         },
-      ]
-    );
-  };
+      },
+    ]
+  );
+};
 
   const handleViewShoppingGuide = () => {
     if (process.env.EXPO_OS === "ios") {

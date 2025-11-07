@@ -49,7 +49,7 @@ export const useAddShoppingListCallback = () => {
           description,
           emoji,
           color,
-          budget: budget || 0,  // This is set here
+          budget: budget || 0,
           shoppingDate: shoppingDate?.toISOString() || null,
           status: 'regular',
           createdAt: new Date().toISOString(),
@@ -76,9 +76,6 @@ export const useJoinShoppingListCallback = () => {
   const store = useStore(useStoreId());
   return useCallback(
     (listId: string) => {
-      // CRITICAL: Set minimal placeholder WITHOUT budget/status/completedAt
-      // These will be synced from the creator's device
-      // Only set the fields that are required for the UI to render
       store.setRow("lists", listId, {
         id: listId,
         valuesCopy: JSON.stringify({
@@ -95,7 +92,6 @@ export const useJoinShoppingListCallback = () => {
             shoppingDate: null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            // DON'T set budget, status, completedAt - let them sync!
           }
         }),
       });
@@ -121,7 +117,7 @@ export const useValuesCopy = (
   ),
 ];
 
-// NEW: Update shopping list status
+// FIXED: Update shopping list status WITHOUT destroying products
 export const useUpdateShoppingListStatus = () => {
   const storeId = useStoreId();
   const store = useStore(storeId);
@@ -129,20 +125,60 @@ export const useUpdateShoppingListStatus = () => {
   return useCallback(
     (listId: string, newStatus: 'regular' | 'ongoing' | 'completed') => {
       try {
-        // Get current valuesCopy
-        const currentValuesCopy = store.getCell("lists", listId, "valuesCopy") as string;
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔄 UPDATING STATUS in ShoppingListsStore');
+        console.log('📋 List ID:', listId);
+        console.log('📊 New Status:', newStatus);
+        console.log('⏰ Waiting for sync before updating...');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
-        console.log('ðŸ“ Current valuesCopy before update:', currentValuesCopy);
-        
-        if (!currentValuesCopy || currentValuesCopy === '{}') {
-          console.warn('âš ï¸ No valuesCopy found for list:', listId);
-          return;
-        }
-        
-        const data = JSON.parse(currentValuesCopy);
-        
-        // Update the status in the values
-        if (data.values) {
+        // CRITICAL FIX: Wait a bit longer for the ShoppingListStore sync to complete
+        // The individual store needs time to sync its updated state to valuesCopy
+        setTimeout(() => {
+          // Get current valuesCopy AFTER the sync has had time to complete
+          const currentValuesCopy = store.getCell("lists", listId, "valuesCopy") as string;
+          
+          if (!currentValuesCopy || currentValuesCopy === '{}') {
+            console.warn('⚠️ No valuesCopy found for list:', listId);
+            return;
+          }
+          
+          const data = JSON.parse(currentValuesCopy);
+          
+          console.log('📦 Current data structure:', {
+            hasValues: !!data.values,
+            hasTables: !!data.tables,
+            hasProducts: !!data.tables?.products,
+            productsCount: Object.keys(data.tables?.products || {}).length
+          });
+          
+          // CRITICAL: Ensure we preserve the tables structure
+          if (!data.tables) {
+            console.warn('⚠️ No tables in data, initializing empty tables');
+            data.tables = { products: {}, collaborators: {} };
+          }
+          
+          if (!data.tables.products) {
+            console.warn('⚠️ No products table, initializing empty');
+            data.tables.products = {};
+          }
+          
+          // Log products BEFORE update
+          const productIds = Object.keys(data.tables.products);
+          console.log('🔍 Products BEFORE status update:', productIds.length, 'items');
+          if (productIds.length > 0) {
+            console.log('  Products:', productIds.map(id => {
+              const p = data.tables.products[id];
+              return `${p?.name} (${p?.quantity})`;
+            }).join(', '));
+          }
+          
+          // Update the status in the values
+          if (!data.values) {
+            console.warn('⚠️ No values object, creating one');
+            data.values = {};
+          }
+          
           data.values.status = newStatus;
           data.values.updatedAt = new Date().toISOString();
           
@@ -155,33 +191,31 @@ export const useUpdateShoppingListStatus = () => {
           if (newStatus === 'regular') {
             data.values.completedAt = null;
           }
-        } else {
-          // Handle old format - create values object if it doesn't exist
-          if (!data.values) {
-            data.values = {};
-          }
-          data.values.status = newStatus;
-          data.values.updatedAt = new Date().toISOString();
           
-          if (newStatus === 'completed' && !data.values.completedAt) {
-            data.values.completedAt = new Date().toISOString();
+          // Log products AFTER update (should be same!)
+          console.log('🔍 Products AFTER status update:', Object.keys(data.tables.products).length, 'items');
+          
+          // IMPORTANT: Verify products are still there before saving
+          const finalProductCount = Object.keys(data.tables.products).length;
+          if (finalProductCount === 0 && productIds.length > 0) {
+            console.error('🚨 CRITICAL: Products disappeared during status update!');
+            console.error('🚨 This should never happen - aborting update');
+            return;
           }
           
-          if (newStatus === 'regular') {
-            data.values.completedAt = null;
-          }
-        }
-        
-        const updatedValuesCopy = JSON.stringify(data);
-        console.log('ðŸ’¾ Saving updated valuesCopy:', updatedValuesCopy);
-        
-        // Save back to store - this should trigger sync
-        store.setCell("lists", listId, "valuesCopy", updatedValuesCopy);
-        
-        console.log(`âœ… Updated list ${listId} status to: ${newStatus}`);
-        console.log('âœ… Data saved to store, sync should happen automatically');
+          const updatedValuesCopy = JSON.stringify(data);
+          console.log('💾 Saving updated valuesCopy with', finalProductCount, 'products');
+          
+          // Save back to store - this should trigger sync
+          store.setCell("lists", listId, "valuesCopy", updatedValuesCopy);
+          
+          console.log(`✅ Updated list ${listId} status to: ${newStatus}`);
+          console.log('✅ Products preserved:', finalProductCount, 'items');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        }, 600); // Wait 600ms for the sync to complete
       } catch (error) {
-        console.error('âŒ Error updating list status:', error);
+        console.error('❌ Error updating list status:', error);
+        console.error('❌ Stack trace:', error?.stack);
       }
     },
     [store]
@@ -239,13 +273,11 @@ export const useShoppingListData = (listId: string) => {
   const valuesCopy = useCell("lists", listId, "valuesCopy", storeId) as string;
   
   try {
-    console.log('ðŸ“– Reading valuesCopy for', listId, ':', valuesCopy);
-    
     if (!valuesCopy || valuesCopy === '{}') {
       return {
         name: '',
         description: '',
-        emoji: 'ðŸ›’',
+        emoji: '🛒',
         color: '#007AFF',
         shoppingDate: null,
         budget: 0,
@@ -257,24 +289,19 @@ export const useShoppingListData = (listId: string) => {
     }
     
     const data = JSON.parse(valuesCopy);
-    console.log('ðŸ“Š Parsed list data:', data);
     
     // Handle both old format (direct properties) and new format (nested in values)
     let values;
     if (data.values) {
-      // New format with nested structure
       values = data.values;
-      console.log('ðŸ“‹ Using nested values structure:', values);
     } else {
-      // Old format or direct properties
       values = data;
-      console.log('ðŸ“‹ Using direct properties structure:', values);
     }
     
-    const result = {
+    return {
       name: values.name || '',
       description: values.description || '',
-      emoji: values.emoji || 'ðŸ›’',
+      emoji: values.emoji || '🛒',
       color: values.color || '#007AFF',
       shoppingDate: values.shoppingDate || null,
       budget: values.budget || 0,
@@ -283,18 +310,12 @@ export const useShoppingListData = (listId: string) => {
       createdAt: values.createdAt || '',
       updatedAt: values.updatedAt || '',
     };
-    
-    console.log('ðŸŽ¯ Final list data result:', result);
-    console.log('ðŸ’° Budget from useShoppingListData:', result.budget, typeof result.budget);
-    console.log('ðŸ“ Status from useShoppingListData:', result.status);
-    
-    return result;
   } catch (error) {
-    console.log('âŒ Error parsing list data:', error);
+    console.log('❌ Error parsing list data:', error);
     return {
       name: '',
       description: '',
-      emoji: 'ðŸ›’',
+      emoji: '🛒',
       color: '#007AFF',
       shoppingDate: null,
       budget: 0,

@@ -10,8 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.messiahraileycapstone.client",
       "infoPlist": {
-        "NSFaceIDUsageDescription": "We use Face ID to provide secure and convenient sign-in to your account."
+        "NSFaceIDUsageDescription": "We use Face ID to provide secure and convenient sign-in to your account.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       }
     },
     "android": {
@@ -23,8 +27,12 @@
       "package": "com.messiahraileycapstone.client",
       "permissions": [
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
-      ]
+        "USE_FINGERPRINT",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "usesCleartextTraffic": true,
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",

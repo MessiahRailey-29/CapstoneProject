@@ -1,6 +1,7 @@
 // server/src/routes/notificationRoutes.ts
 import express from 'express';
 import { Notification, NotificationSettings, ShoppingSchedule, LowStockTracking } from '../models/notification';
+import { sendPushNotification } from '../services/pushNotificationService';
 
 const router = express.Router();
 
@@ -190,13 +191,13 @@ router.delete('/:notificationId', async (req, res) => {
   }
 });
 
-// Schedule shopping reminder - Only creates schedule, notifications handled by cron
+// Schedule shopping reminder
 router.post('/:userId/schedule-reminder', async (req, res) => {
   try {
     const { userId } = req.params;
     const { listId, listName, emoji, scheduledDate } = req.body;
 
-    // ✅ Delete any existing schedules for this list
+    // Delete any existing schedules for this list
     await ShoppingSchedule.deleteMany({
       userId,
       listId
@@ -204,13 +205,13 @@ router.post('/:userId/schedule-reminder', async (req, res) => {
     
     console.log(`🗑️ Deleted old schedule(s) for list ${listId}`);
 
-    // ✅ Create a SCHEDULE record (for tracking the actual day)
+    // Create a schedule record
     const schedule = new ShoppingSchedule({
       userId,
       listId,
       scheduledDate: new Date(scheduledDate),
       reminderSent: false,
-      approachingReminderSent: false, // Track 1-day-before reminder
+      approachingReminderSent: false,
       createdAt: new Date()
     });
 
@@ -220,15 +221,8 @@ router.post('/:userId/schedule-reminder', async (req, res) => {
       userId,
       listId,
       scheduledDate: schedule.scheduledDate,
-      reminderSent: schedule.reminderSent,
-      approachingReminderSent: schedule.approachingReminderSent,
       _id: schedule._id
     });
-
-    // No immediate notification - cron will handle it based on timing
-    // Cron will send:
-    // 1. "Shopping Tomorrow" notification 1 day before
-    // 2. "Shopping Day" notification on the scheduled day
 
     res.json({ 
       success: true, 
@@ -242,13 +236,12 @@ router.post('/:userId/schedule-reminder', async (req, res) => {
   }
 });
 
-// ✅ Cancel reminder (delete schedule)
+// Cancel reminder
 router.post('/:userId/cancel-reminder', async (req, res) => {
   try {
     const { userId } = req.params;
     const { listId } = req.body;
 
-    // Delete the schedule for this list
     const result = await ShoppingSchedule.deleteMany({
       userId,
       listId
@@ -267,14 +260,12 @@ router.post('/:userId/cancel-reminder', async (req, res) => {
   }
 });
 
-
-// Create duplicate warning
+// Create duplicate warning with push notification
 router.post('/:userId/duplicate-warning', async (req, res) => {
   try {
     const { userId } = req.params;
     const { productName, listId } = req.body;
 
-    // Create expiration date (30 days from now)
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
@@ -292,13 +283,35 @@ router.post('/:userId/duplicate-warning', async (req, res) => {
 
     await notification.save();
     
-    // 🐛 DEBUG LOG
     console.log('✅ Created duplicate warning:', {
       userId,
       productName,
-      isRead: notification.isRead,
       _id: notification._id
     });
+
+    // Send push notification
+    const settings = await NotificationSettings.findOne({ userId });
+    
+    if (settings?.pushToken && settings.enabled && settings.preferences?.duplicateWarnings) {
+      console.log('📱 Sending push notification for duplicate warning...');
+      
+      const sent = await sendPushNotification(settings.pushToken, {
+        title: '⚠️ Duplicate Item',
+        body: `You already have ${productName} in your list`,
+        data: { 
+          notificationId: notification._id.toString(),
+          listId,
+          type: 'duplicate_warning'
+        },
+        priority: 'high',
+      });
+      
+      if (sent) {
+        notification.isSent = true;
+        await notification.save();
+        console.log('✅ Push notification sent');
+      }
+    }
 
     res.json({ success: true, notification });
   } catch (error) {
@@ -314,11 +327,9 @@ router.post('/:userId/track-purchase', async (req, res) => {
     const { userId } = req.params;
     const { productId, productName } = req.body;
 
-    // Find or create tracking record
     let tracking = await LowStockTracking.findOne({ userId, productId });
 
     if (tracking) {
-      // Calculate average purchase interval
       const daysSinceLastPurchase = Math.floor(
         (Date.now() - tracking.lastPurchaseDate.getTime()) / (1000 * 60 * 60 * 24)
       );
@@ -339,7 +350,6 @@ router.post('/:userId/track-purchase', async (req, res) => {
       tracking.updatedAt = new Date();
       await tracking.save();
     } else {
-      // First purchase - create tracking record
       tracking = await LowStockTracking.create({
         userId,
         productId,

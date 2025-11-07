@@ -1,0 +1,74 @@
+// hooks/useResetExpenseData.ts
+import { useCallback } from 'react';
+import { Alert } from 'react-native';
+import * as UiReact from "tinybase/ui-react/with-schemas";
+import { NoValuesSchema } from "tinybase/with-schemas";
+import { useUser } from '@clerk/clerk-expo';
+
+const PURCHASE_HISTORY_STORE_ID_PREFIX = "purchaseHistoryStore-";
+
+// Define the schema to match PurchaseHistoryStore
+const TABLES_SCHEMA = {
+  purchases: {
+    id: { type: "string" },
+    name: { type: "string" },
+    quantity: { type: "number" },
+    units: { type: "string" },
+    category: { type: "string", default: "" },
+    selectedStore: { type: "string", default: "" },
+    selectedPrice: { type: "number", default: 0 },
+    databaseProductId: { type: "number", default: 0 },
+    purchasedFrom: { type: "string" },
+    purchasedAt: { type: "string" },
+    purchasedBy: { type: "string" },
+    notes: { type: "string", default: "" },
+  },
+} as const;
+
+const { useStore } = UiReact as UiReact.WithSchemas<[typeof TABLES_SCHEMA, NoValuesSchema]>;
+
+export const useResetExpenseData = () => {
+  const { user } = useUser();
+  const storeId = PURCHASE_HISTORY_STORE_ID_PREFIX + user?.id;
+  const store = useStore(storeId);
+
+  const resetAllExpenseData = useCallback(() => {
+    Alert.alert(
+      "Reset All Expense Data",
+      "This will permanently delete:\n\n• All purchase history\n• Monthly spending trends\n• Category breakdowns\n• Expense cards data\n\nThis action cannot be undone. Are you sure?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Reset All Data",
+          style: "destructive",
+          onPress: () => {
+            try {
+              // Clear the entire purchases table
+              store?.delTable("purchases");
+              
+              console.log('✅ All expense data has been reset');
+              
+              Alert.alert(
+                "Success",
+                "All expense data has been cleared successfully.",
+                [{ text: "OK" }]
+              );
+            } catch (error) {
+              console.error('❌ Error resetting expense data:', error);
+              Alert.alert(
+                "Error",
+                "Failed to reset expense data. Please try again.",
+                [{ text: "OK" }]
+              );
+            }
+          }
+        }
+      ]
+    );
+  }, [store]);
+
+  return { resetAllExpenseData };
+};

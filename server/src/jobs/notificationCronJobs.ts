@@ -1,27 +1,30 @@
 // server/src/jobs/notificationCronJobs.ts
 import cron from 'node-cron';
 import { Notification, NotificationSettings, ShoppingSchedule, LowStockTracking } from '../models/notification';
-
+import { sendPushNotification } from '../services/pushNotificationService';
 /**
  * Shopping Reminder Cron Job
  * Runs every hour to check for reminders based on user's configured hoursBefore setting
  * Since users only pick dates (not times), we calculate from the start of the scheduled date (00:00)
  */
-export function startShoppingReminderCron() {
-  cron.schedule('0 * * * *', async () => {
-    console.log('🔔 [CRON] Checking for shopping reminders...');
+/**
+ * Main logic for checking and sending shopping reminders
+ * Extracted as a separate function so it can be called manually for testing
+ */
+export async function checkShoppingReminders() {
+  console.log('🔔 [CRON] Checking for shopping reminders...');
+  
+  try {
+    // Use UTC+8 timezone (Philippines)
+    const now = new Date();
+    const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
     
-    try {
-      // Use UTC+8 timezone (Philippines)
-      const now = new Date();
-      const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-      
-      console.log(`📅 [CRON] Current PH Time: ${phTime.toISOString()}`);
-      
-      // Find all pending schedules (not completed, reminder not sent yet)
-      const schedules = await ShoppingSchedule.find({
-        scheduledDate: { $gte: phTime }, // Only future schedules
-        reminderSent: false,
+    console.log(`📅 [CRON] Current PH Time: ${phTime.toISOString()}`);
+    
+    // Find all pending schedules (not completed, reminder not sent yet)
+    const schedules = await ShoppingSchedule.find({
+      scheduledDate: { $gte: phTime }, // Only future schedules
+      reminderSent: false,
         completed: false,
       });
 
@@ -50,20 +53,38 @@ export function startShoppingReminderCron() {
             0, 0, 0, 0 // Start of day: 00:00:00
           );
           
+          // Skip if shopping date has already passed (more than 24 hours ago)
+          const dayAfterShopping = new Date(scheduledDateStart.getTime() + (24 * 60 * 60 * 1000));
+          if (phTime >= dayAfterShopping) {
+            console.log(`⏭️ [CRON] Skipping schedule ${schedule._id} - shopping date has passed`);
+            // Mark as completed if it's old
+            schedule.completed = true;
+            await schedule.save();
+            continue;
+          }
+          
           // Calculate when the reminder should be sent (X hours before start of scheduled date)
           const reminderTime = new Date(scheduledDateStart.getTime() - (hoursBefore * 60 * 60 * 1000));
-          
-          // Calculate the end of the reminder window (1 hour after reminder time, to catch it in this cron run)
-          const reminderWindowEnd = new Date(reminderTime.getTime() + (60 * 60 * 1000));
           
           console.log(`⏰ [CRON] Schedule ${schedule._id}:`);
           console.log(`   - Scheduled date (start of day): ${scheduledDateStart.toISOString()}`);
           console.log(`   - Remind ${hoursBefore}h before at: ${reminderTime.toISOString()}`);
-          console.log(`   - Reminder window: ${reminderTime.toISOString()} to ${reminderWindowEnd.toISOString()}`);
           console.log(`   - Current time: ${phTime.toISOString()}`);
           
-          // Check if current time is within the reminder window
-          if (phTime >= reminderTime && phTime < reminderWindowEnd) {
+          // Check if we've reached or passed the reminder time (but haven't sent yet)
+          const timeSinceReminder = phTime.getTime() - reminderTime.getTime();
+          
+          // SPECIAL CASE: If schedule is for today or tomorrow, and reminder time already passed,
+          // send notification immediately (within 24-hour grace period for recent schedules)
+          const hoursUntilShopping = (scheduledDateStart.getTime() - phTime.getTime()) / (1000 * 60 * 60);
+          const isRecentSchedule = hoursUntilShopping <= 48; // Within 2 days
+          const gracePeriodMs = isRecentSchedule ? 24 * 60 * 60 * 1000 : 2 * 60 * 60 * 1000; // 24h for recent, 2h for others
+          
+          console.log(`   - Hours until shopping: ${hoursUntilShopping.toFixed(1)}`);
+          console.log(`   - Time since reminder: ${(timeSinceReminder / (1000 * 60 * 60)).toFixed(1)} hours`);
+          console.log(`   - Grace period: ${(gracePeriodMs / (1000 * 60 * 60))} hours`);
+          
+          if (timeSinceReminder >= 0 && timeSinceReminder < gracePeriodMs) {
             // Calculate hours until the shopping date (from start of day)
             const hoursUntil = Math.round((scheduledDateStart.getTime() - phTime.getTime()) / (1000 * 60 * 60));
             
@@ -99,16 +120,25 @@ export function startShoppingReminderCron() {
             
             console.log(`✅ [CRON] Sent reminder for schedule ${schedule._id} (${hoursBefore}h before shopping date)`);
             
-            // TODO: Send push notification here if user has push token
-            if (settings.pushToken) {
-              console.log(`📲 [CRON] Would send push notification to: ${settings.pushToken.substring(0, 20)}...`);
-              // await sendPushNotification(settings.pushToken, notification);
+          if (settings.pushToken) {
+              await sendPushNotification(settings.pushToken, {
+                title: '🛒 Shopping Reminder',
+                body: message,
+                data: { 
+                  listId: schedule.listId, 
+                  scheduledDate: schedule.scheduledDate,
+                  type: 'shopping_reminder'
+                },
+                // Remove badge - it will default to undefined
+              });
+              console.log(`📲 [CRON] Push notification sent to token: ${settings.pushToken.substring(0, 20)}...`);
             }
-          } else if (phTime < reminderTime) {
-            const hoursUntilReminder = Math.round((reminderTime.getTime() - phTime.getTime()) / (1000 * 60 * 60));
+          } else if (timeSinceReminder < 0) {
+            const hoursUntilReminder = Math.round(Math.abs(timeSinceReminder) / (1000 * 60 * 60));
             console.log(`⏳ [CRON] Too early - reminder will be sent in ${hoursUntilReminder} hours`);
           } else {
-            console.log(`⏰ [CRON] Missed reminder window - was supposed to send between ${reminderTime.toISOString()} and ${reminderWindowEnd.toISOString()}`);
+            const hoursSinceReminder = Math.round(timeSinceReminder / (1000 * 60 * 60));
+            console.log(`⏰ [CRON] Missed reminder window - was supposed to send at ${reminderTime.toISOString()} (${hoursSinceReminder}h ago)`);
           }
         } catch (error) {
           console.error(`❌ [CRON] Error processing schedule ${schedule._id}:`, error);
@@ -119,9 +149,16 @@ export function startShoppingReminderCron() {
     } catch (error) {
       console.error('❌ [CRON] Error in shopping reminder cron:', error);
     }
-  });
+}
 
-  console.log('🚀 Shopping reminder cron job started (runs every hour)');
+/**
+ * Start the cron job that runs the shopping reminder check
+ */
+export function startShoppingReminderCron() {
+  // Run every 5 minutes for better responsiveness (change to '0 * * * *' for hourly in production)
+  cron.schedule('*/5 * * * *', checkShoppingReminders);
+
+  console.log('🚀 Shopping reminder cron job started (runs every 5 minutes)');
 }
 
 /**

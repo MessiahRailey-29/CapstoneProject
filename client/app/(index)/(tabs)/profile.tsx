@@ -9,6 +9,8 @@ import { useNickname } from '@/hooks/useNickname';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
+import { useResetExpenseData } from '@/hooks/useResetExpenseData';
+import * as Haptics from 'expo-haptics';
 
 const PROFILE_PICTURE_KEY = 'user_profile_picture';
 
@@ -17,6 +19,7 @@ export default function ProfileScreen() {
     const { user } = useUser();
     const router = useRouter();
     const { nickname, updateNickname } = useNickname();
+    const { resetAllExpenseData } = useResetExpenseData();
     const [isEditingNickname, setIsEditingNickname] = React.useState(false);
     const [tempNickname, setTempNickname] = React.useState('');
     const [profilePicture, setProfilePicture] = React.useState<string | null>(null);
@@ -277,6 +280,35 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
             </View>
 
+
+            {/* Data Management Section */}
+            <View style={styles.section}>
+                <ThemedText style={styles.sectionTitle}>Data Management</ThemedText>
+
+                {/* Reset Expense Data */}
+                <TouchableOpacity
+                    style={styles.settingItem}
+                    onPress={() => {
+                        if (process.env.EXPO_OS === "ios") {
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                        }
+                        resetAllExpenseData();
+                    }}
+                >
+                    <View style={[styles.settingIcon, { backgroundColor: '#FFEBEE' }]}>
+                        <ThemedText style={styles.iconText}>🗑️</ThemedText>
+                    </View>
+                    <View style={styles.settingContent}>
+                        <ThemedText style={styles.settingLabel}>
+                            Reset Expense Data
+                        </ThemedText>
+                        <ThemedText style={styles.settingDescription}>
+                            Clear all purchase history and analytics
+                        </ThemedText>
+                    </View>
+                    <ThemedText style={styles.chevron}>›</ThemedText>
+                </TouchableOpacity>
+            </View>
             {/* Account Section */}
             <View style={styles.section}>
                 <ThemedText style={styles.sectionTitle}>Account</ThemedText>

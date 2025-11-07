@@ -3,13 +3,9 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import dotenv from 'dotenv';
-import { connectDB } from './db';
-import routes from './routes';
-import { setupSyncServer } from './syncServer';
-import notificationRoutes from './routes/notificationRoutes';
-import { startAllNotificationCrons } from './jobs/notificationCronJobs';
+import mongoose from 'mongoose';
 
-// Load environment variables
+// Load environment variables FIRST
 dotenv.config();
 
 const app = express();
@@ -20,12 +16,32 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.url}`);
+  next();
+});
+
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     mongodb: !!process.env.MONGODB_URI,
+  });
+});
+
+// DB status check
+app.get('/api/db-status', (req, res) => {
+  res.json({
+    connectionState: mongoose.connection.readyState,
+    states: {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    },
+    currentState: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState]
   });
 });
 
@@ -38,40 +54,63 @@ app.get('/api/notifications/test', (req, res) => {
   });
 });
 
-// API Routes
-app.use('/api', routes);
-app.use('/api/notifications', notificationRoutes);
+// Import routes with ES modules
+console.log('📦 Loading routes...');
 
-// Log registered routes
-console.log('📝 Registered routes:');
-console.log('  - /health');
-console.log('  - /api/*');
-console.log('  - /api/notifications/*');
+// Dynamic imports wrapped in async function
+async function loadRoutes() {
+  try {
+    const { default: routes } = await import('./routes/index.js');
+    app.use('/api', routes);
+    console.log('✅ Main routes loaded');
+  } catch (error) {
+    console.error('❌ Failed to load main routes:', error);
+  }
 
-// Setup WebSocket sync server for TinyBase
-setupSyncServer(httpServer);
+  try {
+    const { default: notificationRoutes } = await import('./routes/notificationRoutes.js');
+    app.use('/api/notifications', notificationRoutes);
+    console.log('✅ Notification routes loaded');
+  } catch (error) {
+    console.error('❌ Failed to load notification routes:', error);
+  }
+
+  try {
+    const { setupSyncServer } = await import('./syncServer.js');
+    setupSyncServer(httpServer);
+    console.log('✅ Sync server loaded');
+  } catch (error) {
+    console.error('❌ Failed to setup sync server:', error);
+  }
+}
 
 // Start server
 async function start() {
   try {
-    // Try to connect to MongoDB (optional)
+    // Load all routes first
+    await loadRoutes();
+
     const mongoUri = process.env.MONGODB_URI;
     if (mongoUri) {
       try {
+        const { connectDB } = await import('./db.js');
         await connectDB(mongoUri);
         console.log('✅ MongoDB features enabled');
         
-        // 🔔 START CRON JOBS AFTER MONGODB CONNECTION
-        startAllNotificationCrons();
-        
+        // Start cron jobs
+        try {
+          const { startAllNotificationCrons } = await import('./jobs/notificationCronJobs.js');
+          startAllNotificationCrons();
+          console.log('✅ Cron jobs started');
+        } catch (error) {
+          console.error('❌ Failed to start cron jobs:', error);
+        }
       } catch (error) {
         console.error('❌ MongoDB connection failed:', error);
-        console.warn('⚠️ MongoDB not available - sync server will still work');
-        console.warn('⚠️ Notification features will NOT work without MongoDB!');
+        console.warn('⚠️ Running without MongoDB features');
       }
     } else {
       console.log('ℹ️ No MONGODB_URI set - running in sync-only mode');
-      console.warn('⚠️ Notification features require MongoDB!');
     }
     
     // Start HTTP server on all interfaces
@@ -79,10 +118,12 @@ async function start() {
     httpServer.listen(port, '0.0.0.0', () => {
       console.log('');
       console.log('🚀 Server running on port', port);
-      console.log('📡 Health: http://localhost:' + port + '/health');
-      console.log('📡 Network: http://192.168.254.109:' + port + '/health');
-      console.log('🔔 Notifications: http://localhost:' + port + '/api/notifications');
-      console.log('🔄 Sync: ws://192.168.254.109:' + port + '/sync/');
+      console.log('📡 Health: http://192.168.254.104:' + port + '/health');
+      console.log('📡 DB Status: http://192.168.254.104:' + port + '/api/db-status');
+      console.log('📡 Test: http://192.168.254.104:' + port + '/api/notifications/test');
+      console.log('🔔 Notifications: http://192.168.254.104:' + port + '/api/notifications');
+      console.log('📦 Products: http://192.168.254.104:' + port + '/api/products');
+      console.log('🔄 Sync: ws://192.168.254.104:' + port + '/sync/');
       console.log('');
     });
   } catch (error) {

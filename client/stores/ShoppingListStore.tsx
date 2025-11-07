@@ -182,6 +182,8 @@ export const useShoppingListValue = <ValueId extends ShoppingListValueId>(
   ),
 ];
 
+// Update the useUpdateListStatus function in ShoppingListStore.tsx
+
 export const useUpdateListStatus = (listId: string) => {
   const storeId = useStoreId(listId);
   const store = useStore(storeId);
@@ -194,19 +196,44 @@ export const useUpdateListStatus = (listId: string) => {
     
     console.log('📝 Updating status in ShoppingListStore:', listId, 'to:', newStatus);
     
+    // CRITICAL: Check if we have products BEFORE updating status
+    const currentProducts = store.getTable('products');
+    const productCount = Object.keys(currentProducts).length;
+    
+    console.log('📦 Current products count BEFORE status change:', productCount);
+    
+    if (productCount === 0) {
+      console.error('🚨 WARNING: No products found before status update!');
+      console.error('🚨 This might indicate products were already lost');
+    }
+    
     try {
-      store.setValue('status', newStatus);
-      store.setValue('updatedAt', new Date().toISOString());
-      
-      if (newStatus === 'completed') {
-        const currentCompletedAt = store.getValue('completedAt');
-        if (!currentCompletedAt) {
-          store.setValue('completedAt', new Date().toISOString());
+      // Update status without triggering unnecessary syncs
+      store.transaction(() => {
+        store.setValue('status', newStatus);
+        store.setValue('updatedAt', new Date().toISOString());
+        
+        if (newStatus === 'completed') {
+          const currentCompletedAt = store.getValue('completedAt');
+          if (!currentCompletedAt) {
+            store.setValue('completedAt', new Date().toISOString());
+          }
         }
-      }
+        
+        if (newStatus === 'regular') {
+          store.setValue('completedAt', '');
+        }
+      });
       
-      if (newStatus === 'regular') {
-        store.setValue('completedAt', '');
+      // Verify products are still there AFTER update
+      const productsAfter = store.getTable('products');
+      const productCountAfter = Object.keys(productsAfter).length;
+      
+      console.log('📦 Products count AFTER status change:', productCountAfter);
+      
+      if (productCountAfter !== productCount) {
+        console.error('🚨 CRITICAL: Products count changed during status update!');
+        console.error('🚨 Before:', productCount, 'After:', productCountAfter);
       }
       
       console.log('✅ Status updated in ShoppingListStore, sync should trigger');
@@ -215,7 +242,6 @@ export const useUpdateListStatus = (listId: string) => {
     }
   }, [store, listId]);
 };
-
 export const useShoppingListProductIds = (
   listId: string,
   cellId: ShoppingListProductCellId = "createdAt",

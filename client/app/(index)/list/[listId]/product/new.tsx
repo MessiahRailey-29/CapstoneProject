@@ -26,7 +26,6 @@ export default function NewItemScreen() {
 
   const { listId } = useLocalSearchParams() as { listId: string };
   const [name, setName] = useState("");
-  const [units, setUnits] = useState("kg");
   const [notes, setNotes] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -37,7 +36,6 @@ export default function NewItemScreen() {
   const [queuedProducts, setQueuedProducts] = useState<Array<{
     name: string;
     quantity: number;
-    units: string;
     notes: string;
     store?: string;
     price?: number;
@@ -75,7 +73,6 @@ export default function NewItemScreen() {
     const newProduct = {
       name: name.trim(),
       quantity,
-      units,
       notes,
       store: selectedStoreInfo?.store,
       price: selectedStoreInfo?.price,
@@ -95,13 +92,12 @@ export default function NewItemScreen() {
     // Reset form fields
     setName("");
     setQuantity(1);
-    setUnits("kg");
     setNotes("");
     setSelectedProduct(null);
     setSelectedStoreInfo(null);
     setShowStoreSelection(false);
     setShowSuggestions(false);
-  }, [name, quantity, units, notes, selectedStoreInfo, selectedProduct]);
+  }, [name, quantity, notes, selectedStoreInfo, selectedProduct]);
 
   const handleRemoveFromQueue = useCallback((index: number) => {
     setQueuedProducts(prev => prev.filter((_, i) => i !== index));
@@ -118,7 +114,6 @@ export default function NewItemScreen() {
       productsToAdd.push({
         name: name.trim(),
         quantity,
-        units,
         notes,
         store: selectedStoreInfo?.store,
         price: selectedStoreInfo?.price,
@@ -135,12 +130,12 @@ export default function NewItemScreen() {
       const productId = await addShoppingListProduct(
         product.name,
         product.quantity,
-        product.units,
-        product.notes,
-        product.store,
-        product.price,
-        product.databaseProductId,
-        product.category
+        "", // units - empty string since we removed this field
+        product.notes || "",
+        product.store || "",
+        product.price || 0,
+        product.databaseProductId || 0,
+        product.category || ""
       );
 
       if (productId === null) {
@@ -173,7 +168,7 @@ export default function NewItemScreen() {
 
     setAddingAnother(false);
     router.back();
-  }, [name, quantity, units, notes, selectedStoreInfo, selectedProduct, queuedProducts, addShoppingListProduct, router]);
+  }, [name, quantity, notes, selectedStoreInfo, selectedProduct, queuedProducts, addShoppingListProduct, router]);
 
   const handleProductSelect = useCallback((product: DatabaseProduct) => {
     setName(product.name);
@@ -181,11 +176,6 @@ export default function NewItemScreen() {
     setShowSuggestions(false);
     setShowStoreSelection(true);
     Keyboard.dismiss();
-
-    const categoryUnits = getCategoryUnits(product.category);
-    if (categoryUnits) {
-      setUnits(categoryUnits);
-    }
   }, []);
 
   const handleStoreSelect = useCallback((price: ProductPrice) => {
@@ -280,7 +270,7 @@ export default function NewItemScreen() {
                       </ThemedText>
                       <View style={styles.queuedProductDetails}>
                         <ThemedText style={styles.queuedProductDetail}>
-                          {product.quantity} {product.units}
+                          Qty: {product.quantity}
                         </ThemedText>
                         {product.store && (
                           <>
@@ -443,39 +433,6 @@ export default function NewItemScreen() {
           )}
         </View>
 
-        {/* Units Input */}
-        <View style={styles.inputRow}>
-          <TextInput
-            label="Units"
-            placeholder="kg"
-            value={units}
-            onChangeText={setUnits}
-            containerStyle={styles.unitsInput}
-          />
-          <View style={styles.commonUnitsContainer}>
-            {COMMON_UNITS.map((unit) => (
-              <Pressable
-                key={unit}
-                style={[
-                  styles.unitChip,
-                  units === unit && styles.unitChipSelected
-                ]}
-                onPress={() => setUnits(unit)}
-              >
-                <ThemedText
-                  type="default"
-                  style={[
-                    styles.unitChipText,
-                    units === unit && styles.unitChipTextSelected
-                  ]}
-                >
-                  {unit}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
         {/* Quantity Controls */}
         <View style={styles.quantitySection}>
           <ThemedText type="defaultSemiBold" style={styles.quantityLabel}>
@@ -485,9 +442,6 @@ export default function NewItemScreen() {
             <View style={styles.quantityDisplay}>
               <ThemedText type="title" style={styles.quantityText}>
                 {quantity}
-              </ThemedText>
-              <ThemedText type="default" style={styles.quantityUnits}>
-                {units}
               </ThemedText>
               {selectedStoreInfo && (
                 <ThemedText type="default" style={styles.totalPriceText}>
@@ -654,26 +608,6 @@ function StoreSelectionItem({
     </Pressable>
   );
 }
-
-function getCategoryUnits(category: string): string | null {
-  const categoryMap: { [key: string]: string } = {
-    'Beverages': 'L',
-    'Dairy': 'g',
-    'Instant Noodles': 'pcs',
-    'Canned Goods': 'pcs',
-    'Coffee': 'g',
-    'Meat': 'kg',
-    'Vegetables': 'kg',
-    'Fruits': 'kg',
-    'Bread': 'pcs',
-    'Snacks': 'g',
-    'Household': 'pcs',
-  };
-
-  return categoryMap[category] || null;
-}
-
-const COMMON_UNITS = ['pcs', 'kg', 'g', 'L', 'mL', 'pack'];
 
 function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
@@ -909,34 +843,6 @@ function createStyles(colors: typeof Colors.light) {
     inputRow: {
       marginBottom: 24
     },
-    unitsInput: {
-      marginBottom: 12
-    },
-    commonUnitsContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8
-    },
-    unitChip: {
-      backgroundColor: '#f0f0f0',
-      borderRadius: 16,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderWidth: 1,
-      borderColor: '#e0e0e0'
-    },
-    unitChipSelected: {
-      backgroundColor: '#007AFF',
-      borderColor: '#007AFF'
-    },
-    unitChipText: {
-      fontSize: 12,
-      color: '#666'
-    },
-    unitChipTextSelected: {
-      color: 'white',
-      fontWeight: '600'
-    },
     quantitySection: {
       marginBottom: 24
     },
@@ -959,11 +865,6 @@ function createStyles(colors: typeof Colors.light) {
     quantityText: {
       fontSize: 24,
       fontWeight: 'bold'
-    },
-    quantityUnits: {
-      fontSize: 14,
-      color: '#666',
-      marginTop: 2
     },
     totalPriceText: {
       fontSize: 12,
