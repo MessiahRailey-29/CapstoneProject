@@ -4,42 +4,46 @@ import { StyleSheet, View, ScrollView, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { CategoryExpense } from '@/hooks/useExpenseAnalytics';
 import { Colors } from '@/constants/Colors'
+import { LinearGradient } from 'expo-linear-gradient';
 interface CategoryChartProps {
   categories: CategoryExpense[];
 }
 
 export function CategoryChart({ categories }: CategoryChartProps) {
-  if (categories.length === 0) {
-      // Color scheme and styles
-      const theme = useColorScheme();
-      const colors = Colors[theme ?? 'light'];
-      const styles = createStyles(colors);
 
+  // Color scheme and styles
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
+  if (categories.length === 0) {
     return (
-      <View style={styles.container}>
+      <LinearGradient
+      colors={['#a855f7', '#c084fc', '#a855f7', '#7e22ce']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.container}
+    >
         <ThemedText style={styles.title}>Spending by Category</ThemedText>
         <View style={styles.emptyState}>
           <ThemedText style={styles.emptyText}>
             No expenses yet. Start shopping to see your category breakdown!
           </ThemedText>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
-
   const maxAmount = Math.max(...categories.map(c => c.total));
-  // Color scheme and styles
-      const theme = useColorScheme();
-      const colors = Colors[theme ?? 'light'];
-      const styles = createStyles(colors);
-
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={['#a855f7', '#c084fc', '#a855f7', '#7e22ce']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.container}
+    >
       <ThemedText style={styles.title}>Spending by Category</ThemedText>
-      
       {/* Legend */}
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.legendContainer}
       >
@@ -53,136 +57,144 @@ export function CategoryChart({ categories }: CategoryChartProps) {
 
       {/* Bar Chart */}
       <View style={styles.chartContainer}>
-        {categories.map((category, index) => {
-          const barWidth = (category.total / maxAmount) * 100;
-          
-          return (
-            <View key={index} style={styles.barRow}>
-              <View style={styles.barLabelContainer}>
-                <ThemedText style={styles.barLabel} numberOfLines={1}>
-                  {category.category}
-                </ThemedText>
-                <ThemedText style={styles.barCount}>
-                  {category.itemCount} {category.itemCount === 1 ? 'item' : 'items'}
-                </ThemedText>
-              </View>
-              
-              <View style={styles.barContainer}>
-                <View 
-                  style={[
-                    styles.bar, 
-                    { 
-                      width: `${barWidth}%`,
-                      backgroundColor: category.color 
-                    }
-                  ]}
-                >
-                  <ThemedText style={styles.barValue}>
-                    ₱{category.total.toFixed(0)}
+        <LinearGradient
+          colors={['rgba(17, 26, 46,0.25)', 'rgba(199,237,204,0.3)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.chartCardContainer}
+        >
+          {categories.map((category, index) => {
+            const barWidth = (category.total / maxAmount) * 100;
+            return (
+              <View key={index} style={styles.barRow}>
+                <View style={styles.barLabelContainer}>
+                  <ThemedText style={styles.barLabel} numberOfLines={1}>
+                    {category.category}
+                  </ThemedText>
+                  <ThemedText style={styles.barCount}>
+                    {category.itemCount} {category.itemCount === 1 ? 'item' : 'items'}
                   </ThemedText>
                 </View>
-              </View>
 
-              <ThemedText style={styles.percentage}>
-                {category.percentage.toFixed(1)}%
-              </ThemedText>
-            </View>
-          );
-        })}
+                <View style={styles.barContainer}>
+                  <View
+                    style={[
+                      styles.bar,
+                      {
+                        width: `${barWidth}%`,
+                        backgroundColor: category.color
+                      }
+                    ]}
+                  >
+                    <ThemedText style={styles.barValue}>
+                      ₱{category.total.toFixed(0)}
+                    </ThemedText>
+                  </View>
+                </View>
+
+                <ThemedText style={styles.percentage}>
+                  {category.percentage.toFixed(1)}%
+                </ThemedText>
+              </View>
+            );
+          })}
+        </LinearGradient>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
-  container: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 16,
-    borderColor: colors.borderColor,
-    borderWidth: 1,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  emptyState: {
-    paddingVertical: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: colors.text,
-    textAlign: 'center',
-  },
-  legendContainer: {
-    marginBottom: 16,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
-    marginRight: 6,
-  },
-  legendText: {
-    fontSize: 12,
-    color: colors.text,
-  },
-  chartContainer: {
-    gap: 12,
-  },
-  barRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  barLabelContainer: {
-    width: 80,
-  },
-  barLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  barCount: {
-    fontSize: 10,
-    color: colors.text,
-  },
-  barContainer: {
-    flex: 1,
-    height: 32,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  bar: {
-    height: '100%',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-    minWidth: 40,
-  },
-  barValue: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  percentage: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
-    width: 50,
-    textAlign: 'right',
-  },
-});
+    container: {
+      borderRadius: 16,
+      padding: 20,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 15,
+    },
+    title: {
+      fontSize: 18,
+      color: '#fff',
+      fontWeight: '700',
+      marginBottom: 16,
+    },
+    emptyState: {
+      paddingVertical: 40,
+      alignItems: 'center',
+    },
+    emptyText: {
+      color: '#fff',
+      textAlign: 'center',
+    },
+    legendContainer: {
+      marginBottom: 16,
+    },
+    legendItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 16,
+    },
+    legendColor: {
+      width: 12,
+      height: 12,
+      borderRadius: 2,
+      marginRight: 6,
+    },
+    legendText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    chartContainer: {
+      gap: 12,
+    },
+    chartCardContainer: {
+      borderRadius: 12,
+      padding: 10,
+    },
+    barRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    barLabelContainer: {
+      width: 80,
+    },
+    barLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    barCount: {
+      fontSize: 10,
+      color: colors.textSecondary,
+    },
+    barContainer: {
+      flex: 1,
+      height: 32,
+      backgroundColor: '#f0f0f0',
+      borderRadius: 6,
+      overflow: 'hidden',
+    },
+    bar: {
+      height: '100%',
+      justifyContent: 'center',
+      paddingHorizontal: 8,
+      minWidth: 40,
+    },
+    barValue: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    percentage: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      width: 50,
+      textAlign: 'right',
+    },
+  });
 }

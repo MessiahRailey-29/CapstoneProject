@@ -48,6 +48,8 @@ export function NotificationBell({ style }: NotificationBellProps) {
 const styles = StyleSheet.create({
   container: {
     padding: 8,
+    marginTop: 5,
+    marginRight: 12
   },
   iconContainer: {
     width: 28,
@@ -62,7 +64,7 @@ const styles = StyleSheet.create({
   bellTop: {
     width: 4,
     height: 4,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
     borderRadius: 2,
     position: 'absolute',
     top: 0,
@@ -73,7 +75,7 @@ const styles = StyleSheet.create({
     height: 18,
     backgroundColor: 'transparent',
     borderWidth: 2.5,
-    borderColor: '#007AFF',
+    borderColor: '#000',
     borderRadius: 10,
     borderTopLeftRadius: 2,
     borderTopRightRadius: 2,
@@ -84,7 +86,7 @@ const styles = StyleSheet.create({
   bellClapper: {
     width: 6,
     height: 3,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
     borderRadius: 3,
     position: 'absolute',
     bottom: 0,

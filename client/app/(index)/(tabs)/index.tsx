@@ -247,6 +247,7 @@ function createStyles(colors: typeof Colors.light) {
     container: {
       flex: 1,
       gap: 12,
+      backgroundColor: colors.mainBackground,
     },
     scrollContent: {
       padding: 16,
@@ -277,15 +278,13 @@ function createStyles(colors: typeof Colors.light) {
     },
     actionsCard: {
       backgroundColor: colors.background,
-      borderColor: colors.borderColor,
-      borderWidth: 1,
       borderRadius: 12,
       padding: 16,
       shadowColor: colors.shadowColor,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.2,
+      shadowRadius: 20,
+      elevation: 10,
     },
     actionsTitle: {
       fontSize: 18,

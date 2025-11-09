@@ -378,7 +378,8 @@ export default function SignInScreen() {
 
 const styles = StyleSheet.create({
     header: {
-        marginBottom: 32,
+        marginBottom: 24,
+        paddingTop: 50,
         alignItems: 'center',
     },
     welcomeText: {
@@ -414,7 +415,7 @@ const styles = StyleSheet.create({
         borderColor: '#3B82F6',
         borderRadius: 12,
         padding: 16,
-        marginBottom: 16,
+        marginBottom: 8,
     },
     biometricButtonText: {
         fontSize: 16,
@@ -472,7 +473,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     linkContainer: {
-        marginTop: 16,
+        marginTop: 18,
         alignItems: "center",
     },
     linkText: {
@@ -482,7 +483,7 @@ const styles = StyleSheet.create({
     divider: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: 24,
+        marginVertical: 14
     },
     dividerLine: {
         flex: 1,

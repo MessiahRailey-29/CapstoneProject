@@ -35,7 +35,7 @@ export const useResetExpenseData = () => {
   const resetAllExpenseData = useCallback(() => {
     Alert.alert(
       "Reset All Expense Data",
-      "This will permanently delete:\n\n• All purchase history\n• Monthly spending trends\n• Category breakdowns\n• Expense cards data\n\nThis action cannot be undone. Are you sure?",
+      "This will permanently delete:\n\n• All purchase history\n• Monthly spending trends\n• Category breakdowns\n• Expense cards data\n\nYour shopping lists will NOT be affected.\n\nThis action cannot be undone. Are you sure?",
       [
         {
           text: "Cancel",
@@ -46,14 +46,20 @@ export const useResetExpenseData = () => {
           style: "destructive",
           onPress: () => {
             try {
-              // Clear the entire purchases table
-              store?.delTable("purchases");
+              // Get all row IDs from the purchases table
+              const rowIds = store?.getRowIds("purchases") || [];
               
-              console.log('✅ All expense data has been reset');
+              // Delete each row individually instead of deleting the entire table
+              // This preserves the table structure and doesn't affect other tables
+              rowIds.forEach((rowId) => {
+                store?.delRow("purchases", rowId);
+              });
+              
+              console.log(`✅ Reset ${rowIds.length} purchase records`);
               
               Alert.alert(
                 "Success",
-                "All expense data has been cleared successfully.",
+                "All expense data has been cleared successfully. Your shopping lists remain intact.",
                 [{ text: "OK" }]
               );
             } catch (error) {

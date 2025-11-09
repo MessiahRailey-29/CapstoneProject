@@ -5,8 +5,8 @@
 
 import { text } from "stream/consumers";
 
-const tintColorLight = "#0a7ea4";
-const tintColorDark = "#fff";
+const tintColorLight = "#22c55e";
+const tintColorDark = "#88e6aa";
 
 export const zincColors = {
   50: "#fafafa",
@@ -22,84 +22,105 @@ export const zincColors = {
   950: "#09090b",
 };
 
-export const appleBlue = "#007AFF";
-export const appleRed = "#FF3B30";
+export const appleBlue = "#10b981";
+export const appleRed = "#f87171";
 
-export const borderColor = "#A1A1AA80";
-export const appleGreen = "#34C759";
+export const borderColor = "#000";
+export const appleGreen = "#16a34a";
 export const Colors = {
   light: {
-    text: "#11181C",
-    oppositeText: "#fff",
-    background: "#fff",
+    text: "#0f172a",
+    textSecondary: "#ffffffff",
+    oppositeText: "#f8fafc",
+    mainBackground: "#e9f4ff",
+    background: "#f0fdf4",
     tint: tintColorLight,
-    icon: "#687076",
-    tabIconDefault: "#687076",
+    icon: "#1e293b",
+    tabIconDefault: "#6b7280",
     tabIconSelected: tintColorLight,
-    shadowColor: '#000',
-    borderColor: "#151718",
-    borderBottomColor: "#15171880",
-    oppositeBackground: "#151718",
-    oppositeBorder: "#fff",
+    shadowColor: "#000",
+    borderColor: "#000",
+    borderBottomColor: "#22c55e40",
+    oppositeBackground: "#0f172a",
+    oppositeBorder: "#f8fafc",
+
+    //Gradient Colors
+    gradient: "#86efac",
+    gradientStart: '#22c55e',
+    gradientEnd: '#059669',
+    gradientCard1: 'rgba(150, 150, 150, 0.3)',
+    gradientCard2: 'rgba(219, 219, 219, 0.3)',
+
 
     //Focused Colors
-    radioButtonSelectedBackground: '#34C759',
+    radioButtonSelectedBackground: '#16a34a',
 
 
     //Unfocused Colors
-    unfocusedTabBarIcon: '#696969',
+    unfocusedTabBarIcon: '#9ca3af',
 
     //Tab Bar Colors
-    tabBarBackgroundColor: '#fff',
-    tabBarActiveBackgroundColor: '#f2f2f7ff',
-    tabBarActiveTintColor: '#000',
-    tabBarInactiveTintColor: 'gray',
-    tabBarActiveBackgroundColorHome: '#3daa58ff',
-    tabBarActiveBackgroundColorSL: '#60a5fa',
-    tabBarActiveBackgroundColorInv: '#eab308',
-    tabBarActiveBackgroundColorBrowse: '#f87171',
-    tabBarActiveBackgroundColorProfile: '#cccccc',
-    tabBarActiveBorderColorHome: 'transparent',
-    tabBarActiveBorderColorSL: 'transparent',
-    tabBarActiveBorderColorInv: 'transparent',
-    tabBarActiveBorderColorBrowse: 'transparent',
-    tabBarActiveBorderColorProfile: 'transparent',
+    tabBarBackgroundColor: '#ffffff',
+    tabBarActiveBackgroundColor: '#ecfdf5',
+    tabBarActiveTintColor: '#0f172a',
+    tabBarInactiveTintColor: '#6b7280',
+    tabBarActiveBackgroundColorHome: '#22c55eff',
+    tabBarActiveBackgroundColorSL: '#3b82f6ff',
+    tabBarActiveBackgroundColorInv: '#f59e0bff',
+    tabBarActiveBackgroundColorBrowse: '#ef4444ff',
+    tabBarActiveBackgroundColorProfile: '#8b5cf6ff',
+    tabBarActiveBorderColorHome: '#0f172a',
+    tabBarActiveBorderColorSL: '#0f172a',
+    tabBarActiveBorderColorInv: '#0f172a',
+    tabBarActiveBorderColorBrowse: '#0f172a',
+    tabBarActiveBorderColorProfile: '#0f172a',
   },
   dark: {
-    text: "#fff",
-    oppositeText: "#11181C",
-    background: "#151718",
+    text: "#f8fafc",
+    textSecondary: "#0f172a",
+    oppositeText: "#0f172a",
+    mainBackground: "#111a2e",
+    background: "#1e293b",
     tint: tintColorDark,
-    icon: "#9BA1A6",
-    tabIconDefault: "#9BA1A6",
+    icon: "#4ade80",
+    tabIconDefault: "#94a3b8",
     tabIconSelected: tintColorDark,
     borderColor: "#fff",
-    shadowColor: '#fff',
-    borderBottomColor: "#fff80",
-    oppositeBackground: "#fff",
-    oppositeBorder: "#151718",
+    shadowColor: "#fff",
+    borderBottomColor: "#86efac60",
+    oppositeBackground: "#f8fafc",
+    oppositeBorder: "#1e293b",
+
+
+    //Gradient Colors
+    gradient: "#4ade80",
+    gradientStart: '#86efac',
+    gradientEnd: '#22c55e',
+    gradientCard1: 'rgba(255, 255, 255, 0.4)',
+    gradientCard2: 'rgba(199,237,204,0.3)',
+
 
     //Focused Colors
-    radioButtonSelectedBackground: '#000',
+    radioButtonSelectedBackground: '#16a34a',
 
     //Unfocused Colors
-    unfocusedTabBarIcon: '#9c9c9c',
+    unfocusedTabBarIcon: '#64748b',
 
     //Tab Bar Colors
-    tabBarBackgroundColor: '#000',
-    tabBarActiveBackgroundColor: '#242424ff',
-    tabBarActiveTintColor: '#EAF6EA',
-    tabBarInactiveTintColor: 'gray',
-    tabBarActiveBackgroundColorHome: '#242424ff',
-    tabBarActiveBackgroundColorSL: '#242424ff',
-    tabBarActiveBackgroundColorInv: '#242424ff',
-    tabBarActiveBackgroundColorBrowse: '#242424ff',
-    tabBarActiveBackgroundColorProfile: '#242424ff',
-    tabBarActiveBorderColorHome: '#3daa58ff',
-    tabBarActiveBorderColorSL: '#60a5fa',
-    tabBarActiveBorderColorInv: '#eab308',
-    tabBarActiveBorderColorBrowse: '#f87171',
-    tabBarActiveBorderColorProfile: '#cccccc',
+    tabBarBackgroundColor: '#0f172a',
+    tabBarActiveBackgroundColor: '#1e293bff',
+    tabBarActiveTintColor: '#bbf7d0',
+    tabBarInactiveTintColor: '#64748b',
+    tabBarActiveBackgroundColorHome: '#1e293bff',
+    tabBarActiveBackgroundColorSL: '#1e293bff',
+    tabBarActiveBackgroundColorInv: '#1e293bff',
+    tabBarActiveBackgroundColorBrowse: '#1e293bff',
+    tabBarActiveBackgroundColorProfile: '#1e293bff',
+    tabBarActiveBorderColorHome: '#22c55e',
+    tabBarActiveBorderColorSL: '#3b82f6',
+    tabBarActiveBorderColorInv: '#f59e0b',
+    tabBarActiveBorderColorBrowse: '#ef4444',
+    tabBarActiveBorderColorProfile: '#8b5cf6',
   },
 };
 

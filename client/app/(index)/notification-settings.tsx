@@ -6,7 +6,6 @@ import {
   ScrollView,
   Switch,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   useColorScheme
 } from 'react-native';
@@ -14,7 +13,7 @@ import { Stack } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useUser } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
-import { borderColor, Colors } from '@/constants/Colors';
+import { Colors } from '@/constants/Colors';
 
 
 export default function NotificationSettingsScreen() {

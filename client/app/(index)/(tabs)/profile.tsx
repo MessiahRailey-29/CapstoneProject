@@ -4,13 +4,14 @@ import { useClerk, useUser } from '@clerk/clerk-expo';
 import Button from '@/components/ui/button';
 import { appleRed } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
-import { Alert, View, StyleSheet, TouchableOpacity, TextInput, Modal, Image } from 'react-native';
+import { Alert, View, StyleSheet, TouchableOpacity, TextInput, Modal, Image, useColorScheme, Text } from 'react-native';
 import { useNickname } from '@/hooks/useNickname';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
 import { useResetExpenseData } from '@/hooks/useResetExpenseData';
 import * as Haptics from 'expo-haptics';
+import { Colors } from '@/constants/Colors'
 
 const PROFILE_PICTURE_KEY = 'user_profile_picture';
 
@@ -186,6 +187,11 @@ export default function ProfileScreen() {
     };
 
     const displayName = nickname || user?.fullName || user?.firstName || 'User';
+    
+      // Color scheme and styles
+      const theme = useColorScheme();
+      const colors = Colors[theme ?? 'light'];
+      const styles = createStyles(colors);
 
     return (
         <BodyScrollView>
@@ -434,7 +440,7 @@ export default function ProfileScreen() {
                             style={[styles.modalButton, styles.cancelButton, { marginTop: 16 }]}
                             onPress={() => setShowAvatarOptions(false)}
                         >
-                            <ThemedText lightColor="#000" darkColor="#fff" style={styles.cancelButtonText}>
+                           <ThemedText style={styles.cancelButtonText}>
                             Cancel
                             </ThemedText>
                         </TouchableOpacity>
@@ -445,19 +451,22 @@ export default function ProfileScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
     profileCard: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
         marginHorizontal: 16,
         marginTop: 16,
         marginBottom: 24,
         borderRadius: 20,
         padding: 20,
-        shadowColor: '#000',
+        shadowColor: colors.shadowColor,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
         elevation: 5,
+        borderColor: colors.borderColor,
+        borderWidth: 0.7
     },
     profileHeader: {
         alignItems: 'center',
@@ -490,6 +499,7 @@ const styles = StyleSheet.create({
         fontSize: 36,
         fontWeight: '700',
         color: '#fff',
+        padding: 4
     },
     cameraIconContainer: {
         position: 'absolute',
@@ -521,8 +531,10 @@ const styles = StyleSheet.create({
     userName: {
         fontSize: 26,
         fontWeight: '700',
-        color: '#1a1a1a',
+        color: colors.text,
         marginRight: 8,
+        paddingBottom: 3,
+        overflow: 'visible'
     },
     editButton: {
         padding: 4,
@@ -532,7 +544,7 @@ const styles = StyleSheet.create({
     },
     userEmail: {
         fontSize: 15,
-        color: '#666',
+        color: colors.text,
         marginBottom: 12,
     },
     memberBadge: {
@@ -577,21 +589,23 @@ const styles = StyleSheet.create({
         backgroundColor: '#e5e5e5',
     },
     section: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
         marginHorizontal: 16,
         marginBottom: 16,
         borderRadius: 16,
         overflow: 'hidden',
-        shadowColor: '#000',
+        shadowColor: colors.borderColor,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
         elevation: 2,
+        borderColor: colors.borderColor,
+        borderWidth: 0.7,
     },
     sectionTitle: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#666',
+        color: colors.text,
         textTransform: 'uppercase',
         paddingHorizontal: 16,
         paddingTop: 16,
@@ -605,7 +619,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderTopWidth: 1,
         borderTopColor: '#f5f5f5',
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
     },
     settingIcon: {
         width: 48,
@@ -617,6 +631,7 @@ const styles = StyleSheet.create({
     },
     iconText: {
         fontSize: 24,
+        color: colors.text
     },
     settingContent: {
         flex: 1,
@@ -625,11 +640,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         marginBottom: 2,
-        color: '#1a1a1a',
+        color: colors.text
     },
     settingDescription: {
         fontSize: 13,
-        color: '#666',
+        color: colors.text
     },
     chevron: {
         fontSize: 28,
@@ -684,7 +699,7 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 24,
         fontWeight: '700',
-        marginBottom: 8,
+        marginBottom: 20,
         textAlign: 'center',
         color: '#1a1a1a',
     },
@@ -709,8 +724,6 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     modalButton: {
-        flex: 1,
-        padding: 16,
         borderRadius: 12,
         alignItems: 'center',
         shadowColor: '#000',
@@ -723,11 +736,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#f5f5f5',
         borderWidth: 2,
         borderColor: '#e0e0e0',
+        padding: 10,
     },
     cancelButtonText: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#1a1a1a',
+        color: '#ff0000',
     },
     saveButton: {
         backgroundColor: '#007AFF',
@@ -770,3 +784,4 @@ const styles = StyleSheet.create({
         color: '#d32f2f',
     },
 });
+}

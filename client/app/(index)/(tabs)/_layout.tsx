@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme, View, Text } from 'react-native';
-import { borderColor, Colors } from '@/constants/Colors';
+import { Colors } from '@/constants/Colors';
 
 
 export default function TabsLayout() {
@@ -64,6 +64,7 @@ export default function TabsLayout() {
           headerTitleStyle: {
             fontWeight: 'bold',
             color: "#000",
+            marginLeft: 6,
           },
           headerStyle: {
             backgroundColor: "#3daa58ff",
@@ -99,6 +100,7 @@ export default function TabsLayout() {
           headerTitleStyle: {
             fontWeight: 'bold',
             color: "#000",
+            marginLeft: 6
           },
           headerStyle: {
             backgroundColor: "#60a5fa",
@@ -134,6 +136,7 @@ export default function TabsLayout() {
           headerTitleStyle: {
             fontWeight: 'bold',
             color: "#000",
+            marginLeft: 6
           },
           headerStyle: {
             backgroundColor: "#eab308",
@@ -169,6 +172,7 @@ export default function TabsLayout() {
           headerTitleStyle: {
             fontWeight: 'bold',
             color: "#000",
+            marginLeft: 6
           },
           headerStyle: {
             backgroundColor: "#f87171",
@@ -204,9 +208,10 @@ export default function TabsLayout() {
           headerTitleStyle: {
             fontWeight: 'bold',
             color: "#000",
+            marginLeft: 6
           },
           headerStyle: {
-            backgroundColor: "#cccccc",
+            backgroundColor: "#8b5cf6",
           },
           tabBarLabel: ({ focused }) => renderTabLabel("Profile", focused),
           tabBarIcon: ({ color, focused, size }) => (

@@ -8,12 +8,14 @@ import {
   RefreshControl,
   Alert,
   Button,
+  useColorScheme
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useUser } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useShoppingListData } from '@/stores/ShoppingListsStore';
+import { Colors } from '@/constants/Colors';
 
 // Component to display notification with shopping list details
 function NotificationItem({ 
@@ -73,6 +75,11 @@ function NotificationItem({
   // For shopping reminders, enhance the display with list details
   const isShoppingReminder = notification.type === 'shopping_reminder';
   const hasListData = listData && listData.name;
+
+  // Color scheme and styles
+    const theme = useColorScheme();
+    const colors = Colors[theme ?? 'light'];
+    const styles = createStyles(colors);
 
   return (
     <TouchableOpacity
@@ -137,6 +144,10 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const { user } = useUser();
   const userId = useMemo(() => user?.id || '', [user?.id]);
+  // Color scheme and styles
+    const theme = useColorScheme();
+    const colors = Colors[theme ?? 'light'];
+    const styles = createStyles(colors);
 
   const {
     notifications,
@@ -236,24 +247,24 @@ const handleNotificationPress = async (notificationId: string, data: any) => {
     </>
   );
 }
-
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#fff',
+    overflow: 'visible',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: colors.borderColor,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
+    overflow: 'visible'
   },
   markAllButton: {
     color: '#007AFF',
@@ -270,14 +281,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   notificationCard: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginVertical: 6,
     padding: 16,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -357,23 +367,25 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 64,
     marginBottom: 16,
+    overflow: 'visible'
   },
   emptyTitle: {
     fontSize: 22,
     fontWeight: '700',
     marginBottom: 8,
+    overflow: 'visible'
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.text,
     textAlign: 'center',
     lineHeight: 24,
+    overflow: 'visible'
   },
   settingsButton: {
-    backgroundColor: '#fff',
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e5e5e5',
+    borderTopColor: colors.borderColor,
     alignItems: 'center',
   },
   settingsButtonText: {
@@ -382,3 +394,4 @@ const styles = StyleSheet.create({
     color: '#007AFF',
   },
 });
+}

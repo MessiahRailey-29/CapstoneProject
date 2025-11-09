@@ -1,7 +1,6 @@
 // Updated shopping-lists.tsx with swipe-to-delete functionality
 import IconCircle from "@/components/IconCircle";
 import { ThemedText } from "@/components/ThemedText";
-import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import { Button } from "@/components/ui/button";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import {
@@ -13,11 +12,11 @@ import {
 } from "@/stores/ShoppingListsStore";
 import { useShoppingListProductIds } from "@/stores/ShoppingListStore";
 import { Stack, useRouter } from "expo-router";
-import { Platform, Pressable, StyleSheet, View, FlatList, Animated, Alert, useColorScheme, Modal } from "react-native";
-import { useMemo, useState, useRef, useEffect } from "react";
+import { Pressable, StyleSheet, View, FlatList, Animated, Alert, useColorScheme, Modal } from "react-native";
+import { useMemo, useState, useRef } from "react";
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Colors, appleBlue, backgroundColors } from "@/constants/Colors";
+import { Colors, appleBlue} from "@/constants/Colors";
 import * as Haptics from "expo-haptics";
 
 type TabType = 'active' | 'ongoing' | 'history';
@@ -407,7 +406,7 @@ export default function HomeScreen() {
   const renderHeaderRight = () => {
     return (
       <Pressable onPress={() => router.push("/list/new")} style={{ paddingRight: 18, paddingTop: 5 }}>
-        <IconSymbol name="plus" color={appleBlue} />
+        <IconSymbol name="plus" color='#000' style={{marginRight: 3}}/>
       </Pressable>
     );
   };

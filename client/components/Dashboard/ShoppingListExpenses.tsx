@@ -5,8 +5,9 @@ import { ThemedText } from '@/components/ThemedText';
 import { useAllShoppingListExpenses, ShoppingListExpense } from '@/hooks/useShoppingListExpenses';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { borderColor, Colors } from '@/constants/Colors';
+import { backgroundColors, borderColor, Colors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export function ShoppingListExpenses() {
   const router = useRouter();
@@ -18,19 +19,27 @@ export function ShoppingListExpenses() {
 
   if (expenses.lists.length === 0) {
     return (
-      <View style={styles.container}>
+      <LinearGradient
+      colors={['#d48d00', '#ffbf00', '#d48d00', '#d48d00', colors.background]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.container}>
         <ThemedText style={styles.title}>Shopping Lists Budget</ThemedText>
         <View style={styles.emptyState}>
           <ThemedText style={styles.emptyText}>
             Create shopping lists with budgets to track your planned spending!
           </ThemedText>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={['#d48d00', '#ffbf00', '#d48d00', '#d48d00', colors.background]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.container}>
       <View style={styles.header}>
         <ThemedText style={styles.title}>Shopping Lists Budget</ThemedText>
         <Pressable
@@ -46,20 +55,28 @@ export function ShoppingListExpenses() {
       </View>
 
       {/* Summary Cards */}
+
       <View style={styles.summaryRow}>
-        <View style={[styles.summaryCard, { borderLeftColor: '#007AFF' }]}>
+        <LinearGradient
+          colors={[colors.gradientCard1, colors.gradientCard2]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.summaryCard, { borderLeftColor: '#007AFF' }]}>
           <ThemedText style={styles.summaryLabel}>Total Budget</ThemedText>
           <ThemedText style={styles.summaryValue}>
             ₱{expenses.totalBudget.toFixed(2)}
           </ThemedText>
-        </View>
+        </LinearGradient>
 
-        <View style={[styles.summaryCard, { borderLeftColor: '#34C759' }]}>
+        <LinearGradient
+          colors={[colors.gradientCard1, colors.gradientCard2]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }} style={[styles.summaryCard, { borderLeftColor: '#34C759' }]}>
           <ThemedText style={styles.summaryLabel}>Projected</ThemedText>
           <ThemedText style={styles.summaryValue}>
             ₱{expenses.totalProjected.toFixed(2)}
           </ThemedText>
-        </View>
+        </LinearGradient>
       </View>
 
       {expenses.overBudgetLists > 0 && (
@@ -81,7 +98,7 @@ export function ShoppingListExpenses() {
           <ListExpenseCard key={list.listId} list={list} router={router} />
         ))}
       </ScrollView>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -99,102 +116,111 @@ function ListExpenseCard({
   const styles = createStyles(colors);
 
   return (
-    <Pressable
-      style={[
-        styles.listCard,
-        { borderTopColor: list.color, borderTopWidth: 4 },
-        list.overBudget && styles.listCardOverBudget,
-      ]}
-      onPress={() => {
-        if (process.env.EXPO_OS === "ios") {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-        router.push(`/list/${list.listId}`);
-      }}
-    >
-      <View style={styles.listHeader}>
-        <ThemedText style={styles.listEmoji}>{list.emoji}</ThemedText>
-        <ThemedText style={styles.listName} numberOfLines={1}>
-          {list.listName}
-        </ThemedText>
-      </View>
-
-      <View style={styles.listStats}>
-        <View style={styles.statRow}>
-          <ThemedText style={styles.statLabel}>Budget:</ThemedText>
-          <ThemedText style={styles.statValue}>
-            ₱{list.budget.toFixed(2)}
+    <LinearGradient
+      colors={
+        list.overBudget
+          ? ["#FF5F6D", "#FFC371"]
+          : ["rgba(255, 255, 255, 0.3)", "rgba(255, 255, 255, 0.3)", list.color]
+      }
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[, styles.listCard,
+        {
+          backgroundColor: "rgba(150, 150, 150, 0.5)",
+          borderTopColor: list.color,
+          borderTopWidth: 4
+        },
+        list.overBudget && styles.listCardOverBudget
+      ]}>
+      <Pressable
+        onPress={() => {
+          if (process.env.EXPO_OS === "ios") {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+          router.push(`/list/${list.listId}`);
+        }}
+      >
+        <View style={styles.listHeader}>
+          <ThemedText style={styles.listEmoji}>{list.emoji}</ThemedText>
+          <ThemedText style={styles.listName} numberOfLines={1}>
+            {list.listName}
           </ThemedText>
         </View>
 
-        <View style={styles.statRow}>
-          <ThemedText style={styles.statLabel}>Projected:</ThemedText>
-          <ThemedText style={[
-            styles.statValue,
-            list.overBudget && styles.statValueOverBudget,
-          ]}>
-            ₱{list.projectedTotal.toFixed(2)}
-          </ThemedText>
-        </View>
-
-        {list.budget > 0 && (
-          <>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${Math.min(list.budgetUsedPercentage, 100)}%`,
-                    backgroundColor: list.overBudget ? '#FF3B30' : '#34C759',
-                  }
-                ]}
-              />
-            </View>
-
-            <ThemedText style={[
-              styles.budgetRemaining,
-              list.overBudget && styles.budgetRemainingNegative,
-            ]}>
-              {list.overBudget ? '₱' : '₱'}
-              {Math.abs(list.budgetRemaining).toFixed(2)}
-              {list.overBudget ? ' over' : ' left'}
+        <View style={styles.listStats}>
+          <View style={styles.statRow}>
+            <ThemedText style={styles.statLabel}>Budget:</ThemedText>
+            <ThemedText style={styles.statValue}>
+              ₱{list.budget.toFixed(2)}
             </ThemedText>
-          </>
+          </View>
+
+          <View style={styles.statRow}>
+            <ThemedText style={styles.statLabel}>Projected:</ThemedText>
+            <ThemedText style={[
+              styles.statValue,
+              list.overBudget && styles.statValueOverBudget,
+            ]}>
+              ₱{list.projectedTotal.toFixed(2)}
+            </ThemedText>
+          </View>
+
+          {list.budget > 0 && (
+            <>
+              <View style={styles.progressBar}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${Math.min(list.budgetUsedPercentage, 100)}%`,
+                      backgroundColor: list.overBudget ? '#FF3B30' : '#34C759',
+                    }
+                  ]}
+                />
+              </View>
+
+              <ThemedText style={[
+                styles.budgetRemaining,
+                list.overBudget && styles.budgetRemainingNegative,
+              ]}>
+                {list.overBudget ? '₱' : '₱'}
+                {Math.abs(list.budgetRemaining).toFixed(2)}
+                {list.overBudget ? ' over' : ' left'}
+              </ThemedText>
+            </>
+          )}
+
+          <ThemedText style={styles.itemCount}>
+            {list.itemCount} {list.itemCount === 1 ? 'item' : 'items'}
+          </ThemedText>
+        </View>
+
+        {list.status === 'ongoing' && (
+          <View style={styles.ongoingBadge}>
+            <ThemedText style={styles.ongoingText}>Shopping 🛍️</ThemedText>
+          </View>
         )}
 
-        <ThemedText style={styles.itemCount}>
-          {list.itemCount} {list.itemCount === 1 ? 'item' : 'items'}
-        </ThemedText>
-      </View>
-
-      {list.status === 'ongoing' && (
-        <View style={styles.ongoingBadge}>
-          <ThemedText style={styles.ongoingText}>Shopping 🛍️</ThemedText>
-        </View>
-      )}
-
-      {list.status === 'completed' && (
-        <View style={styles.completedBadge}>
-          <ThemedText style={styles.completedText}>Completed ✓</ThemedText>
-        </View>
-      )}
-    </Pressable>
+        {list.status === 'completed' && (
+          <View style={styles.completedBadge}>
+            <ThemedText style={styles.completedText}>Completed ✓</ThemedText>
+          </View>
+        )}
+      </Pressable>
+    </LinearGradient>
   );
 }
 
 function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
     container: {
-      backgroundColor: colors.background,
       borderRadius: 12,
-      borderColor: colors.borderColor,
-      borderWidth: 1,
       padding: 16,
       shadowColor: colors.shadowColor,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.2,
+      shadowRadius: 20,
+      elevation: 10,
     },
     header: {
       flexDirection: 'row',
@@ -204,6 +230,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     title: {
       fontSize: 18,
+      color: colors.textSecondary,
       fontWeight: '700',
     },
     viewAllText: {
@@ -216,7 +243,7 @@ function createStyles(colors: typeof Colors.light) {
       alignItems: 'center',
     },
     emptyText: {
-      color: '#999',
+      color: colors.text,
       textAlign: 'center',
     },
     summaryRow: {
@@ -226,9 +253,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     summaryCard: {
       flex: 1,
-      backgroundColor: colors.background,
       borderRadius: 8,
-      borderColor: colors.borderColor,
       borderWidth: 0.5,
       shadowColor: colors.shadowColor,
       shadowOffset: { width: 0, height: 2 },
@@ -239,11 +264,17 @@ function createStyles(colors: typeof Colors.light) {
     },
     summaryLabel: {
       fontSize: 12,
-      color: '#666',
+      color: colors.textSecondary,
       marginBottom: 4,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.2,
+      shadowRadius: 20,
+      elevation: 10,
     },
     summaryValue: {
       fontSize: 20,
+      color: colors.textSecondary,
       fontWeight: '700',
     },
     warningBanner: {
@@ -265,23 +296,29 @@ function createStyles(colors: typeof Colors.light) {
     },
     listsContainer: {
       gap: 12,
+      paddingBottom: 8,
     },
     listCard: {
+      marginVertical: 4,
+      marginHorizontal: 6,
       width: 200,
-      backgroundColor: colors.background,
-      borderRadius: 12,
-      padding: 12,
-      borderColor: colors.borderColor,
+      borderRadius: 16,
+      padding: 16,
       borderWidth: 0.7,
       shadowColor: colors.shadowColor,
-      shadowOffset: { width: 0, height: 2 },
+      shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.1,
-      shadowRadius: 4,
+      shadowRadius: 6,
+      elevation: 3,
+      overflow: 'hidden',
+      backgroundColor: 'transparent',
     },
     listCardOverBudget: {
-      backgroundColor: '#FFF5F5',
+      opacity: 0.9,
+      borderColor: colors.borderColor,
     },
     listHeader: {
+      color: colors.textSecondary,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
@@ -291,6 +328,7 @@ function createStyles(colors: typeof Colors.light) {
       fontSize: 24,
     },
     listName: {
+      color: colors.textSecondary,
       fontSize: 16,
       fontWeight: '600',
       flex: 1,
@@ -305,11 +343,12 @@ function createStyles(colors: typeof Colors.light) {
     },
     statLabel: {
       fontSize: 12,
-      color: '#666',
+      color: colors.textSecondary,
     },
     statValue: {
       fontSize: 14,
       fontWeight: '600',
+      color: colors.textSecondary,
     },
     statValueOverBudget: {
       color: '#FF3B30',
@@ -335,7 +374,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     itemCount: {
       fontSize: 12,
-      color: '#999',
+      color: "#222",
     },
     ongoingBadge: {
       marginTop: 8,

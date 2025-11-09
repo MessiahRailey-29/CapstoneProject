@@ -12,75 +12,75 @@ import { Colors } from '@/constants/Colors';
 
 // Category configuration with icons and colors
 const CATEGORY_CONFIG: Record<string, { icon: string; color: string; gradient: string[]; description: string }> = {
-  'Beverages': { 
-    icon: '🥤', 
-    color: '#FF6B6B', 
+  'Beverages': {
+    icon: '🥤',
+    color: '#FF6B6B',
     gradient: ['#FF6B6B', '#FF8E8E'],
     description: 'Soft drinks, juices & more'
   },
-  'Dairy': { 
-    icon: '🥛', 
-    color: '#4ECDC4', 
+  'Dairy': {
+    icon: '🥛',
+    color: '#4ECDC4',
     gradient: ['#4ECDC4', '#6FE7DD'],
     description: 'Milk, cheese & dairy products'
   },
-  'Instant Noodles': { 
-    icon: '🍜', 
-    color: '#FFE66D', 
+  'Instant Noodles': {
+    icon: '🍜',
+    color: '#FFE66D',
     gradient: ['#FFE66D', '#FFF0A0'],
     description: 'Quick meals & noodles'
   },
-  'Canned Goods': { 
-    icon: '🥫', 
-    color: '#95E1D3', 
+  'Canned Goods': {
+    icon: '🥫',
+    color: '#95E1D3',
     gradient: ['#95E1D3', '#B3EDE3'],
     description: 'Preserved foods & canned items'
   },
-  'Coffee': { 
-    icon: '☕', 
-    color: '#A8763E', 
+  'Coffee': {
+    icon: '☕',
+    color: '#A8763E',
     gradient: ['#A8763E', '#C69461'],
     description: 'Coffee, tea & hot beverages'
   },
-  'Fruits': { 
-    icon: '🍎', 
-    color: '#FFA07A', 
+  'Fruits': {
+    icon: '🍎',
+    color: '#FFA07A',
     gradient: ['#FFA07A', '#FFB89A'],
     description: 'Fresh fruits & produce'
   },
-  'Vegetables': { 
-    icon: '🥬', 
-    color: '#90EE90', 
+  'Vegetables': {
+    icon: '🥬',
+    color: '#90EE90',
     gradient: ['#90EE90', '#A8F3A8'],
     description: 'Fresh vegetables & greens'
   },
-  'Meat': { 
-    icon: '🥩', 
-    color: '#FF6347', 
+  'Meat': {
+    icon: '🥩',
+    color: '#FF6347',
     gradient: ['#FF6347', '#FF8570'],
     description: 'Chicken, pork, beef & more'
   },
-  'Bread': { 
-    icon: '🍞', 
-    color: '#F4A460', 
+  'Bread': {
+    icon: '🍞',
+    color: '#F4A460',
     gradient: ['#F4A460', '#F7BC84'],
     description: 'Bread, pastries & bakery'
   },
-  'Household': { 
-    icon: '🧼', 
-    color: '#87CEEB', 
+  'Household': {
+    icon: '🧼',
+    color: '#87CEEB',
     gradient: ['#87CEEB', '#A5DCF0'],
     description: 'Cleaning & home essentials'
   },
-  'Snacks': { 
-    icon: '🍿', 
-    color: '#DDA0DD', 
+  'Snacks': {
+    icon: '🍿',
+    color: '#DDA0DD',
     gradient: ['#DDA0DD', '#E8BBE8'],
     description: 'Chips, crackers & treats'
   },
-  'Other': { 
-    icon: '📦', 
-    color: '#C0C0C0', 
+  'Other': {
+    icon: '📦',
+    color: '#C0C0C0',
     gradient: ['#C0C0C0', '#D8D8D8'],
     description: 'Other products & items'
   },
@@ -96,17 +96,17 @@ interface CategoryData {
   products: DatabaseProduct[];
 }
 
-function CategoryCard({ 
-  category, 
-  onPress 
-}: { 
-  category: CategoryData; 
+function CategoryCard({
+  category,
+  onPress
+}: {
+  category: CategoryData;
   onPress: () => void;
 }) {
-      //color scheme and styles
-      const scheme = useColorScheme();
-      const colors = Colors[scheme ?? 'light'];
-      const styles = createStyles(colors);
+  //color scheme and styles
+  const scheme = useColorScheme();
+  const colors = Colors[scheme ?? 'light'];
+  const styles = createStyles(colors);
   return (
     <Pressable
       onPress={onPress}
@@ -118,7 +118,7 @@ function CategoryCard({
     >
       {/* Icon Area with Gradient Background */}
       <View style={[
-        styles.iconArea, 
+        styles.iconArea,
         { backgroundColor: category.gradient[1] + '40' }
       ]}>
         <Text style={styles.categoryIconLarge}>{category.icon}</Text>
@@ -131,7 +131,7 @@ function CategoryCard({
       <View style={styles.categoryInfo}>
         <ThemedText style={styles.categoryName}>{category.name}</ThemedText>
         <Text style={styles.categoryDescription}>{category.description}</Text>
-        
+
         {/* View Button */}
         <View style={[styles.viewButton, { backgroundColor: category.color }]}>
           <Text style={styles.viewButtonText}>Browse {category.count} item(s)</Text>
@@ -151,11 +151,11 @@ function ProductCardWithPrices({
   // This component would need a hook to fetch prices per product
   // For now, we'll simplify to just show the product without detailed pricing
   const categoryConfig = CATEGORY_CONFIG[product.category] || CATEGORY_CONFIG['Other'];
-      //color scheme and styles
-      const scheme = useColorScheme();
-      const colors = Colors[scheme ?? 'light'];
-      const styles = createStyles(colors);
-  
+  //color scheme and styles
+  const scheme = useColorScheme();
+  const colors = Colors[scheme ?? 'light'];
+  const styles = createStyles(colors);
+
   return (
     <Pressable
       onPress={onPress}
@@ -198,15 +198,15 @@ export default function ProductBrowserScreen() {
   const router = useRouter();
   const { products, loading, error } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
-      //color scheme and styles
-      const scheme = useColorScheme();
-      const colors = Colors[scheme ?? 'light'];
-      const styles = createStyles(colors);
+  //color scheme and styles
+  const scheme = useColorScheme();
+  const colors = Colors[scheme ?? 'light'];
+  const styles = createStyles(colors);
 
   // Group products by category
   const categories = useMemo((): CategoryData[] => {
     const categoryMap = new Map<string, DatabaseProduct[]>();
-    
+
     products.forEach(product => {
       const category = product.category || 'Other';
       if (!categoryMap.has(category)) {
@@ -234,9 +234,9 @@ export default function ProductBrowserScreen() {
   // Filter products by search (search shows actual products, not categories)
   const searchResults = useMemo(() => {
     if (!searchQuery) return null;
-    
+
     const query = searchQuery.toLowerCase().trim();
-    return products.filter(product => 
+    return products.filter(product =>
       product.name.toLowerCase().includes(query) ||
       product.category.toLowerCase().includes(query)
     );
@@ -246,11 +246,11 @@ export default function ProductBrowserScreen() {
     if (process.env.EXPO_OS === 'ios') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    
+
     // Navigate to category products view
     router.push({
       pathname: '/category-products',
-      params: { 
+      params: {
         categoryName: category.name,
         categoryIcon: category.icon,
         categoryColor: category.color,
@@ -265,7 +265,7 @@ export default function ProductBrowserScreen() {
     // Navigate to product details or add to list
     router.push({
       pathname: '/product-detail',
-      params: { 
+      params: {
         productId: product.id,
         productName: product.name,
       }
@@ -294,11 +294,11 @@ export default function ProductBrowserScreen() {
 
   return (
     <>
-      <Stack.Screen 
+      <Stack.Screen
         options={{
           headerTitle: "Product Catalog",
           headerLargeTitle: true,
-        }} 
+        }}
       />
       <View style={styles.container}>
         {/* Header Section */}
@@ -325,8 +325,8 @@ export default function ProductBrowserScreen() {
             key="products-list" // Add key to force re-render when switching views
             data={searchResults}
             renderItem={({ item }) => (
-              <ProductCard 
-                product={item} 
+              <ProductCard
+                product={item}
                 onPress={() => handleProductPress(item)}
               />
             )}
@@ -361,8 +361,8 @@ export default function ProductBrowserScreen() {
             key="categories-grid" // Add key to force re-render when switching views
             data={categories}
             renderItem={({ item }) => (
-              <CategoryCard 
-                category={item} 
+              <CategoryCard
+                category={item}
                 onPress={() => handleCategoryPress(item)}
               />
             )}
@@ -379,230 +379,228 @@ export default function ProductBrowserScreen() {
 
 function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  headerSection: {
-    backgroundColor: colors.background,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderBottomColor,
-  },
-  catalogSubtitle: {
-    fontSize: 15,
-    color: '#666',
-  },
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderBottomColor,
-  },
-  searchInput: {
-    marginBottom: 0,
-    borderColor: colors.borderColor,
-    borderWidth: 1,
-    borderRadius: 13,
-  },
-  resultsHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  resultsCount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-  },
-  listContent: {
-    paddingTop: 20,
-    paddingBottom: 100,
-  },
-  productListContent: {
-    paddingBottom: 100,
-  },
-  gridRow: {
-    paddingHorizontal: 16,
-    gap: 16,
-  },
-  categoryCard: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: 20,
-    marginBottom: 16,
-    overflow: 'hidden',
-    borderColor: colors.borderColor,
-    borderWidth: 2,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  iconArea: {
-    height: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  categoryIconLarge: {
-    fontSize: 64,
-  },
-  countBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  countText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  categoryInfo: {
-    padding: 16,
-  },
-  categoryName: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  categoryDescription: {
-    fontSize: 13,
-    color: colors.text,
-    marginBottom: 14,
-    lineHeight: 18,
-  },
-  viewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  viewButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  productCard: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderColor: colors.borderColor,
-    borderWidth: 1,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  productHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-    gap: 12,
-  },
-  productIcon: {
-    fontSize: 40,
-  },
-  productInfo: {
-    flex: 1,
-  },
-  productName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  productCategory: {
-    fontSize: 13,
-    color: '#666',
-  },
-  productFooter: {
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderBottomColor,
-  },
-  viewDetailsText: {
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 100,
-    paddingHorizontal: 32,
-  },
-  emptyIcon: {
-    fontSize: 80,
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#666',
-    fontSize: 16,
-    marginBottom: 28,
-    lineHeight: 24,
-  },
-  clearButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-  },
-  clearButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  centerContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  errorIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 16,
-  },
-  pressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.97 }],
-  },
-});
+    container: {
+      flex: 1,
+    },
+    headerSection: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderColor,
+    },
+    catalogSubtitle: {
+      fontSize: 15,
+      color: '#666',
+    },
+    searchContainer: {
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      backgroundColor: colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderColor,
+    },
+    searchInput: {
+      marginBottom: 0,
+      borderColor: colors.borderColor,
+      borderWidth: 1,
+      borderRadius: 13,
+    },
+    resultsHeader: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    resultsCount: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#666',
+    },
+    listContent: {
+      paddingTop: 20,
+      paddingBottom: 100,
+    },
+    productListContent: {
+      paddingBottom: 100,
+    },
+    gridRow: {
+      paddingHorizontal: 16,
+      gap: 16,
+    },
+    categoryCard: {
+      flex: 1,
+      backgroundColor: colors.background,
+      borderRadius: 20,
+      marginBottom: 16,
+      overflow: 'hidden',
+      borderColor: colors.borderColor,
+      borderWidth: 2,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    iconArea: {
+      height: 140,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+    },
+    categoryIconLarge: {
+      fontSize: 64,
+    },
+    countBadge: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    countText: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: colors.text,
+    },
+    categoryInfo: {
+      padding: 16,
+    },
+    categoryName: {
+      fontSize: 18,
+      fontWeight: '700',
+      marginBottom: 6,
+    },
+    categoryDescription: {
+      fontSize: 13,
+      color: colors.text,
+      marginBottom: 14,
+      lineHeight: 18,
+    },
+    viewButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+    },
+    viewButtonText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    productCard: {
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      padding: 16,
+      marginHorizontal: 16,
+      marginBottom: 12,
+      borderLeftWidth: 4,
+      borderColor: colors.borderColor,
+      borderWidth: 1,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    productHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 12,
+      gap: 12,
+    },
+    productIcon: {
+      fontSize: 40,
+    },
+    productInfo: {
+      flex: 1,
+    },
+    productName: {
+      fontSize: 16,
+      fontWeight: '600',
+      marginBottom: 4,
+    },
+    productCategory: {
+      fontSize: 13,
+      color: '#666',
+    },
+    productFooter: {
+      marginTop: 8,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: colors.borderBottomColor,
+    },
+    viewDetailsText: {
+      fontSize: 14,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    emptyContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 100,
+      paddingHorizontal: 32,
+    },
+    emptyIcon: {
+      fontSize: 80,
+      marginBottom: 20,
+    },
+    emptyTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    emptyText: {
+      textAlign: 'center',
+      color: '#666',
+      fontSize: 16,
+      marginBottom: 28,
+      lineHeight: 24,
+    },
+    clearButton: {
+      paddingVertical: 14,
+      paddingHorizontal: 32,
+      backgroundColor: '#007AFF',
+      borderRadius: 12,
+    },
+    clearButtonText: {
+      color: '#fff',
+      fontWeight: '700',
+      fontSize: 16,
+    },
+    centerContent: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    loadingIcon: {
+      fontSize: 64,
+      marginBottom: 16,
+    },
+    loadingText: {
+      fontSize: 16,
+      color: '#666',
+    },
+    errorIcon: {
+      fontSize: 64,
+      marginBottom: 16,
+    },
+    errorText: {
+      color: '#FF3B30',
+      fontSize: 16,
+    },
+    pressed: {
+      opacity: 0.85,
+      transform: [{ scale: 0.97 }],
+    },
+  });
 }

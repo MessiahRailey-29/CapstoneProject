@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors'
 
-type ValidIconName = 
+type ValidIconName =
   | "calendar"
   | "chart.bar"
   | "clock"
@@ -24,13 +24,13 @@ interface ExpenseCardProps {
   color?: string;
 }
 
-export function ExpenseCard({ 
-  title, 
-  amount, 
-  icon, 
-  subtitle, 
+export function ExpenseCard({
+  title,
+  amount,
+  icon,
+  subtitle,
   trend,
-  color = '#007AFF' 
+  color = '#007AFF'
 }: ExpenseCardProps) {
   const trendUp = trend && trend > 0;
   const trendDown = trend && trend < 0;
@@ -47,19 +47,19 @@ export function ExpenseCard({
         <ThemedText style={styles.title}>{title}</ThemedText>
         {icon && <IconSymbol name={icon} size={24} color={color} />}
       </View>
-      
+
       <ThemedText style={styles.amount}>₱{amount.toFixed(2)}</ThemedText>
-      
+
       {subtitle && (
         <ThemedText style={styles.subtitle}>{subtitle}</ThemedText>
       )}
 
       {trend !== undefined && trend !== 0 && (
         <View style={styles.trendContainer}>
-          <IconSymbol 
-            name={trendUp ? "arrow.up" : "arrow.down"} 
-            size={16} 
-            color={trendUp ? "#34C759" : "#FF3B30"} 
+          <IconSymbol
+            name={trendUp ? "arrow.up" : "arrow.down"}
+            size={16}
+            color={trendUp ? "#34C759" : "#FF3B30"}
           />
           <ThemedText style={[
             styles.trendText,
@@ -75,47 +75,47 @@ export function ExpenseCard({
 
 function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
-  card: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    borderColor: colors.borderColor,
-    borderWidth: 1,
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  amount: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#999',
-  },
-  trendContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 8,
-  },
-  trendText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-});
+    card: {
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.2,
+      shadowRadius: 20,
+      elevation: 10,
+      borderWidth: 0.5,
+      borderColor: colors.borderColor,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    title: {
+      fontSize: 14,
+      color: '#666',
+      fontWeight: '500',
+    },
+    amount: {
+      fontSize: 28,
+      fontWeight: '700',
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 12,
+      color: '#999',
+    },
+    trendContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 8,
+    },
+    trendText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+  });
 }
