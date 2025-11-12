@@ -34,59 +34,99 @@ interface ProductsByStoreWithDistance extends Omit<ProductsByStore, 'store'> {
 function StoreCard({ 
   storeData, 
   onShopAtStore,
-  index
+  index,
+  isSelected
 }: { 
   storeData: ProductsByStoreWithDistance;
   onShopAtStore: (storeData: ProductsByStoreWithDistance, index: number) => void;
   index: number;
+  isSelected: boolean;
 }) {
   const { store, products, totalPrice, productCount } = storeData;
 
   return (
-    <View style={styles.storeCard}>
+    <Pressable
+      style={({ pressed }) => [
+        styles.storeCard,
+        isSelected && styles.storeCardSelected,
+        pressed && styles.storeCardPressed,
+      ]}
+      onPress={() => onShopAtStore(storeData, index)}
+    >
+      {/* Stop Badge */}
+      <View style={[styles.stopBadge, isSelected && styles.stopBadgeSelected]}>
+        <Text style={styles.stopText}>Stop {index + 1}</Text>
+      </View>
+
+      {/* Store Header */}
       <View style={styles.storeHeader}>
-        <View style={styles.stopBadge}>
-          <Text style={styles.stopText}>Stop {index + 1}</Text>
-        </View>
         <View style={styles.storeInfo}>
           <Text style={styles.storeIcon}>{store.icon}</Text>
           <View style={styles.storeDetails}>
             <ThemedText style={styles.storeName}>{store.name}</ThemedText>
-            <Text style={styles.storeAddress}>{store.address}</Text>
-            <Text style={styles.storeHours}>⏰ {store.hours}</Text>
+            <View style={styles.storeMetaRow}>
+              <IconSymbol name="location.fill" size={12} color="#666" />
+              <Text style={styles.storeAddress}>{store.address}</Text>
+            </View>
+            <View style={styles.storeMetaRow}>
+              <IconSymbol name="clock.fill" size={12} color="#007AFF" />
+              <Text style={styles.storeHours}>{store.hours}</Text>
+            </View>
             {store.distance !== undefined && (
-              <Text style={styles.storeDistance}>📍 {store.distance.toFixed(1)} km away</Text>
+              <View style={styles.distanceBadge}>
+                <IconSymbol name="map.fill" size={12} color="#34C759" />
+                <Text style={styles.storeDistance}>{store.distance.toFixed(1)} km away</Text>
+              </View>
             )}
           </View>
         </View>
       </View>
 
-      {/* Products at this store */}
+      {/* Products Section */}
       <View style={styles.productsSection}>
-        <ThemedText style={styles.sectionTitle}>
-          {productCount} {productCount === 1 ? 'item' : 'items'} • ₱{totalPrice.toFixed(2)}
-        </ThemedText>
-        
-        {products.map((product, idx) => (
-          <View key={idx} style={styles.productRow}>
-            <Text style={styles.productName}>• {product.name}</Text>
-            <Text style={styles.productPrice}>
-              ₱{product.price.toFixed(2)} × {product.quantity}
+        <View style={styles.productsSummary}>
+          <View style={styles.summaryBadge}>
+            <IconSymbol name="cart.fill" size={14} color="#007AFF" />
+            <Text style={styles.summaryBadgeText}>
+              {productCount} {productCount === 1 ? 'item' : 'items'}
             </Text>
           </View>
-        ))}
+          <View style={styles.priceBadge}>
+            <Text style={styles.priceText}>₱{totalPrice.toFixed(2)}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.productsList}>
+          {products.slice(0, 3).map((product, idx) => (
+            <View key={idx} style={styles.productRow}>
+              <View style={styles.productDot} />
+              <Text style={styles.productName} numberOfLines={1}>{product.name}</Text>
+              <Text style={styles.productPrice}>
+                ₱{product.price.toFixed(2)} × {product.quantity}
+              </Text>
+            </View>
+          ))}
+          {products.length > 3 && (
+            <Text style={styles.moreProducts}>
+              +{products.length - 3} more {products.length - 3 === 1 ? 'item' : 'items'}
+            </Text>
+          )}
+        </View>
       </View>
 
-      <View style={styles.shopHereButton}>
-        <Button
-          onPress={() => onShopAtStore(storeData, index)}
-          style={styles.selectStoreBtn}
-        >
-          <IconSymbol name="location.fill" size={18} color="#007AFF" />
-          <Text style={styles.selectStoreText}>View on Map</Text>
-        </Button>
+      {/* Action Button */}
+      <View style={styles.actionButton}>
+        <IconSymbol name="map.fill" size={16} color="#007AFF" />
+        <Text style={styles.actionButtonText}>
+          {isSelected ? 'Viewing on Map' : 'View on Map'}
+        </Text>
+        {isSelected && (
+          <View style={styles.checkmarkBadge}>
+            <IconSymbol name="checkmark.circle.fill" size={16} color="#34C759" />
+          </View>
+        )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -98,7 +138,6 @@ export default function ShoppingGuideScreen() {
   const productIds = useShoppingListProductIds(listId);
   const addInventoryItems = useAddInventoryItemsCallback();
   
-  // ✅ FIXED: Get store directly instead of calling hooks in a loop
   const store = useShoppingListStore(listId);
 
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -109,7 +148,6 @@ export default function ShoppingGuideScreen() {
 
   console.log("🗺️ SHOPPING GUIDE SCREEN LOADED");
 
-  // ✅ FIXED: Use useMemo to get products data from store directly
   const productsData = useMemo(() => {
     if (!store || !productIds || productIds.length === 0) {
       return [];
@@ -165,7 +203,7 @@ export default function ShoppingGuideScreen() {
         store: { ...group.store }
       }));
       
-      console.log("🪧 Grouped into", groups.length, "stores");
+      console.log("🏪 Grouped into", groups.length, "stores");
 
       // Add distance info if we have user location
       if (userLocation) {
@@ -210,22 +248,6 @@ export default function ShoppingGuideScreen() {
 
     // Update selected store index to show only this store on map
     setSelectedStoreIndex(index);
-
-    // Show alert with store information
-    Alert.alert(
-      `Shop at ${storeData.store.name}`,
-      `${storeData.store.address}\n\n${storeData.productCount} items • ₱${storeData.totalPrice.toFixed(2)}\n\nThe map will now focus on this store.`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            if (process.env.EXPO_OS === 'ios') {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-          },
-        },
-      ]
-    );
   };
 
   // Get the currently selected store for the map
@@ -234,6 +256,7 @@ export default function ShoppingGuideScreen() {
 
   const totalCost = storeGroups.reduce((sum, group) => sum + group.totalPrice, 0);
   const totalItems = productsData.length;
+  const totalStores = storeGroups.length;
 
   return (
     <>
@@ -248,11 +271,6 @@ export default function ShoppingGuideScreen() {
         {/* Map View - Shows only selected store */}
         {!loading && currentStoreForMap.length > 0 && (
           <View style={styles.mapContainer}>
-            <View style={styles.mapHeader}>
-              <ThemedText style={styles.mapHeaderText}>
-                📍 Store {selectedStoreIndex + 1} of {storeGroups.length}
-              </ThemedText>
-            </View>
             <StoreMapView
               stores={currentStoreForMap}
               userLocation={userLocation}
@@ -260,28 +278,62 @@ export default function ShoppingGuideScreen() {
                 console.log("📍 Tapped on store:", store.name);
               }}
             />
+            
+            {/* Map Overlay Info */}
+            <View style={styles.mapOverlay}>
+              <View style={styles.mapOverlayCard}>
+                <View style={styles.mapOverlayHeader}>
+                  <IconSymbol name="location.fill" size={16} color="#007AFF" />
+                  <Text style={styles.mapOverlayTitle}>
+                    Stop {selectedStoreIndex + 1} of {totalStores}
+                  </Text>
+                </View>
+                <Text style={styles.mapOverlayStoreName} numberOfLines={1}>
+                  {selectedStore?.store.name}
+                </Text>
+                {selectedStore?.store.distance !== undefined && (
+                  <View style={styles.mapOverlayDistance}>
+                    <IconSymbol name="map.fill" size={12} color="#34C759" />
+                    <Text style={styles.mapOverlayDistanceText}>
+                      {selectedStore.store.distance.toFixed(1)} km away
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
           </View>
         )}
 
         {/* Summary Header */}
         <View style={styles.summaryHeader}>
-          <View style={styles.summaryRow}>
-            <ThemedText style={styles.summaryLabel}>Current Store:</ThemedText>
-            <ThemedText style={styles.summaryValue}>
-              {selectedStore?.store.name || 'None'}
-            </ThemedText>
-          </View>
-          <View style={styles.summaryRow}>
-            <ThemedText style={styles.summaryLabel}>Items at this store:</ThemedText>
-            <ThemedText style={styles.summaryValue}>
-              {selectedStore?.productCount || 0}
-            </ThemedText>
-          </View>
-          <View style={styles.summaryRow}>
-            <ThemedText style={styles.summaryLabel}>Cost at this store:</ThemedText>
-            <ThemedText style={styles.summaryValue}>
-              ₱{selectedStore?.totalPrice.toFixed(2) || '0.00'}
-            </ThemedText>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryItem}>
+              <IconSymbol name="building.2.fill" size={18} color="#007AFF" />
+              <View style={styles.summaryItemContent}>
+                <Text style={styles.summaryItemLabel}>Stores</Text>
+                <Text style={styles.summaryItemValue}>{totalStores}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.summaryDivider} />
+            
+            <View style={styles.summaryItem}>
+              <IconSymbol name="cart.fill" size={18} color="#FF9500" />
+              <View style={styles.summaryItemContent}>
+                <Text style={styles.summaryItemLabel}>Items</Text>
+                <Text style={styles.summaryItemValue}>{totalItems}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.summaryDivider} />
+            
+            <View style={styles.summaryItem}>
+              <IconSymbol name="dollarsign.circle.fill" size={18} color="#34C759" />
+              <View style={styles.summaryItemContent}>
+                <Text style={styles.summaryItemLabel}>Total</Text>
+                <Text style={styles.summaryItemValue}>₱{totalCost.toFixed(2)}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -289,6 +341,7 @@ export default function ShoppingGuideScreen() {
         <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
           {loading ? (
             <View style={styles.loadingContainer}>
@@ -303,23 +356,21 @@ export default function ShoppingGuideScreen() {
             </View>
           ) : (
             <>
-              <ThemedText style={styles.instructionText}>
-                📍 Tap a store card to view it on the map
-              </ThemedText>
+              <View style={styles.instructionBanner}>
+                <IconSymbol name="hand.tap.fill" size={20} color="#007AFF" />
+                <Text style={styles.instructionText}>
+                  Tap a store to view it on the map
+                </Text>
+              </View>
+              
               {storeGroups.map((storeData, index) => (
-                <View 
+                <StoreCard
                   key={storeData.store.id}
-                  style={[
-                    styles.storeCardWrapper,
-                    selectedStoreIndex === index && styles.selectedStoreWrapper
-                  ]}
-                >
-                  <StoreCard
-                    storeData={storeData}
-                    onShopAtStore={(data) => handleShopAtStore(data, index)}
-                    index={index}
-                  />
-                </View>
+                  storeData={storeData}
+                  onShopAtStore={handleShopAtStore}
+                  index={index}
+                  isSelected={selectedStoreIndex === index}
+                />
               ))}
             </>
           )}
@@ -332,51 +383,95 @@ export default function ShoppingGuideScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f5f5f7',
   },
   mapContainer: {
-    height: 250,
+    height: 280,
     width: '100%',
+    position: 'relative',
   },
-  mapHeader: {
+  mapOverlay: {
     position: 'absolute',
     top: 16,
     left: 16,
     right: 16,
     zIndex: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: 12,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  mapHeaderText: {
-    fontSize: 14,
+  mapOverlayCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    padding: 14,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.1)',
+  },
+  mapOverlayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  mapOverlayTitle: {
+    fontSize: 13,
     fontWeight: '700',
-    textAlign: 'center',
     color: '#007AFF',
+  },
+  mapOverlayStoreName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 4,
+  },
+  mapOverlayDistance: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  mapOverlayDistanceText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#34C759',
   },
   summaryHeader: {
     backgroundColor: '#fff',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
   },
-  summaryRow: {
+  summaryCard: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
   },
-  summaryLabel: {
-    fontSize: 14,
+  summaryItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  summaryItemContent: {
+    flex: 1,
+  },
+  summaryItemLabel: {
+    fontSize: 11,
     color: '#666',
+    fontWeight: '500',
   },
-  summaryValue: {
-    fontSize: 14,
+  summaryItemValue: {
+    fontSize: 16,
     fontWeight: '700',
+    color: '#000',
+  },
+  summaryDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#E5E5EA',
+    marginHorizontal: 8,
   },
   scrollView: {
     flex: 1,
@@ -401,45 +496,64 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#666',
   },
+  instructionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#E8F4FF',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#B3D9FF',
+  },
   instructionText: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
-    paddingHorizontal: 8,
-    textAlign: 'center',
-  },
-  storeCardWrapper: {
-    marginBottom: 16,
-  },
-  selectedStoreWrapper: {
-    borderWidth: 3,
-    borderColor: '#007AFF',
-    borderRadius: 12,
-    padding: 4,
-  },
-  stopBadge: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginBottom: 12,
-  },
-  stopText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
+    color: '#007AFF',
+    fontWeight: '600',
   },
   storeCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 3,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  storeCardSelected: {
+    borderColor: '#007AFF',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  storeCardPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
+  },
+  stopBadge: {
+    backgroundColor: '#F2F2F7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  stopBadgeSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  stopText: {
+    color: '#666',
+    fontSize: 12,
+    fontWeight: '700',
   },
   storeHeader: {
     marginBottom: 16,
@@ -447,76 +561,139 @@ const styles = StyleSheet.create({
   storeInfo: {
     flexDirection: 'row',
     gap: 12,
+    alignItems: 'flex-start',
   },
   storeIcon: {
-    fontSize: 32,
+    fontSize: 40,
+    marginTop: 4,
   },
   storeDetails: {
     flex: 1,
+    gap: 6,
   },
   storeName: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  storeMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   storeAddress: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
-    marginBottom: 2,
+    flex: 1,
   },
   storeHours: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#007AFF',
-    marginBottom: 2,
+    fontWeight: '500',
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 4,
   },
   storeDistance: {
     fontSize: 12,
     color: '#34C759',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   productsSection: {
     borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
+    borderTopColor: '#F2F2F7',
     paddingTop: 12,
     marginBottom: 12,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#666',
+  productsSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  summaryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#E8F4FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  summaryBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#007AFF',
+  },
+  priceBadge: {
+    backgroundColor: '#F0F9FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  priceText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#007AFF',
+  },
+  productsList: {
+    gap: 6,
   },
   productRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
     paddingVertical: 4,
+  },
+  productDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#007AFF',
   },
   productName: {
     fontSize: 14,
     flex: 1,
+    color: '#000',
   },
   productPrice: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
     fontWeight: '600',
   },
-  shopHereButton: {
-    marginTop: 8,
+  moreProducts: {
+    fontSize: 13,
+    color: '#007AFF',
+    fontWeight: '600',
+    fontStyle: 'italic',
+    paddingLeft: 12,
+    marginTop: 4,
   },
-  selectStoreBtn: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#F8F9FA',
     paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#007AFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
   },
-  selectStoreText: {
+  actionButtonText: {
     color: '#007AFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
+  },
+  checkmarkBadge: {
+    marginLeft: 4,
   },
 });

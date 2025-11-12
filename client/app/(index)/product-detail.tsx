@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Pressable } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { BodyScrollView } from '@/components/ui/BodyScrollView';
 import Button from '@/components/ui/button';
 import { productsApi, DatabaseProduct, ProductPrice } from '@/services/productsApi';
 import { useProductPrices } from '@/hooks/useProducts';
+import ShoppingListSelectorModal from '@/components/ShoppingListSelectorModal';
 
 export default function ProductDetailScreen() {
   const { productId } = useLocalSearchParams() as { productId: string };
@@ -13,6 +14,8 @@ export default function ProductDetailScreen() {
   const [product, setProduct] = useState<DatabaseProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const { prices } = useProductPrices(parseInt(productId));
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedPrice, setSelectedPrice] = useState<{ price: number; store: string } | null>(null);
 
   useEffect(() => {
     loadProduct();
@@ -22,9 +25,25 @@ export default function ProductDetailScreen() {
     try {
       const fetchedProduct = await productsApi.getProduct(parseInt(productId));
       setProduct(fetchedProduct);
+      
+      // Set default price if available
+      if (prices.length > 0) {
+        setSelectedPrice({ price: prices[0].price, store: prices[0].store });
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddToList = () => {
+    // Use first price as default if none selected
+    const priceToUse = selectedPrice || (prices.length > 0 ? { price: prices[0].price, store: prices[0].store } : { price: 0, store: 'Unknown' });
+    setSelectedPrice(priceToUse);
+    setModalVisible(true);
+  };
+
+  const handlePriceSelect = (price: number, store: string) => {
+    setSelectedPrice({ price, store });
   };
 
   if (loading) {
@@ -71,14 +90,21 @@ export default function ProductDetailScreen() {
           
           {prices.length > 0 ? (
             prices.map((price) => (
-              <View key={price.id} style={styles.priceItem}>
+              <Pressable
+                key={price.id}
+                style={[
+                  styles.priceItem,
+                  selectedPrice?.store === price.store && selectedPrice?.price === price.price && styles.priceItemSelected
+                ]}
+                onPress={() => handlePriceSelect(price.price, price.store)}
+              >
                 <ThemedText type="defaultSemiBold">
                   {price.store}
                 </ThemedText>
                 <ThemedText type="defaultSemiBold" style={styles.priceValue}>
                   ₱{price.price.toFixed(2)}
                 </ThemedText>
-              </View>
+              </Pressable>
             ))
           ) : (
             <ThemedText style={styles.noPrices}>
@@ -88,11 +114,26 @@ export default function ProductDetailScreen() {
         </View>
 
         <View style={styles.actions}>
-          <Button onPress={() => router.back()}>
+          <Button onPress={handleAddToList}>
             Add to Shopping List
           </Button>
         </View>
       </BodyScrollView>
+
+      {/* Shopping List Selector Modal */}
+      {product && selectedPrice && (
+        <ShoppingListSelectorModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          productId={product.id}
+          productName={product.name}
+          price={selectedPrice.price}
+          store={selectedPrice.store}
+          onSuccess={() => {
+            setModalVisible(false);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -130,6 +171,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     borderRadius: 8,
     marginBottom: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  priceItemSelected: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#007AFF',
   },
   priceValue: {
     color: '#007AFF',

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, View, Alert } from "react-native";
+import { Pressable, View, Alert, ActivityIndicator } from "react-native";
 import Animated from "react-native-reanimated";
 import ShoppingListProductItem from "@/components/ShoppingListProductItem";
 import BudgetSummary from "@/components/BudgetSummary";
@@ -17,13 +17,14 @@ import { useShoppingListData } from "@/stores/ShoppingListsStore";
 import ShopNowButton from "@/components/ShopNowButton";
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotifications";
+import { useListNotifications } from "@/utils/notifyCollaborators";
 
 export default function ListScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const listId = params.listId as string;
 
-  // 🔔 NEW: Get pending product params from URL
+  // 📍 NEW: Get pending product params from URL
   const addProductId = params.addProductId ? Number(params.addProductId) : null;
   const addProductName = params.addProductName as string | undefined;
   const addProductPrice = params.addProductPrice ? Number(params.addProductPrice) : null;
@@ -41,15 +42,28 @@ export default function ListScreen() {
   const [description] = useShoppingListValue(listId, "description");
   const productIds = useShoppingListProductIds(listId);
 
-  // 🔔 Get the add product function - safe to call here since we're in a component
+  // ✅ CRITICAL FIX: Check if data is still loading
+  // If BOTH listData and hydrated values are empty, we're still loading
+  const isLoadingData = !listData.name && !name;
+  
+  // 📍 Get the add product function - safe to call here since we're in a component
   const addProduct = useAddProductWithNotifications(listId);
 
-  // Safe fallbacks
+  // ✅ Initialize notification system for this list
+  const listNotifications = useListNotifications({
+    listId: listId,
+    listName: listData?.name || "",
+    emoji: listData?.emoji || "🛒",
+    collaborators: (listData as any)?.collaborators || [],
+  });
+
+  // Safe fallbacks - prioritize hydrated values, then listData
   const displayName = name || listData.name || "";
   const displayEmoji = emoji || listData.emoji || "❓";
   const displayDescription = description || listData.description || "";
-  const budget = listData.budget;
-  const status = listData.status || 'regular'; // Get the status
+  const budget = listData.budget || 0;  // ✅ Add fallback to 0
+  const status = listData.status || 'regular';
+  const isHistory = status === 'completed';
 
   console.log("List Screen Debug:", {
     listId,
@@ -57,47 +71,48 @@ export default function ListScreen() {
     budgetType: typeof budget,
     name,
     productCount: productIds.length,
-    status, // Log status
+    status,
     listData,
+    collaborators: (listData as any)?.collaborators,
   });
 
-  // 🔔 NEW: Auto-add pending product when page loads
+  // 📍 NEW: Auto-add pending product when page loads
   useEffect(() => {
     // Check all conditions
     if (
-      !hasAddedProduct.current && // Haven't added yet
-      addProduct && // Function is ready
-      addProductId && // Have product ID
-      addProductName && // Have product name
-      addProductPrice !== null && // Have price (could be 0)
-      addProductStore // Have store
+      !hasAddedProduct.current &&
+      addProduct &&
+      addProductId &&
+      addProductName &&
+      addProductPrice !== null &&
+      addProductStore
     ) {
-      // Mark as added to prevent duplicate attempts
       hasAddedProduct.current = true;
       
-      console.log('🔔 Auto-adding pending product:', {
+      console.log('📍 Auto-adding pending product:', {
         id: addProductId,
         name: addProductName,
         price: addProductPrice,
         store: addProductStore
       });
       
-      // Add product after a short delay to ensure list is fully loaded
       const timer = setTimeout(async () => {
         try {
           const productAddedId = await addProduct(
             addProductName,
-            1, // quantity
-            'pc', // units
-            '', // notes
-            addProductStore, // selectedStore
-            addProductPrice, // selectedPrice
-            addProductId, // databaseProductId
-            '' // category
+            1,
+            'pc',
+            '',
+            addProductStore,
+            addProductPrice,
+            addProductId,
+            ''
           );
 
           if (productAddedId) {
             console.log('✅ Product auto-added successfully:', productAddedId);
+            await listNotifications.notifyItemAdded(addProductName);
+            
             Alert.alert(
               'Product Added',
               `${addProductName} has been added to your list!`,
@@ -105,8 +120,6 @@ export default function ListScreen() {
             );
           } else {
             console.log('⚠️ Product was duplicate or failed to add');
-            // If null was returned, it might be a duplicate
-            // The hook should have created a notification already
           }
         } catch (error) {
           console.error('❌ Error auto-adding product:', error);
@@ -116,13 +129,12 @@ export default function ListScreen() {
             [{ text: 'OK' }]
           );
         }
-      }, 800); // Wait 800ms for list to fully initialize
+      }, 800);
       
       return () => clearTimeout(timer);
     }
-  }, [addProduct, addProductId, addProductName, addProductPrice, addProductStore, listId]);
+  }, [addProduct, addProductId, addProductName, addProductPrice, addProductStore, listId, listNotifications]);
 
-  // Add this debug logging
   console.log("🔍 Current list status:", status);
   console.log("🔍 List data:", listData);
 
@@ -130,6 +142,25 @@ export default function ListScreen() {
     pathname: "/list/[listId]/product/new",
     params: { listId },
   } as const;
+
+  // ✅ SHOW LOADING STATE while data is syncing
+  if (isLoadingData) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            headerTitle: "Loading...",
+          }}
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <ThemedText style={{ marginTop: 16, color: 'gray' }}>
+            Loading list data...
+          </ThemedText>
+        </View>
+      </>
+    );
+  }
 
   const ListHeaderComponent = () => (
     <View>
@@ -182,6 +213,7 @@ export default function ListScreen() {
               </Pressable>
               <Pressable
                 onPress={() => {
+                  if (isHistory) return;
                   if (process.env.EXPO_OS === "ios") {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   }
@@ -190,7 +222,8 @@ export default function ListScreen() {
                     params: { listId },
                   });
                 }}
-                style={{ padding: 8 }}
+                style={{ padding: 8, opacity: isHistory ? 0.3 : 1 }}
+                disabled={isHistory}
               >
                 <IconSymbol
                   name="pencil.and.list.clipboard"
@@ -199,12 +232,14 @@ export default function ListScreen() {
               </Pressable>
               <Pressable
                 onPress={() => {
+                  if (isHistory) return;
                   if (process.env.EXPO_OS === "ios") {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   }
                   router.push(newProductHref);
                 }}
-                style={{ paddingLeft: 8 }}
+                style={{ paddingLeft: 8, opacity: isHistory ? 0.3 : 1 }}
+                disabled={isHistory}
               >
                 <IconSymbol name="plus" color={"#007AFF"} />
               </Pressable>
@@ -226,7 +261,10 @@ export default function ListScreen() {
       <Animated.FlatList
         data={productIds}
         renderItem={({ item: productId }) => (
-          <ShoppingListProductItem listId={listId} productId={productId} />
+          <ShoppingListProductItem 
+            listId={listId} 
+            productId={productId}
+          />
         )}
         contentContainerStyle={{
           paddingTop: 12,
@@ -242,15 +280,22 @@ export default function ListScreen() {
               paddingTop: 50,
             }}
           >
-            <Button
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                router.push(newProductHref);
-              }}
-              variant="ghost"
-            >
-              Add the first product to this list
-            </Button>
+            {!isHistory && (
+              <Button
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push(newProductHref);
+                }}
+                variant="ghost"
+              >
+                Add the first product to this list
+              </Button>
+            )}
+            {isHistory && (
+              <ThemedText style={{ color: 'gray', fontSize: 16 }}>
+                This list has been completed
+              </ThemedText>
+            )}
           </BodyScrollView>
         )}
       />

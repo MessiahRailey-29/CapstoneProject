@@ -7,13 +7,12 @@ import { useRouter } from 'expo-router';
 import { Alert, View, StyleSheet, TouchableOpacity, TextInput, Modal, Image, useColorScheme, Text } from 'react-native';
 import { useNickname } from '@/hooks/useNickname';
 import * as ImagePicker from 'expo-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useResetExpenseData } from '@/hooks/useResetExpenseData';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/constants/Colors'
-
-const PROFILE_PICTURE_KEY = 'user_profile_picture';
+import { SwipeableTabWrapper } from "@/components/SwipeableTabWrapper";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
     const { signOut } = useClerk();
@@ -25,35 +24,56 @@ export default function ProfileScreen() {
     const [tempNickname, setTempNickname] = React.useState('');
     const [profilePicture, setProfilePicture] = React.useState<string | null>(null);
     const [showAvatarOptions, setShowAvatarOptions] = React.useState(false);
+    const [isUploadingImage, setIsUploadingImage] = React.useState(false);
 
-    // Load profile picture on mount
+    // Load profile picture from Clerk's imageUrl
     React.useEffect(() => {
-        loadProfilePicture();
-    }, [user?.id]);
-
-    const loadProfilePicture = async () => {
-        try {
-            if (user?.id) {
-                const stored = await AsyncStorage.getItem(`${PROFILE_PICTURE_KEY}_${user.id}`);
-                if (stored) {
-                    setProfilePicture(stored);
-                }
-            }
-        } catch (error) {
-            console.error('Error loading profile picture:', error);
+        if (user?.imageUrl) {
+            setProfilePicture(user.imageUrl);
         }
-    };
+    }, [user?.imageUrl]);
 
     const saveProfilePicture = async (uri: string) => {
-        try {
-            if (user?.id) {
-                await AsyncStorage.setItem(`${PROFILE_PICTURE_KEY}_${user.id}`, uri);
-                setProfilePicture(uri);
-            }
-        } catch (error) {
-            console.error('Error saving profile picture:', error);
+    try {
+        if (!user) {
+            console.error('❌ No user found');
+            Alert.alert('Error', 'No user found. Please try logging out and back in.');
+            return;
         }
-    };
+        
+        setIsUploadingImage(true);
+        console.log('📸 Uploading profile picture...');
+        
+        // Get file info to determine mime type
+        const filename = uri.split('/').pop() || 'profile.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+        
+        // For Clerk in React Native, use the file object format
+        const file = {
+            uri: uri,
+            type: type,
+            name: filename,
+        } as any; // Type assertion needed for Clerk's types
+        
+        // Use Clerk's built-in profile image upload
+        await user.setProfileImage({ file });
+        
+        console.log('✅ Profile picture uploaded successfully');
+        
+        // Reload user to get new image URL
+        await user.reload();
+        setProfilePicture(user.imageUrl);
+        
+        Alert.alert('Success', 'Profile picture updated!');
+    } catch (error: any) {
+        console.error('❌ Error saving profile picture:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        Alert.alert('Error', `Failed to save profile picture: ${error.message || 'Unknown error'}`);
+    } finally {
+        setIsUploadingImage(false);
+    }
+};
 
     const pickImage = async () => {
         try {
@@ -70,7 +90,7 @@ export default function ProfileScreen() {
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
                 aspect: [1, 1],
-                quality: 0.8,
+                quality: 0.7,
             });
 
             if (!result.canceled && result.assets[0]) {
@@ -97,7 +117,7 @@ export default function ProfileScreen() {
             const result = await ImagePicker.launchCameraAsync({
                 allowsEditing: true,
                 aspect: [1, 1],
-                quality: 0.8,
+                quality: 0.7,
             });
 
             if (!result.canceled && result.assets[0]) {
@@ -112,20 +132,25 @@ export default function ProfileScreen() {
 
     const removeProfilePicture = async () => {
         try {
-            if (user?.id) {
-                await AsyncStorage.removeItem(`${PROFILE_PICTURE_KEY}_${user.id}`);
+            if (user) {
+                // Use Clerk's built-in method to remove profile image
+                await user.setProfileImage({ file: null });
+                await user.reload();
+                
                 setProfilePicture(null);
                 setShowAvatarOptions(false);
+                Alert.alert('Success', 'Profile picture removed');
             }
         } catch (error) {
             console.error('Error removing profile picture:', error);
+            Alert.alert('Error', 'Failed to remove profile picture');
         }
     };
 
-    const handleEditNickname = () => {
+    const handleEditNickname = useCallback(() => {
         setTempNickname(nickname);
         setIsEditingNickname(true);
-    };
+    }, [nickname]);
 
     const handleSaveNickname = async () => {
         if (tempNickname.trim()) {
@@ -188,13 +213,14 @@ export default function ProfileScreen() {
 
     const displayName = nickname || user?.fullName || user?.firstName || 'User';
     
+    const insets = useSafeAreaInsets();
       // Color scheme and styles
       const theme = useColorScheme();
       const colors = Colors[theme ?? 'light'];
-      const styles = createStyles(colors);
+      const styles = useMemo(() => createStyles(colors), [colors]);
 
     return (
-        <BodyScrollView>
+        <BodyScrollView contentContainerStyle={{paddingBottom: insets.bottom + 130}}>
             {/* Enhanced Profile Card */}
             <View style={styles.profileCard}>
                 <View style={styles.profileHeader}>
@@ -202,6 +228,7 @@ export default function ProfileScreen() {
                     <TouchableOpacity 
                         style={styles.avatarContainer}
                         onPress={() => setShowAvatarOptions(true)}
+                        disabled={isUploadingImage}
                     >
                         <View style={styles.avatar}>
                             {profilePicture ? (
@@ -211,6 +238,11 @@ export default function ProfileScreen() {
                                 />
                             ) : (
                                 <ThemedText style={styles.avatarText}>{getInitials()}</ThemedText>
+                            )}
+                            {isUploadingImage && (
+                                <View style={styles.uploadingOverlay}>
+                                    <ThemedText style={styles.uploadingText}>⏳</ThemedText>
+                                </View>
                             )}
                         </View>
                         <View style={styles.cameraIconContainer}>
@@ -252,96 +284,118 @@ export default function ProfileScreen() {
                     style={styles.settingItem}
                     onPress={() => router.push('/(index)/notification-settings')}
                 >
-                    <View style={[styles.settingIcon, { backgroundColor: '#E3F2FD' }]}>
+                    <View style={[styles.settingIcon, { backgroundColor: '#FFF3E0' }]}>
                         <ThemedText style={styles.iconText}>🔔</ThemedText>
                     </View>
                     <View style={styles.settingContent}>
-                        <ThemedText style={styles.settingLabel}>
-                            Notification Settings
-                        </ThemedText>
-                        <ThemedText style={styles.settingDescription}>
-                            Manage alerts and reminders
-                        </ThemedText>
+                        <ThemedText style={styles.settingLabel}>Notifications</ThemedText>
+                        <ThemedText style={styles.settingDescription}>Manage reminder preferences</ThemedText>
                     </View>
                     <ThemedText style={styles.chevron}>›</ThemedText>
                 </TouchableOpacity>
 
-                {/* Duplicate Detection Settings */}
+                {/* Duplication Settings */}
                 <TouchableOpacity
                     style={styles.settingItem}
-                    onPress={() => router.push('/(index)/duplicate-settings')}
+                    onPress={() => router.push('/(index)/duplicate-settings' as any)}
                 >
-                    <View style={[styles.settingIcon, { backgroundColor: '#FFF3E0' }]}>
-                        <ThemedText style={styles.iconText}>⚠️</ThemedText>
+                    <View style={[styles.settingIcon, { backgroundColor: '#E3F2FD' }]}>
+                        <ThemedText style={styles.iconText}>🔄</ThemedText>
                     </View>
                     <View style={styles.settingContent}>
-                        <ThemedText style={styles.settingLabel}>
-                            Duplicate Detection
-                        </ThemedText>
-                        <ThemedText style={styles.settingDescription}>
-                            Configure duplicate item warnings
-                        </ThemedText>
+                        <ThemedText style={styles.settingLabel}>Duplicate Detection</ThemedText>
+                        <ThemedText style={styles.settingDescription}>Control duplicate expense alerts</ThemedText>
                     </View>
                     <ThemedText style={styles.chevron}>›</ThemedText>
                 </TouchableOpacity>
             </View>
 
-
-            {/* Data Management Section */}
-            <View style={styles.section}>
-                <ThemedText style={styles.sectionTitle}>Data Management</ThemedText>
-
-                {/* Reset Expense Data */}
-                <TouchableOpacity
-                    style={styles.settingItem}
-                    onPress={() => {
-                        if (process.env.EXPO_OS === "ios") {
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                        }
-                        resetAllExpenseData();
-                    }}
-                >
-                    <View style={[styles.settingIcon, { backgroundColor: '#FFEBEE' }]}>
-                        <ThemedText style={styles.iconText}>🗑️</ThemedText>
-                    </View>
-                    <View style={styles.settingContent}>
-                        <ThemedText style={styles.settingLabel}>
-                            Reset Expense Data
-                        </ThemedText>
-                        <ThemedText style={styles.settingDescription}>
-                            Clear all purchase history and analytics
-                        </ThemedText>
-                    </View>
-                    <ThemedText style={styles.chevron}>›</ThemedText>
-                </TouchableOpacity>
-            </View>
             {/* Account Section */}
             <View style={styles.section}>
                 <ThemedText style={styles.sectionTitle}>Account</ThemedText>
 
-                <View style={styles.accountButtons}>
-                    <Button 
-                        onPress={signOut} 
-                        variant='ghost' 
-                        textStyle={{ color: appleRed, fontSize: 16, fontWeight: '600' }}
-                    >
-                        Sign out
-                    </Button>
+                {/* Sign Out Button */}
+                <TouchableOpacity
+                    style={styles.settingItem}
+                    onPress={async () => {
+                        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        await signOut();
+                        router.replace("/(auth)/intro");
+                    }}
+                >
+                    <View style={[styles.settingIcon, { backgroundColor: '#FFF9E6' }]}>
+                        <ThemedText style={styles.iconText}>🚪</ThemedText>
+                    </View>
+                    <View style={styles.settingContent}>
+                        <ThemedText style={styles.settingLabel}>Sign Out</ThemedText>
+                        <ThemedText style={styles.settingDescription}>Log out of your account</ThemedText>
+                    </View>
+                </TouchableOpacity>
 
-                    <Button
-                        onPress={HandleDeleteAccount}
-                        variant="ghost"
-                        textStyle={{ color: "#999", fontSize: 14 }}
-                    >
-                        Delete account
-                    </Button>
-                </View>
+                {/* Delete Account Button */}
+                <TouchableOpacity
+                    style={styles.settingItem}
+                    onPress={async () => {
+                        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        HandleDeleteAccount();
+                    }}
+                >
+                    <View style={[styles.settingIcon, { backgroundColor: '#FFEBEE' }]}>
+                        <ThemedText style={styles.iconText}>⚠️</ThemedText>
+                    </View>
+                    <View style={styles.settingContent}>
+                        <ThemedText style={[styles.settingLabel, { color: appleRed }]}>Delete Account</ThemedText>
+                        <ThemedText style={styles.settingDescription}>Permanently remove your account</ThemedText>
+                    </View>
+                </TouchableOpacity>
+
+                {/* Reset Expense Data Button */}
+                <TouchableOpacity
+                    style={styles.settingItem}
+                    onPress={async () => {
+                        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        Alert.alert(
+                            "Reset Expense Data",
+                            "Are you sure you want to delete all expense data? This action cannot be undone.",
+                            [
+                                {
+                                    text: "Cancel",
+                                    style: "cancel",
+                                },
+                                {
+                                    text: "Reset",
+                                    onPress: async () => {
+                                        try {
+                                            await resetAllExpenseData();
+                                            Alert.alert("Success", "All expense data has been reset");
+                                        } catch (error) {
+                                            Alert.alert("Error", "Failed to reset expense data");
+                                            console.error(error);
+                                        }
+                                    },
+                                    style: "destructive",
+                                },
+                            ]
+                        );
+                    }}
+                >
+                    <View style={[styles.settingIcon, { backgroundColor: '#FFF3E0' }]}>
+                        <ThemedText style={styles.iconText}>🗑️</ThemedText>
+                    </View>
+                    <View style={styles.settingContent}>
+                        <ThemedText style={[styles.settingLabel, { color: '#FF9800' }]}>Reset Expense Data</ThemedText>
+                        <ThemedText style={styles.settingDescription}>Delete all expense records</ThemedText>
+                    </View>
+                </TouchableOpacity>
             </View>
 
             {/* App Info */}
             <View style={styles.appInfo}>
                 <ThemedText style={styles.appInfoText}>
-                    Version 1.0.0
+                    SpendWise • Version 1.0.0
+                </ThemedText>
+                <ThemedText style={styles.appInfoText}>
+                    Made with 💚 by hola
                 </ThemedText>
             </View>
 
@@ -364,34 +418,31 @@ export default function ProfileScreen() {
                         <View style={styles.modalContent}>
                             <ThemedText style={styles.modalTitle}>Edit Nickname</ThemedText>
                             <ThemedText style={styles.modalSubtitle}>
-                                This name will appear on your homepage
+                                This is how we'll greet you in the app
                             </ThemedText>
-                            
                             <TextInput
                                 style={styles.input}
                                 value={tempNickname}
                                 onChangeText={setTempNickname}
                                 placeholder="Enter your nickname"
                                 placeholderTextColor="#999"
-                                autoFocus
                                 maxLength={30}
+                                autoFocus
+                                returnKeyType="done"
+                                onSubmitEditing={handleSaveNickname}
                             />
-
                             <View style={styles.modalButtons}>
                                 <TouchableOpacity
                                     style={[styles.modalButton, styles.cancelButton]}
                                     onPress={() => setIsEditingNickname(false)}
-                                    activeOpacity={0.7}
                                 >
-                                    <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+                                    <Text style={styles.cancelButtonText}>Cancel</Text>
                                 </TouchableOpacity>
-                                
                                 <TouchableOpacity
                                     style={[styles.modalButton, styles.saveButton]}
                                     onPress={handleSaveNickname}
-                                    activeOpacity={0.7}
                                 >
-                                    <ThemedText style={styles.saveButtonText}>Save</ThemedText>
+                                    <Text style={styles.saveButtonText}>Save</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -403,78 +454,88 @@ export default function ProfileScreen() {
             <Modal
                 visible={showAvatarOptions}
                 transparent
-                animationType="slide"
+                animationType="fade"
                 onRequestClose={() => setShowAvatarOptions(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.avatarModalContent}>
-                        <ThemedText style={styles.modalTitle}>Profile Picture</ThemedText>
-                        
-                        <TouchableOpacity
-                            style={styles.avatarOption}
-                            onPress={takePhoto}
-                        >
-                            <ThemedText style={styles.avatarOptionIcon}>📷</ThemedText>
-                            <ThemedText style={styles.avatarOptionText}>Take Photo</ThemedText>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.avatarOption}
-                            onPress={pickImage}
-                        >
-                            <ThemedText style={styles.avatarOptionIcon}>🖼️</ThemedText>
-                            <ThemedText style={styles.avatarOptionText}>Choose from Library</ThemedText>
-                        </TouchableOpacity>
-
-                        {profilePicture && (
-                            <TouchableOpacity
-                                style={[styles.avatarOption, styles.removeOption]}
-                                onPress={removeProfilePicture}
+                <TouchableOpacity 
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowAvatarOptions(false)}
+                >
+                    <TouchableOpacity 
+                        activeOpacity={1}
+                        onPress={(e) => e.stopPropagation()}
+                    >
+                        <View style={styles.avatarModalContent}>
+                            <ThemedText style={styles.modalTitle}>Profile Picture</ThemedText>
+                            
+                            <TouchableOpacity 
+                                style={styles.avatarOption}
+                                onPress={pickImage}
                             >
-                                <ThemedText style={styles.avatarOptionIcon}>🗑️</ThemedText>
-                                <ThemedText style={styles.removeOptionText}>Remove Picture</ThemedText>
+                                <ThemedText style={styles.avatarOptionIcon}>📷</ThemedText>
+                                <ThemedText style={styles.avatarOptionText}>Choose from Library</ThemedText>
                             </TouchableOpacity>
-                        )}
 
-                        <TouchableOpacity
-                            style={[styles.modalButton, styles.cancelButton, { marginTop: 16 }]}
-                            onPress={() => setShowAvatarOptions(false)}
-                        >
-                           <ThemedText style={styles.cancelButtonText}>
-                            Cancel
-                            </ThemedText>
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                            <TouchableOpacity 
+                                style={styles.avatarOption}
+                                onPress={takePhoto}
+                            >
+                                <ThemedText style={styles.avatarOptionIcon}>📸</ThemedText>
+                                <ThemedText style={styles.avatarOptionText}>Take Photo</ThemedText>
+                            </TouchableOpacity>
+
+                            {profilePicture && (
+                                <TouchableOpacity 
+                                    style={[styles.avatarOption, styles.removeOption]}
+                                    onPress={removeProfilePicture}
+                                >
+                                    <ThemedText style={styles.avatarOptionIcon}>🗑️</ThemedText>
+                                    <ThemedText style={styles.removeOptionText}>Remove Photo</ThemedText>
+                                </TouchableOpacity>
+                            )}
+
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.cancelButton, { marginTop: 12, width: '100%' }]}
+                                onPress={() => setShowAvatarOptions(false)}
+                            >
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
             </Modal>
         </BodyScrollView>
     );
 }
 
-function createStyles(colors: typeof Colors.light) {
-  return StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: colors.background,
+    },
     profileCard: {
         backgroundColor: colors.background,
         marginHorizontal: 16,
         marginTop: 16,
-        marginBottom: 24,
+        marginBottom: 16,
         borderRadius: 20,
-        padding: 20,
-        shadowColor: colors.shadowColor,
+        overflow: 'hidden',
+        shadowColor: colors.borderColor,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
         elevation: 5,
         borderColor: colors.borderColor,
-        borderWidth: 0.7
+        borderWidth: 0.7,
     },
     profileHeader: {
+        padding: 24,
         alignItems: 'center',
-        marginBottom: 20,
     },
     avatarContainer: {
-        marginBottom: 16,
         position: 'relative',
+        marginBottom: 16,
     },
     avatar: {
         width: 100,
@@ -483,11 +544,13 @@ function createStyles(colors: typeof Colors.light) {
         backgroundColor: '#007AFF',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#007AFF',
+        borderWidth: 4,
+        borderColor: '#fff',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.2,
         shadowRadius: 8,
-        elevation: 6,
+        elevation: 8,
         overflow: 'hidden',
     },
     avatarImage: {
@@ -499,18 +562,33 @@ function createStyles(colors: typeof Colors.light) {
         fontSize: 36,
         fontWeight: '700',
         color: '#fff',
-        padding: 4
+    },
+    uploadingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 50,
+    },
+    uploadingText: {
+        fontSize: 32,
     },
     cameraIconContainer: {
         position: 'absolute',
         bottom: 0,
         right: 0,
         backgroundColor: '#fff',
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        borderRadius: 18,
+        width: 36,
+        height: 36,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 3,
+        borderColor: '#007AFF',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
@@ -518,18 +596,19 @@ function createStyles(colors: typeof Colors.light) {
         elevation: 4,
     },
     cameraIcon: {
-        fontSize: 16,
+        fontSize: 18,
     },
     userInfo: {
         alignItems: 'center',
+        width: '100%',
     },
     nameContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 8,
     },
     userName: {
-        fontSize: 26,
+        fontSize: 28,
         fontWeight: '700',
         color: colors.text,
         marginRight: 8,
@@ -651,9 +730,6 @@ function createStyles(colors: typeof Colors.light) {
         color: '#c7c7cc',
         fontWeight: '300',
     },
-    accountButtons: {
-        paddingVertical: 8,
-    },
     appInfo: {
         alignItems: 'center',
         paddingVertical: 24,
@@ -724,8 +800,11 @@ function createStyles(colors: typeof Colors.light) {
         gap: 12,
     },
     modalButton: {
+        flex: 1,
         borderRadius: 12,
         alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.2,
@@ -736,7 +815,6 @@ function createStyles(colors: typeof Colors.light) {
         backgroundColor: '#f5f5f5',
         borderWidth: 2,
         borderColor: '#e0e0e0',
-        padding: 10,
     },
     cancelButtonText: {
         fontSize: 16,
@@ -784,4 +862,3 @@ function createStyles(colors: typeof Colors.light) {
         color: '#d32f2f',
     },
 });
-}

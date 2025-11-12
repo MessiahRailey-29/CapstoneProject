@@ -8,6 +8,7 @@ import TextInput from "@/components/ui/text-input";
 import { isClerkAPIResponseError, useSignIn } from "@clerk/clerk-expo";
 import { ClerkAPIError } from "@clerk/types";
 import { ErrorDisplay } from "@/components/ui/ErrorDisplay";
+import { storeVerificationCode, checkVerificationCodeExpiry, clearVerificationCode } from '@/utils/securityUtils';
 
 export default function ResetPassword() {
   const { isLoaded, signIn, setActive } = useSignIn();
@@ -21,6 +22,8 @@ export default function ResetPassword() {
   const [errors, setErrors] = React.useState<ClerkAPIError[]>([]);
   const [passwordError, setPasswordError] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
+  const [codeExpiryTime, setCodeExpiryTime] = React.useState<number | null>(null);
+  const [remainingTime, setRemainingTime] = React.useState<string>('');
 
   // Validate password match
   const validatePasswords = React.useCallback(() => {
@@ -39,6 +42,28 @@ export default function ResetPassword() {
     }
   }, [password, confirmPassword, validatePasswords]);
 
+  // Timer for verification code expiration
+  React.useEffect(() => {
+    if (step !== 'verify' || !codeExpiryTime) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const timeLeft = codeExpiryTime - now;
+
+      if (timeLeft <= 0) {
+        setRemainingTime('Code expired');
+        clearInterval(interval);
+        alert('Your verification code has expired. Please request a new one.');
+      } else {
+        const minutes = Math.floor(timeLeft / 60000);
+        const seconds = Math.floor((timeLeft % 60000) / 1000);
+        setRemainingTime(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [step, codeExpiryTime]);
+
   const onResetPasswordPress = React.useCallback(async () => {
     if (!isLoaded) return;
     setErrors([]);
@@ -49,6 +74,11 @@ export default function ResetPassword() {
         strategy: "reset_password_email_code",
         identifier: emailAddress,
       });
+
+      // Store verification code timestamp
+      const expiryTime = Date.now() + (2 * 60 * 1000); // 2 minutes from now
+      setCodeExpiryTime(expiryTime);
+      await storeVerificationCode(emailAddress, '', 'reset_password');
 
       setStep("verify");
     } catch (err) {
@@ -62,16 +92,32 @@ export default function ResetPassword() {
   const onVerifyCodePress = React.useCallback(async () => {
     if (!isLoaded || !code) return;
     
+    // Check if verification code has expired
+    const expiryCheck = await checkVerificationCodeExpiry(emailAddress, 'reset_password');
+    if (expiryCheck.expired) {
+      alert('Your verification code has expired. Please request a new one.');
+      setStep('email');
+      return;
+    }
+
     // Just move to password step - we'll verify the code when resetting password
     setStep("password");
     setErrors([]);
-  }, [isLoaded, code]);
+  }, [isLoaded, code, emailAddress]);
 
   const onVerifyPress = React.useCallback(async () => {
     if (!isLoaded) return;
 
     // Validate passwords match
     if (!validatePasswords()) {
+      return;
+    }
+
+    // Check if verification code has expired
+    const expiryCheck = await checkVerificationCodeExpiry(emailAddress, 'reset_password');
+    if (expiryCheck.expired) {
+      alert('Your verification code has expired. Please request a new one.');
+      setStep('email');
       return;
     }
 
@@ -86,6 +132,7 @@ export default function ResetPassword() {
       });
 
       if (signInAttempt.status === "complete") {
+        await clearVerificationCode(emailAddress, 'reset_password');
         await setActive({ session: signInAttempt.createdSessionId });
         router.replace("/");
       } else {
@@ -97,7 +144,7 @@ export default function ResetPassword() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoaded, code, password, signIn, setActive, router, validatePasswords]);
+  }, [isLoaded, code, password, signIn, setActive, router, validatePasswords, emailAddress]);
 
   // Step 1: Enter email
   if (step === "email") {
@@ -151,6 +198,11 @@ export default function ResetPassword() {
           <ThemedText style={styles.headerSubtitle}>
             We sent a verification code to {emailAddress}
           </ThemedText>
+          {remainingTime && (
+            <ThemedText style={[styles.headerSubtitle, { marginTop: 8, fontWeight: '600', color: '#D97706' }]}>
+              ⏱️ Code expires in: {remainingTime}
+            </ThemedText>
+          )}
         </View>
 
         <TextInput

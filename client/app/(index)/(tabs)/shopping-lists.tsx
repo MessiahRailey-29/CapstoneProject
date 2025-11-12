@@ -13,22 +13,24 @@ import {
 import { useShoppingListProductIds } from "@/stores/ShoppingListStore";
 import { Stack, useRouter } from "expo-router";
 import { Pressable, StyleSheet, View, FlatList, Animated, Alert, useColorScheme, Modal } from "react-native";
-import { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, memo, useCallback } from "react";
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors, appleBlue} from "@/constants/Colors";
 import * as Haptics from "expo-haptics";
-
+import { SwipeableTabWrapper } from "@/components/SwipeableTabWrapper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 type TabType = 'active' | 'ongoing' | 'history';
 type SortOption = 'name' | 'date' | 'items' | 'budget';
 type FilterOption = 'all' | 'scheduled' | 'unscheduled';
 
 interface ShoppingListItemProps {
   listId: string;
+  isHistory?: boolean;
 }
 
 // Inline ShoppingListItem component with swipe-to-delete
-const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
+const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId, isHistory = false }) => {
   const router = useRouter();
   const listData = useShoppingListData(listId);
   const productIds = useShoppingListProductIds(listId);
@@ -36,7 +38,7 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
 
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
-  const styles = createStyles(colors);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const name = listData?.name || '';
   const emoji = listData?.emoji || '🛒';
@@ -48,11 +50,11 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
 
   const swipeableRef = useRef<Swipeable>(null);
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     router.push(`/list/${listId}`);
-  };
+  }, []);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     Alert.alert(
       "Delete List",
       `Are you sure you want to delete "${name}"? This action cannot be undone.`,
@@ -72,7 +74,7 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
         },
       ]
     );
-  };
+  }, [name, deleteList, listId]);
 
   // Render right actions (delete button)
   const renderRightActions = (
@@ -101,7 +103,7 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
   };
 
   // Format date for display
-  const formatDate = (dateString: string | null) => {
+  const formatDate = useCallback((dateString: string | null) => {
     if (!dateString) return null;
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -109,7 +111,7 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId }) => {
       day: 'numeric',
       year: 'numeric'
     });
-  };
+  }, []);
 
   // Get status display info
   const getStatusInfo = () => {
@@ -219,9 +221,10 @@ export default function HomeScreen() {
   const shoppingListIds = useShoppingListIds();
   const shoppingListsValues = useShoppingListsValues();
   const deleteAllLists = useDelAllShoppingListsCallback();
+  const insets = useSafeAreaInsets();
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
-  const styles = createStyles(colors);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [sortBy, setSortBy] = useState<SortOption>('date');
@@ -262,7 +265,7 @@ export default function HomeScreen() {
   }, [shoppingListIds, shoppingListsValues]);
 
   // Handle delete all for current tab
-  const handleDeleteAll = () => {
+  const handleDeleteAll = useCallback(() => {
     const currentLists = activeTab === 'active' ? regularLists : 
                          activeTab === 'ongoing' ? ongoingLists : 
                          historyLists;
@@ -297,10 +300,10 @@ export default function HomeScreen() {
         },
       ]
     );
-  };
+  }, [activeTab, regularLists, ongoingLists, historyLists, deleteAllLists]);
 
   // Filter lists based on filter option
-  const filterLists = (lists: string[]) => {
+  const filterLists = useCallback((lists: string[]) => {
     if (filterBy === 'all') return lists;
 
     return lists.filter((listId) => {
@@ -315,7 +318,7 @@ export default function HomeScreen() {
       }
       return true;
     });
-  };
+  }, [filterBy, shoppingListIds, shoppingListsValues]);
 
   // Sort lists based on sort option
   const sortLists = (lists: string[]) => {
@@ -352,7 +355,7 @@ export default function HomeScreen() {
   };
 
   // Get current tab data with filters and sorting applied
-  const getCurrentTabData = () => {
+  const getCurrentTabData = useMemo(() => {
     let lists: string[];
     switch (activeTab) {
       case 'active':
@@ -371,9 +374,9 @@ export default function HomeScreen() {
     const filtered = filterLists(lists);
     const sorted = sortLists(filtered);
     return sorted;
-  };
+  }, [activeTab, regularLists, ongoingLists, historyLists, filterLists, sortLists]);
 
-  const currentTabData = getCurrentTabData();
+  const currentTabData = getCurrentTabData;
 
   const renderEmptyList = () => {
     let message = '';
@@ -404,15 +407,20 @@ export default function HomeScreen() {
   };
 
   const renderHeaderRight = () => {
+    const isDisabled = activeTab === 'history';
     return (
-      <Pressable onPress={() => router.push("/list/new")} style={{ paddingRight: 18, paddingTop: 5 }}>
+      <Pressable 
+        onPress={() => !isDisabled && router.push("/list/new")} 
+        style={{ paddingRight: 18, paddingTop: 5, opacity: isDisabled ? 0.3 : 1 }}
+        disabled={isDisabled}
+      >
         <IconSymbol name="plus" color='#000' style={{marginRight: 3}}/>
       </Pressable>
     );
   };
 
   const renderItem = ({ item: listId }: { item: string }) => (
-    <ShoppingListItem listId={listId} />
+    <ShoppingListItem listId={listId} isHistory={activeTab === 'history'} />
   );
 
   // Tab button component
@@ -570,6 +578,7 @@ export default function HomeScreen() {
   );
 
   return (
+    <SwipeableTabWrapper currentTab="shopping-lists">
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack.Screen options={{
         headerRight: renderHeaderRight,
@@ -672,7 +681,7 @@ export default function HomeScreen() {
             data={currentTabData}
             renderItem={renderItem}
             keyExtractor={(item) => item}
-            contentContainerStyle={styles.listContainer}
+            contentContainerStyle={[styles.listContainer, {paddingBottom: insets.bottom + 130}]}
             contentInsetAdjustmentBehavior="automatic"
           />
         )}
@@ -682,6 +691,7 @@ export default function HomeScreen() {
       <SortModal />
       <FilterModal />
     </GestureHandlerRootView>
+    </SwipeableTabWrapper>
   );
 }
 function createStyles(colors: typeof Colors.light) {

@@ -27,6 +27,10 @@ export default function EditScreen() {
   const [storeColor, setStoreColor] = useShoppingListValue(listId, "color");
   const [storeBudget, setStoreBudget] = useShoppingListValue(listId, "budget");
   const [storeShoppingDate, setStoreShoppingDate] = useShoppingListValue(listId, "shoppingDate");
+  const [storeStatus] = useShoppingListValue(listId, "status");
+
+  // Check if this list is in history (completed)
+  const isHistory = storeStatus === 'completed';
 
   // Local state for editing
   const [name, setName] = useState("");
@@ -243,10 +247,23 @@ export default function EditScreen() {
 
   return (
     <>
-      <Stack.Screen
+     <Stack.Screen
         options={{
           headerLeft: () => (
-            <Button variant="ghost" onPress={handleSave}>
+            <Button 
+              variant="ghost" 
+              onPress={() => router.back()}
+            >
+              Cancel
+            </Button>
+          ),
+          headerRight: () => (
+            <Button 
+              variant="ghost" 
+              onPress={handleSave}
+              disabled={isHistory}
+              style={isHistory && { opacity: 0.3 }}
+            >
               Save
             </Button>
           ),
@@ -262,20 +279,23 @@ export default function EditScreen() {
             onChangeText={setName}
             returnKeyType="done"
             containerStyle={styles.titleInputContainer}
+            editable={!isHistory}
           />
           <Pressable
             onPress={handleEmojiPress}
             style={[styles.emojiButton, { borderColor: color }]}
+            disabled={isHistory}
           >
-            <View style={styles.emojiContainer}>
+            <View style={[styles.emojiContainer, isHistory && { opacity: 0.5 }]}>
               <Text>{emoji}</Text>
             </View>
           </Pressable>
           <Pressable
             onPress={handleColorPress}
             style={[styles.colorButton, { borderColor: color }]}
+            disabled={isHistory}
           >
-            <View style={styles.colorContainer}>
+            <View style={[styles.colorContainer, isHistory && { opacity: 0.5 }]}>
               <View
                 style={[
                   styles.colorPreview,
@@ -294,24 +314,29 @@ export default function EditScreen() {
           multiline
           numberOfLines={4}
           onChangeText={setDescription}
+          editable={!isHistory}
         />
 
         <View style={styles.dateSection}>
           <Text style={styles.dateLabel}>When do you plan to shop?</Text>
-          <DatePickerButton
-            selectedDate={shoppingDate}
-            onDateChange={handleDateChange}
-            borderColor={color}
-          />
+          <View pointerEvents={isHistory ? 'none' : 'auto'} style={isHistory && { opacity: 0.5 }}>
+            <DatePickerButton
+              selectedDate={shoppingDate}
+              onDateChange={handleDateChange}
+              borderColor={color}
+            />
+          </View>
         </View>
 
         <View style={styles.budgetSection}>
           <Text style={styles.budgetLabel}>Budget</Text>
-          <BudgetInput
-            budget={budget}
-            onBudgetChange={setBudget}
-            borderColor={color}
-          />
+          <View pointerEvents={isHistory ? 'none' : 'auto'} style={isHistory && { opacity: 0.5 }}>
+            <BudgetInput
+              budget={budget}
+              onBudgetChange={setBudget}
+              borderColor={color}
+            />
+          </View>
         </View>
       </BodyScrollView>
     </>

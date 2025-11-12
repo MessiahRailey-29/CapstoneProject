@@ -33,15 +33,26 @@ const useStoreId = () => STORE_ID_PREFIX + useUser().user.id;
 // Returns a callback that adds a new shopping list to the store.
 export const useAddShoppingListCallback = () => {
   const store = useStore(useStoreId());
+  const { user } = useUser();
+  
   return useCallback(
     (name: string, description: string, emoji: string, color: string, shoppingDate?: Date | null, budget?: number) => {
       const id = randomUUID();
+      
+      // ✅ Add creator as first collaborator
+      const creatorCollaborator = {
+        [user.id]: {
+          userId: user.id,
+          nickname: user.firstName || user.username || 'You',
+          joinedAt: new Date().toISOString(),
+        }
+      };
       
       // Create the complete initial data structure that matches what ShoppingListStore expects
       const completeData = {
         tables: {
           products: {},
-          collaborators: {},
+          collaborators: creatorCollaborator, // ✅ Initialize with creator
         },
         values: {
           listId: id,
@@ -59,6 +70,7 @@ export const useAddShoppingListCallback = () => {
 
       console.log('💾 Creating list with complete data structure:', completeData);
       console.log('💰 Budget in values:', completeData.values.budget);
+      console.log('👥 Collaborators:', Object.keys(completeData.tables.collaborators).length);
 
       store.setRow("lists", id, {
         id,
@@ -67,37 +79,43 @@ export const useAddShoppingListCallback = () => {
       
       return id;
     },
-    [store]
+    [store, user]
   );
 };
 
-// Returns a callback that adds an existing shopping list to the store.
+// ✅ COMPLETELY FIXED: No placeholder data that creates CRDT conflicts!
 export const useJoinShoppingListCallback = () => {
   const store = useStore(useStoreId());
+  
   return useCallback(
     (listId: string) => {
+      console.log('🔗 Joining list:', listId);
+      
+      // ✅ CRITICAL FIX: Create EMPTY placeholder with NO values
+      // This registers the list for sync but doesn't create ANY CRDT timestamps
+      // that could overwrite the creator's data
+      const emptyPlaceholder = {
+        tables: { 
+          products: {},
+          collaborators: {},
+        },
+        values: {
+          listId: listId,
+          // ❌ DON'T set name, emoji, color, budget, etc.
+          // Setting ANY value creates a CRDT timestamp that can win!
+        }
+      };
+      
+      console.log('💾 Registering list with EMPTY placeholder (prevents CRDT conflicts)');
+      
       store.setRow("lists", listId, {
         id: listId,
-        valuesCopy: JSON.stringify({
-          tables: { 
-            products: {}, 
-            collaborators: {} 
-          },
-          values: {
-            listId,
-            name: "Loading...",
-            description: "",
-            emoji: "🛒",
-            color: "#007AFF",
-            shoppingDate: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }
-        }),
+        valuesCopy: JSON.stringify(emptyPlaceholder),
       });
       
       console.log('✅ Registered list for joining:', listId);
-      console.log('⏳ Waiting for sync to populate budget and status...');
+      console.log('⏳ WebSocket sync will populate: name, emoji, color, budget, products, collaborators');
+      console.log('💡 No CRDT timestamps created - sync data will be the ONLY source of truth');
     },
     [store]
   );
@@ -133,9 +151,7 @@ export const useUpdateShoppingListStatus = () => {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         // CRITICAL FIX: Wait a bit longer for the ShoppingListStore sync to complete
-        // The individual store needs time to sync its updated state to valuesCopy
         setTimeout(() => {
-          // Get current valuesCopy AFTER the sync has had time to complete
           const currentValuesCopy = store.getCell("lists", listId, "valuesCopy") as string;
           
           if (!currentValuesCopy || currentValuesCopy === '{}') {
@@ -149,7 +165,9 @@ export const useUpdateShoppingListStatus = () => {
             hasValues: !!data.values,
             hasTables: !!data.tables,
             hasProducts: !!data.tables?.products,
-            productsCount: Object.keys(data.tables?.products || {}).length
+            hasCollaborators: !!data.tables?.collaborators,
+            productsCount: Object.keys(data.tables?.products || {}).length,
+            collaboratorsCount: Object.keys(data.tables?.collaborators || {}).length,
           });
           
           // CRITICAL: Ensure we preserve the tables structure
@@ -163,15 +181,17 @@ export const useUpdateShoppingListStatus = () => {
             data.tables.products = {};
           }
           
-          // Log products BEFORE update
-          const productIds = Object.keys(data.tables.products);
-          console.log('🔍 Products BEFORE status update:', productIds.length, 'items');
-          if (productIds.length > 0) {
-            console.log('  Products:', productIds.map(id => {
-              const p = data.tables.products[id];
-              return `${p?.name} (${p?.quantity})`;
-            }).join(', '));
+          if (!data.tables.collaborators) {
+            console.warn('⚠️ No collaborators table, initializing empty');
+            data.tables.collaborators = {};
           }
+          
+          // Log products and collaborators BEFORE update
+          const productIds = Object.keys(data.tables.products);
+          const collaboratorIds = Object.keys(data.tables.collaborators);
+          console.log('🔍 BEFORE status update:');
+          console.log('  Products:', productIds.length, 'items');
+          console.log('  Collaborators:', collaboratorIds.length, 'users');
           
           // Update the status in the values
           if (!data.values) {
@@ -192,25 +212,33 @@ export const useUpdateShoppingListStatus = () => {
             data.values.completedAt = null;
           }
           
-          // Log products AFTER update (should be same!)
-          console.log('🔍 Products AFTER status update:', Object.keys(data.tables.products).length, 'items');
-          
-          // IMPORTANT: Verify products are still there before saving
+          // Log AFTER update (should be same!)
           const finalProductCount = Object.keys(data.tables.products).length;
+          const finalCollaboratorCount = Object.keys(data.tables.collaborators).length;
+          console.log('🔍 AFTER status update:');
+          console.log('  Products:', finalProductCount, 'items');
+          console.log('  Collaborators:', finalCollaboratorCount, 'users');
+          
+          // IMPORTANT: Verify data is still there before saving
           if (finalProductCount === 0 && productIds.length > 0) {
             console.error('🚨 CRITICAL: Products disappeared during status update!');
-            console.error('🚨 This should never happen - aborting update');
+            return;
+          }
+          
+          if (finalCollaboratorCount === 0 && collaboratorIds.length > 0) {
+            console.error('🚨 CRITICAL: Collaborators disappeared during status update!');
             return;
           }
           
           const updatedValuesCopy = JSON.stringify(data);
-          console.log('💾 Saving updated valuesCopy with', finalProductCount, 'products');
+          console.log('💾 Saving updated valuesCopy');
           
           // Save back to store - this should trigger sync
           store.setCell("lists", listId, "valuesCopy", updatedValuesCopy);
           
           console.log(`✅ Updated list ${listId} status to: ${newStatus}`);
-          console.log('✅ Products preserved:', finalProductCount, 'items');
+          console.log(`✅ Products preserved: ${finalProductCount} items`);
+          console.log(`✅ Collaborators preserved: ${finalCollaboratorCount} users`);
           console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         }, 600); // Wait 600ms for the sync to complete
       } catch (error) {
@@ -265,6 +293,7 @@ export const useShoppingListsValues = () =>
       }
     });
 
+// ✅ FIXED: Get shopping list data with proper collaborators support
 export const useShoppingListData = (listId: string) => {
   const storeId = useStoreId();
   const store = useStore(storeId);
@@ -285,6 +314,7 @@ export const useShoppingListData = (listId: string) => {
         completedAt: null,
         createdAt: '',
         updatedAt: '',
+        collaborators: [], // ✅ Return empty array instead of undefined
       };
     }
     
@@ -298,6 +328,20 @@ export const useShoppingListData = (listId: string) => {
       values = data;
     }
     
+    // ✅ Extract collaborators from tables
+    let collaborators: Array<{userId: string; nickname: string}> = [];
+    if (data.tables?.collaborators) {
+      collaborators = Object.values(data.tables.collaborators);
+    }
+    
+    console.log('📊 useShoppingListData:', {
+      listId,
+      name: values.name,
+      budget: values.budget,
+      collaboratorsCount: collaborators.length,
+      hasSync: valuesCopy !== '{}',
+    });
+    
     return {
       name: values.name || '',
       description: values.description || '',
@@ -309,6 +353,7 @@ export const useShoppingListData = (listId: string) => {
       completedAt: values.completedAt || null,
       createdAt: values.createdAt || '',
       updatedAt: values.updatedAt || '',
+      collaborators: collaborators, // ✅ Include collaborators
     };
   } catch (error) {
     console.log('❌ Error parsing list data:', error);
@@ -323,6 +368,7 @@ export const useShoppingListData = (listId: string) => {
       completedAt: null,
       createdAt: '',
       updatedAt: '',
+      collaborators: [], // ✅ Return empty array on error
     };
   }
 };

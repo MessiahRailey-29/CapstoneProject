@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const LOGIN_ATTEMPTS_KEY = 'login_attempts';
 const LOGIN_LOCKOUT_KEY = 'login_lockout';
 const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_DURATION = 60 * 60 * 1000; // 1 hour
 
 export interface LoginAttempt {
   count: number;
@@ -158,5 +158,62 @@ export async function secureDelete(key: string): Promise<void> {
     await AsyncStorage.removeItem(key);
   } catch (error) {
     console.error('Error deleting secure data:', error);
+  }
+}
+
+// Verification code expiration management
+const VERIFICATION_CODE_KEY = 'verification_code';
+const VERIFICATION_CODE_EXPIRY = 2 * 60 * 1000; // 2 minutes
+
+export interface VerificationCodeData {
+  code: string;
+  email: string;
+  type: 'signup' | 'reset_password';
+  createdAt: number;
+}
+
+export async function storeVerificationCode(email: string, code: string, type: 'signup' | 'reset_password'): Promise<void> {
+  try {
+    const data: VerificationCodeData = {
+      code,
+      email,
+      type,
+      createdAt: Date.now(),
+    };
+    await AsyncStorage.setItem(`${VERIFICATION_CODE_KEY}_${email}_${type}`, JSON.stringify(data));
+  } catch (error) {
+    console.error('Error storing verification code:', error);
+  }
+}
+
+export async function checkVerificationCodeExpiry(email: string, type: 'signup' | 'reset_password'): Promise<{ expired: boolean; remainingTime?: number }> {
+  try {
+    const data = await AsyncStorage.getItem(`${VERIFICATION_CODE_KEY}_${email}_${type}`);
+    if (!data) {
+      return { expired: true };
+    }
+
+    const codeData: VerificationCodeData = JSON.parse(data);
+    const timeSinceCreation = Date.now() - codeData.createdAt;
+    
+    if (timeSinceCreation > VERIFICATION_CODE_EXPIRY) {
+      // Code expired, remove it
+      await AsyncStorage.removeItem(`${VERIFICATION_CODE_KEY}_${email}_${type}`);
+      return { expired: true };
+    }
+
+    const remainingTime = VERIFICATION_CODE_EXPIRY - timeSinceCreation;
+    return { expired: false, remainingTime };
+  } catch (error) {
+    console.error('Error checking verification code expiry:', error);
+    return { expired: true };
+  }
+}
+
+export async function clearVerificationCode(email: string, type: 'signup' | 'reset_password'): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(`${VERIFICATION_CODE_KEY}_${email}_${type}`);
+  } catch (error) {
+    console.error('Error clearing verification code:', error);
   }
 }

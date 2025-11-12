@@ -11,7 +11,7 @@ import Constants from 'expo-constants';
 // - iOS Simulator: use http://localhost:3000
 // - Physical Device: use your computer's local IP (e.g., http://192.168.1.100:3000)
 // For production: use your deployed server URL
-const API_URL = 'http://192.168.254.109:3000'; // CHANGE THIS to your server URL
+const API_URL = 'http://192.168.1.142:3000'; // CHANGE THIS to your server URL
 
 interface Notification {
   _id: string;

@@ -1,5 +1,5 @@
 // app/(home)/(tabs)/product-browser.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { FlatList, StyleSheet, View, Pressable, Text, useColorScheme } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -9,6 +9,8 @@ import TextInput from '@/components/ui/text-input';
 import { useProducts } from '@/hooks/useProducts';
 import { DatabaseProduct } from '@/services/productsApi';
 import { Colors } from '@/constants/Colors';
+import { SwipeableTabWrapper } from "@/components/SwipeableTabWrapper";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Category configuration with icons and colors
 const CATEGORY_CONFIG: Record<string, { icon: string; color: string; gradient: string[]; description: string }> = {
@@ -106,7 +108,7 @@ function CategoryCard({
   //color scheme and styles
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
-  const styles = createStyles(colors);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <Pressable
       onPress={onPress}
@@ -154,7 +156,7 @@ function ProductCardWithPrices({
   //color scheme and styles
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
-  const styles = createStyles(colors);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <Pressable
@@ -198,10 +200,12 @@ export default function ProductBrowserScreen() {
   const router = useRouter();
   const { products, loading, error } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
+  const insets = useSafeAreaInsets();
+
   //color scheme and styles
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
-  const styles = createStyles(colors);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   // Group products by category
   const categories = useMemo((): CategoryData[] => {
@@ -242,7 +246,7 @@ export default function ProductBrowserScreen() {
     );
   }, [products, searchQuery]);
 
-  const handleCategoryPress = (category: CategoryData) => {
+  const handleCategoryPress = useCallback((category: CategoryData) => {
     if (process.env.EXPO_OS === 'ios') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
@@ -256,9 +260,9 @@ export default function ProductBrowserScreen() {
         categoryColor: category.color,
       }
     });
-  };
+  }, [router]);
 
-  const handleProductPress = (product: DatabaseProduct) => {
+  const handleProductPress = useCallback((product: DatabaseProduct) => {
     if (process.env.EXPO_OS === 'ios') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -270,7 +274,7 @@ export default function ProductBrowserScreen() {
         productName: product.name,
       }
     });
-  };
+  }, [router]);
 
   if (loading) {
     return (
@@ -369,7 +373,7 @@ export default function ProductBrowserScreen() {
             numColumns={2}
             columnWrapperStyle={styles.gridRow}
             keyExtractor={(item) => item.name}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, {paddingBottom: insets.bottom + 130}]}
           />
         )}
       </View>

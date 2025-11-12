@@ -1,5 +1,3 @@
-//check check
-
 import { Redirect, Stack } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 
@@ -8,10 +6,15 @@ export default function AuthRoutesLayout() {
 
   if (!isLoaded) return null;
 
-  if (isSignedIn) return <Redirect href="/(index)/(tabs)" />;
+  // Redirect to main app if signed in
+  if (isSignedIn) { 
+    return <Redirect href="/(index)/(tabs)" />; 
+  }
 
+  // Show intro screen first when signed out
   return (
     <Stack
+      initialRouteName="intro"
       screenOptions={{
         ...(process.env.EXPO_OS !== "ios"
           ? {}
@@ -22,17 +25,24 @@ export default function AuthRoutesLayout() {
               headerLargeTitleShadowVisible: false,
               headerShadowVisible: true,
               headerLargeStyle: {
-                // NEW: Make the large title transparent to match the background.
+                // Make the large title transparent to match the background
                 backgroundColor: "transparent",
               },
             }),
       }}
     >
       <Stack.Screen
-        name="index"
-        options={{ headerTitle: "Welcome back!", headerShown: false }}
+        name="intro"
+        options={{ headerShown: false }}
       />
-      <Stack.Screen name="sign-up" options={{ headerTitle: "Sign up" }} />
+      <Stack.Screen
+        name="index"
+        options={{ headerTitle: '' }}
+      />
+      <Stack.Screen 
+        name="sign-up" 
+        options={{ headerTitle: "Sign up" }} 
+      />
       <Stack.Screen
         name="reset-password"
         options={{ headerTitle: "Reset password" }}

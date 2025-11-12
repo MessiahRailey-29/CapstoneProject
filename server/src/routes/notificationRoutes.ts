@@ -372,4 +372,82 @@ router.post('/:userId/track-purchase', async (req, res) => {
   }
 });
 
+// ✅ NEW ROUTE: Create shared list update notification with push notification
+router.post('/:userId/shared-list-update', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { listId, listName, emoji, message, action, itemName, updatedBy } = req.body;
+
+    // Check if user has shared list update notifications enabled
+    const settings = await NotificationSettings.findOne({ userId });
+    
+    if (!settings?.enabled || settings.preferences?.sharedListUpdates === false) {
+      console.log(`⏭️ Skipping notification for ${userId} - shared list updates disabled`);
+      return res.json({ 
+        success: true, 
+        message: 'Notification skipped - user preference' 
+      });
+    }
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    const notification = new Notification({
+      userId: userId,
+      type: 'shared_list_update',
+      title: `${emoji} ${listName}`,
+      message: message,
+      data: { 
+        listId, 
+        listName, 
+        action, 
+        itemName, 
+        updatedBy 
+      },
+      isRead: false,
+      isSent: false,
+      createdAt: new Date(),
+      expiresAt: expiresAt,
+    });
+
+    await notification.save();
+    
+    console.log('✅ Created shared list update notification:', {
+      userId,
+      listName,
+      action,
+      _id: notification._id
+    });
+
+    // Send push notification if user has push token
+    if (settings?.pushToken) {
+      console.log('📱 Sending push notification for shared list update...');
+      
+      const sent = await sendPushNotification(settings.pushToken, {
+        title: `${emoji} ${listName}`,
+        body: message,
+        data: { 
+          notificationId: notification._id.toString(),
+          listId,
+          type: 'shared_list_update',
+          action
+        },
+        priority: 'default', // Lower priority than reminders
+      });
+      
+      if (sent) {
+        notification.isSent = true;
+        await notification.save();
+        console.log('✅ Push notification sent');
+      }
+    }
+
+    res.json({ success: true, notification });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('❌ Error creating shared list update notification:', errorMessage);
+    res.status(500).json({ success: false, error: errorMessage });
+  }
+});
+
 export default router;

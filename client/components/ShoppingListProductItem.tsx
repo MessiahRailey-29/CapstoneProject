@@ -13,6 +13,8 @@ import {
   useShoppingListProductCell,
   useShoppingListValue,
 } from "@/stores/ShoppingListStore";
+import { useShoppingListData } from "@/stores/ShoppingListsStore";
+import { useListNotifications } from "@/utils/notifyCollaborators";
 import { ThemedText } from "./ThemedText";
 import { IconSymbol } from "./ui/IconSymbol";
 
@@ -39,7 +41,46 @@ export default function ShoppingListProductItem({
   const [selectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
   const [category] = useShoppingListProductCell(listId, productId, "category");
 
+  // ✅ Get list data for collaborators
+  const listData = useShoppingListData(listId);
+  
+  // ✅ Initialize notifications
+  const listNotifications = useListNotifications({
+    listId: listId,
+    listName: listData?.name || "",
+    emoji: listData?.emoji || "🛒",
+    collaborators: (listData as any)?.collaborators || [],
+  });
+
   const deleteCallback = useDelShoppingListProductCallback(listId, productId);
+
+  // ✅ Enhanced delete callback with notification
+  const handleDelete = async () => {
+    // Call the original delete callback
+    deleteCallback();
+    
+    // Notify collaborators
+    await listNotifications.notifyItemRemoved(name);
+  };
+
+  // ✅ Enhanced toggle purchased with notification
+  const handleTogglePurchased = async () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success
+      );
+    }
+    
+    const newPurchasedState = !isPurchased;
+    setIsPurchased(newPurchasedState);
+    
+    // Notify collaborators
+    if (newPurchasedState) {
+      await listNotifications.notifyItemPurchased(name);
+    } else {
+      await listNotifications.notifyItemUnpurchased(name);
+    }
+  };
 
   const totalPrice = selectedPrice * quantity;
 
@@ -54,7 +95,7 @@ export default function ShoppingListProductItem({
     });
 
     return (
-      <Pressable onPress={deleteCallback}>
+      <Pressable onPress={handleDelete}>
         <Reanimated.View style={[styleAnimation, styles.rightAction]}>
           <IconSymbol name="trash.fill" size={24} color="white" />
         </Reanimated.View>
@@ -75,16 +116,7 @@ export default function ShoppingListProductItem({
     >
       <View style={styles.productContainer}>
         <View style={styles.checkboxContainer}>
-          <Pressable
-            onPress={() => {
-              if (process.env.EXPO_OS === "ios") {
-                Haptics.notificationAsync(
-                  Haptics.NotificationFeedbackType.Success
-                );
-              }
-              setIsPurchased(!isPurchased);
-            }}
-          >
+          <Pressable onPress={handleTogglePurchased}>
             <IconSymbol
               name={isPurchased ? "checkmark.circle.fill" : "circle"}
               size={28}

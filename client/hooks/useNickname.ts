@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/clerk-expo';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 
-const NICKNAME_STORAGE_KEY = 'user_nickname';
 const NICKNAME_CHANGE_EVENT = 'nickname_changed';
 
 // Simple event emitter for nickname changes
@@ -29,10 +27,12 @@ export const useNickname = () => {
 
     const loadNickname = useCallback(async () => {
         try {
-            if (user?.id) {
-                const stored = await AsyncStorage.getItem(`${NICKNAME_STORAGE_KEY}_${user.id}`);
-                if (stored) {
-                    setNickname(stored);
+            if (user) {
+                // Get nickname from Clerk's user metadata
+                const storedNickname = user.unsafeMetadata?.nickname as string;
+                
+                if (storedNickname) {
+                    setNickname(storedNickname);
                 } else {
                     // Default to first name or email username
                     const defaultName = user?.firstName || user?.emailAddresses[0]?.emailAddress.split('@')[0] || '';
@@ -44,7 +44,7 @@ export const useNickname = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.id, user?.firstName, user?.emailAddresses]);
+    }, [user?.id, user?.firstName, user?.emailAddresses, user?.unsafeMetadata]);
 
     // Load nickname on mount and when user changes
     useEffect(() => {
@@ -77,16 +77,38 @@ export const useNickname = () => {
 
     const updateNickname = async (newNickname: string) => {
         try {
-            if (user?.id && newNickname.trim()) {
-                console.log('🔄 Updating nickname to:', newNickname.trim());
-                await AsyncStorage.setItem(`${NICKNAME_STORAGE_KEY}_${user.id}`, newNickname.trim());
-                setNickname(newNickname.trim());
-                // Notify all listeners that nickname changed
-                console.log('📢 Emitting nickname change event');
-                nicknameEmitter.emit();
+            if (!user) {
+                console.error('❌ No user found');
+                throw new Error('No user found');
             }
+            
+            if (!newNickname.trim()) {
+                console.error('❌ Empty nickname');
+                throw new Error('Nickname cannot be empty');
+            }
+
+            console.log('🔄 Updating nickname to:', newNickname.trim());
+            console.log('📋 Current metadata:', user.unsafeMetadata);
+            
+            // Save to Clerk's user metadata
+            const updatedUser = await user.update({
+                unsafeMetadata: {
+                    ...user.unsafeMetadata,
+                    nickname: newNickname.trim()
+                }
+            });
+            
+            console.log('✅ Update successful');
+            console.log('📋 New metadata:', updatedUser.unsafeMetadata);
+            
+            setNickname(newNickname.trim());
+            
+            // Notify all listeners that nickname changed
+            console.log('📢 Emitting nickname change event');
+            nicknameEmitter.emit();
         } catch (error) {
-            console.error('Error updating nickname:', error);
+            console.error('❌ Error updating nickname:', error);
+            console.error('Error details:', JSON.stringify(error, null, 2));
             throw error;
         }
     };

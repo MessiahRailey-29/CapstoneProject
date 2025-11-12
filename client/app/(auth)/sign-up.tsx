@@ -9,6 +9,7 @@ import { isClerkAPIResponseError, useSignUp } from '@clerk/clerk-expo';
 import { ClerkAPIError } from '@clerk/types';
 import { ErrorDisplay } from '@/components/ui/ErrorDisplay';
 import { PasswordStrengthMeter, calculatePasswordStrength } from '@/components/ui/PasswordStrengthMeter';
+import { storeVerificationCode, checkVerificationCodeExpiry, clearVerificationCode } from '@/utils/securityUtils';
 
 export default function SignUpScreen() {
     const { signUp, setActive, isLoaded } = useSignUp();
@@ -22,6 +23,8 @@ export default function SignUpScreen() {
     const [passwordError, setPasswordError] = React.useState("");
     const [code, setCode] = React.useState("");
     const [pendingVerification, setPendingVerification] = React.useState(false);
+    const [codeExpiryTime, setCodeExpiryTime] = React.useState<number | null>(null);
+    const [remainingTime, setRemainingTime] = React.useState<string>('');
 
     // Validate password match
     const validatePasswords = React.useCallback(() => {
@@ -39,6 +42,32 @@ export default function SignUpScreen() {
             validatePasswords();
         }
     }, [password, confirmPassword, validatePasswords]);
+
+    // Timer for verification code expiration
+    React.useEffect(() => {
+        if (!pendingVerification || !codeExpiryTime) return;
+
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const timeLeft = codeExpiryTime - now;
+
+            if (timeLeft <= 0) {
+                setRemainingTime('Code expired');
+                clearInterval(interval);
+                Alert.alert(
+                    'Code Expired',
+                    'Your verification code has expired. Please request a new one.',
+                    [{ text: 'OK' }]
+                );
+            } else {
+                const minutes = Math.floor(timeLeft / 60000);
+                const seconds = Math.floor((timeLeft % 60000) / 1000);
+                setRemainingTime(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [pendingVerification, codeExpiryTime]);
 
     const onSignUpPress = async () => {
         if (!isLoaded) return;
@@ -72,6 +101,11 @@ export default function SignUpScreen() {
                 strategy: "email_code",
             });
 
+            // Store verification code timestamp
+            const expiryTime = Date.now() + (2 * 60 * 1000); // 2 minutes from now
+            setCodeExpiryTime(expiryTime);
+            await storeVerificationCode(emailAddress, '', 'signup');
+
             setPendingVerification(true);
         } catch (e) {
             console.log(e);
@@ -89,11 +123,24 @@ export default function SignUpScreen() {
         setErrors([]);
 
         try {
+            // Check if verification code has expired
+            const expiryCheck = await checkVerificationCodeExpiry(emailAddress, 'signup');
+            if (expiryCheck.expired) {
+                Alert.alert(
+                    'Code Expired',
+                    'Your verification code has expired. Please request a new one.',
+                    [{ text: 'OK' }]
+                );
+                setIsLoading(false);
+                return;
+            }
+
             const signUpAttempt = await signUp.attemptEmailAddressVerification({
                 code,
             });
 
             if (signUpAttempt.status === "complete") {
+                await clearVerificationCode(emailAddress, 'signup');
                 await setActive({ session: signUpAttempt.createdSessionId });
                 router.replace("/");
             } else {
@@ -125,6 +172,11 @@ export default function SignUpScreen() {
                     <ThemedText style={styles.securityTipText}>
                         💡 Tip: Check your spam folder if you don't see the email
                     </ThemedText>
+                    {remainingTime && (
+                        <ThemedText style={[styles.securityTipText, { marginTop: 8, fontWeight: '600' }]}>
+                            ⏱️ Code expires in: {remainingTime}
+                        </ThemedText>
+                    )}
                 </View>
 
                 <TextInput

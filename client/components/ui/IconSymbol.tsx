@@ -109,6 +109,10 @@ const MAPPING = {
   // Search & Filter
   magnifyingglass: "search",
   "line.horizontal.3.decrease": "filter-list",
+  "line.3.horizontal.decrease.circle": "filter-list",
+  "line.3.horizontal.decrease.circle.fill": "filter-list",
+  "arrow.up.arrow.down": "sort",
+  "arrow.up.down": "sort",
   
   // Documents & Files
   doc: "description",

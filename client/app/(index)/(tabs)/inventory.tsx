@@ -1,4 +1,4 @@
-// app/(home)/(tabs)/inventory.tsx - Fixed version
+// app/(home)/(tabs)/inventory.tsx - Fixed version with proper gesture handling
 import React, { useState, useRef, useMemo, useCallback } from "react";
 import { StyleSheet, View, FlatList, Text, Pressable, ScrollView, Animated, Alert, useColorScheme } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
@@ -15,10 +15,10 @@ import { getStorageDisplayInfo } from "@/utils/storageMapping";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import * as Haptics from "expo-haptics";
 import Swipeable from 'react-native-gesture-handler/Swipeable';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import TextInput from '@/components/ui/text-input';
 import { Colors } from '@/constants/Colors'
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const STORAGE_LOCATIONS = getStorageDisplayInfo();
 
@@ -50,7 +50,7 @@ const STORAGE_CONFIG = [
   },
   { 
     name: 'Other' as StorageLocation, 
-    icon: '📍', 
+    icon: '📁', 
     color: '#95A5A6',
     gradient: ['#95A5A6', '#7F8C8D'],
     description: 'Miscellaneous items',
@@ -114,7 +114,7 @@ function InventoryItem({ itemId, storage, showStorage = false }: { itemId: strin
     //color scheme and styles
     const scheme = useColorScheme();
     const colors = Colors[scheme ?? 'light'];
-    const styles = createStyles(colors);
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -124,7 +124,7 @@ function InventoryItem({ itemId, storage, showStorage = false }: { itemId: strin
     year: 'numeric',
   });
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     Alert.alert(
       "Delete Item",
       `Are you sure you want to delete "${name}" from your inventory?`,
@@ -147,14 +147,14 @@ function InventoryItem({ itemId, storage, showStorage = false }: { itemId: strin
         },
       ]
     );
-  };
+  }, [name, deleteItem, itemId]);
 
-  const handleChangeStorage = (newStorage: StorageLocation) => {
+  const handleChangeStorage = useCallback((newStorage: StorageLocation) => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     setStorageLocation(newStorage);
-  };
+  }, []);
 
   const renderRightActions = (
     progress: Animated.AnimatedInterpolation<number>,
@@ -256,7 +256,7 @@ function StorageCategoryCard({
     //color scheme and styles
     const scheme = useColorScheme();
     const colors = Colors[scheme ?? 'light'];
-    const styles = createStyles(colors);
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <Pressable 
@@ -311,14 +311,15 @@ export default function InventoryScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const deleteAllItems = useDelAllInventoryItemsCallback();
-  
+  const insets = useSafeAreaInsets();
+
   // Refs for TextInputs to maintain focus
   const searchInputRef = useRef<any>(null);
 
     //color scheme and styles
     const scheme = useColorScheme();
     const colors = Colors[scheme ?? 'light'];
-    const styles = createStyles(colors);
+    const styles = useMemo(() => createStyles(colors), [colors]);
   
   // Debounce search to prevent re-render on every keystroke
   React.useEffect(() => {
@@ -344,6 +345,9 @@ export default function InventoryScreen() {
     [refrigeratorIds, freezerIds, pantryIds, otherIds]
   );
 
+  // Determine if showing search results (needed for handleDeleteAll)
+  const showingSearchResults = searchQuery && !selectedStorage;
+
   // Select which items to display
   const getItemIds = () => {
     if (searchQuery && !selectedStorage) {
@@ -363,21 +367,21 @@ export default function InventoryScreen() {
   const itemIds = getItemIds();
   const totalItems = Object.values(storageCounts).reduce((sum, count) => sum + count, 0);
 
-  const handleStorageSelect = (storage: StorageLocation) => {
+  const handleStorageSelect = useCallback((storage: StorageLocation) => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     setSelectedStorage(storage);
-  };
+  }, []);
 
-  const handleBackToCategories = () => {
+  const handleBackToCategories = useCallback(() => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     setSelectedStorage(null);
-  };
+  }, []);
 
-  const handleDeleteAll = () => {
+  const handleDeleteAll = useCallback(() => {
     const itemsToDelete = getItemIds();
     
     if (itemsToDelete.length === 0) return;
@@ -409,51 +413,49 @@ export default function InventoryScreen() {
         },
       ]
     );
-  };
+  }, [getItemIds, selectedStorage, showingSearchResults, deleteAllItems]);
 
   const currentStorage = STORAGE_CONFIG.find(s => s.name === selectedStorage);
-  const showingSearchResults = searchQuery && !selectedStorage;
 
   // Category View with Global Search
   if (!selectedStorage && !showingSearchResults) {
     return (
-      <GestureHandlerRootView style={styles.container}>
-        <View style={styles.headerSection}>
-          <ThemedText style={styles.headerSubtitle}>
-            {totalItems} total items stored
-          </ThemedText>
-        </View>
+        <View style={styles.container}>
+          <View style={styles.headerSection}>
+            <ThemedText style={styles.headerSubtitle}>
+              {totalItems} total items stored
+            </ThemedText>
+          </View>
 
-        {/* Global Search Bar */}
-        <View style={styles.searchContainer}>
-          <TextInput
-            ref={searchInputRef}
-            placeholder="Search all items..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            containerStyle={styles.searchInput}
-          />
-        </View>
-
-        <ScrollView contentContainerStyle={styles.categoriesContainer}>
-          {STORAGE_CONFIG.map((storage) => (
-            <StorageCategoryCard
-              key={storage.name}
-              storage={storage}
-              count={storageCounts[storage.name] || 0}
-              totalItems={totalItems}
-              onPress={() => handleStorageSelect(storage.name)}
+          {/* Global Search Bar */}
+          <View style={styles.searchContainer}>
+            <TextInput
+              ref={searchInputRef}
+              placeholder="Search all items..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              containerStyle={styles.searchInput}
             />
-          ))}
-        </ScrollView>
-      </GestureHandlerRootView>
+          </View>
+
+          <ScrollView contentContainerStyle={[styles.categoriesContainer,{paddingBottom: insets.bottom + 130}]}>
+            {STORAGE_CONFIG.map((storage) => (
+              <StorageCategoryCard
+                key={storage.name}
+                storage={storage}
+                count={storageCounts[storage.name] || 0}
+                totalItems={totalItems}
+                onPress={() => handleStorageSelect(storage.name)}
+              />
+            ))}
+          </ScrollView>
+        </View>
     );
   }
 
   // Global Search Results View
   if (showingSearchResults) {
     return (
-      <GestureHandlerRootView style={styles.container}>
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.itemsHeader}>
@@ -510,7 +512,7 @@ export default function InventoryScreen() {
               />
             )}
             keyExtractor={(itemId) => itemId}
-            contentContainerStyle={itemIds.length === 0 ? styles.emptyContainer : styles.listContent}
+            contentContainerStyle={[itemIds.length === 0 ? styles.emptyContainer : styles.listContent, {paddingBottom: insets.bottom + 130}]}
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="none"
             ListEmptyComponent={() => (
@@ -524,13 +526,11 @@ export default function InventoryScreen() {
             )}
           />
         </View>
-      </GestureHandlerRootView>
     );
   }
 
   // Items List View (When storage selected)
   return (
-    <GestureHandlerRootView style={styles.container}>
       <View style={styles.container}>
         {/* Header with Back Button */}
         <View style={styles.itemsHeader}>
@@ -621,7 +621,6 @@ export default function InventoryScreen() {
           }}
         />
       </View>
-    </GestureHandlerRootView>
   );
 }
 

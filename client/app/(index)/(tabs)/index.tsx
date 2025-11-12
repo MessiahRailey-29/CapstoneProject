@@ -1,5 +1,5 @@
 // app/(home)/(tabs)/index.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, memo, useCallback } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl, useColorScheme } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
@@ -19,19 +19,29 @@ import { NotificationBell } from '@/components/NotificationBell';
 import { useNickname } from '@/hooks/useNickname';
 import { ShoppingListExpenses } from '@/components/Dashboard/ShoppingListExpenses';
 import { Colors } from '@/constants/Colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// Memoize static components
+const MemoizedExpenseCard = memo(ExpenseCard);
+const MemoizedCategoryChart = memo(CategoryChart);
+const MemoizedMonthlyTrend = memo(MonthlyTrend);
+const MemoizedStorageOverview = memo(StorageOverview);
+const MemoizedRecommendations = memo(RecommendationsByStrategy);
+const MemoizedShoppingListExpenses = memo(ShoppingListExpenses);
 
 export default function Homepage() {
   const router = useRouter();
   const { user } = useUser();
   const userId = useMemo(() => user?.id || 'user_1', [user?.id]);
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const storageCounts = useInventoryStorageCounts();
   const analytics = useExpenseAnalytics();
+  const insets = useSafeAreaInsets();
 
   //color scheme and styles
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
-  const styles = createStyles(colors);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   // Get nickname with auto-refresh
   const { nickname } = useNickname();
@@ -51,19 +61,21 @@ export default function Homepage() {
     20
   );
 
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
     refreshRecs();
     setTimeout(() => setRefreshing(false), 1000);
   }, [refreshRecs]);
 
-  const monthTrend =
+  const monthTrend = useMemo(() => 
     analytics.previousMonthSpent !== 0
       ? ((analytics.currentMonthSpent - analytics.previousMonthSpent) / analytics.previousMonthSpent) * 100
-      : 0;
+      : 0,
+    [analytics.currentMonthSpent, analytics.previousMonthSpent]
+  );
 
   // Handle product selection → open modal instead of directly adding
-  const handleProductSelect = React.useCallback(
+  const handleProductSelect = useCallback(
     (productId: number, productName: string, price: number, store: string) => {
       setSelectedProduct({ productId, productName, price, store });
       setModalVisible(true);
@@ -72,12 +84,12 @@ export default function Homepage() {
   );
 
   // Handle successful add to shopping list
-  const handleAddSuccess = React.useCallback(async () => {
+  const handleAddSuccess = useCallback(async () => {
     if (user?.id && selectedProduct) {
       await recommendationsApi.trackPurchase(
         user.id,
         selectedProduct.productId,
-        'tracked', // The modal will handle list-specific data
+        'tracked',
         1,
         selectedProduct.store,
         selectedProduct.price
@@ -86,20 +98,27 @@ export default function Homepage() {
     }
   }, [user?.id, selectedProduct, refreshRecs]);
 
+  const handleCloseModal = useCallback(() => setModalVisible(false), []);
+
+  // Memoize action handlers
+  const navigateToShoppingLists = useCallback(() => router.push('/(index)/(tabs)/shopping-lists'), [router]);
+  const navigateToNewList = useCallback(() => router.push('/(index)/list/new'), [router]);
+  const navigateToInventory = useCallback(() => router.push('/(index)/(tabs)/inventory'), [router]);
+  const navigateToProductBrowser = useCallback(() => router.push('/(index)/(tabs)/product-browser'), [router]);
+
   return (
     <>
       <Stack.Screen
         options={{
           headerTitle: 'Home',
           headerLargeTitle: true,
-          // 🔔 ADD NOTIFICATION BELL TO HEADER
           headerRight: () => <NotificationBell />,
         }}
       />
 
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, {paddingBottom: insets.bottom + 100}]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Welcome Section */}
@@ -110,26 +129,25 @@ export default function Homepage() {
           <ThemedText style={styles.welcomeSubtext}>Here's your grocery spending overview</ThemedText>
         </View>
 
-
         {/* 1. Monthly Trend Chart */}
         <View style={styles.section}>
-          <MonthlyTrend monthlyData={analytics.monthlyTrend} />
+          <MemoizedMonthlyTrend monthlyData={analytics.monthlyTrend} />
         </View>
 
         {/* 2. Category Breakdown Chart */}
         <View style={styles.section}>
-          <CategoryChart categories={analytics.categoryBreakdown} />
+          <MemoizedCategoryChart categories={analytics.categoryBreakdown} />
         </View>
 
         {/* 3. Shopping Lists Budget Tracking */}
         <View style={styles.section}>
-          <ShoppingListExpenses />
+          <MemoizedShoppingListExpenses />
         </View>
 
         {/* 4. Quick Stats Cards */}
         <View style={styles.cardsGrid}>
           <View style={styles.cardColumn}>
-            <ExpenseCard
+            <MemoizedExpenseCard
               title="This Month"
               amount={analytics.currentMonthSpent}
               icon="calendar"
@@ -140,7 +158,7 @@ export default function Homepage() {
           </View>
 
           <View style={styles.cardColumn}>
-            <ExpenseCard
+            <MemoizedExpenseCard
               title="Total Spent"
               amount={analytics.totalSpent}
               icon="chart.bar"
@@ -152,7 +170,7 @@ export default function Homepage() {
 
         <View style={styles.cardsGrid}>
           <View style={styles.cardColumn}>
-            <ExpenseCard
+            <MemoizedExpenseCard
               title="Last Month"
               amount={analytics.previousMonthSpent}
               icon="clock"
@@ -164,7 +182,7 @@ export default function Homepage() {
           </View>
 
           <View style={styles.cardColumn}>
-            <ExpenseCard
+            <MemoizedExpenseCard
               title="Avg per Item"
               amount={analytics.averageItemPrice}
               icon="cart"
@@ -176,36 +194,35 @@ export default function Homepage() {
 
         {/* 5. Storage Overview */}
         <View style={styles.section}>
-          <StorageOverview storageCounts={storageCounts} />
+          <MemoizedStorageOverview storageCounts={storageCounts} />
         </View>
 
-        {/* 6. ML Recommendations by Strategy (now opens modal) */}
-        <RecommendationsByStrategy
+        {/* 6. ML Recommendations by Strategy */}
+        <MemoizedRecommendations
           recommendations={recommendations}
           onProductSelect={handleProductSelect}
           loading={recsLoading}
         />
 
         {/* 7. Quick Actions */}
-        {/* Quick Actions */}
         <View style={styles.section}>
           <View style={styles.actionsCard}>
             <ThemedText style={styles.actionsTitle}>Quick Actions</ThemedText>
 
             <View style={styles.quickActions}>
-              <Button onPress={() => router.push('/(index)/(tabs)/shopping-lists')} style={styles.actionButton}>
+              <Button onPress={navigateToShoppingLists} style={styles.actionButton}>
                 View Shopping Lists
               </Button>
 
-              <Button onPress={() => router.push('/(index)/list/new')} variant="outline" style={styles.actionButton}>
+              <Button onPress={navigateToNewList} variant="outline" style={styles.actionButton}>
                 Create New List
               </Button>
 
-              <Button onPress={() => router.push('/(index)/(tabs)/inventory')} variant="outline" style={styles.actionButton}>
+              <Button onPress={navigateToInventory} variant="outline" style={styles.actionButton}>
                 View Inventory
               </Button>
 
-              <Button onPress={() => router.push('/(index)/(tabs)/product-browser')} variant="outline" style={styles.actionButton}>
+              <Button onPress={navigateToProductBrowser} variant="outline" style={styles.actionButton}>
                 Browse Products
               </Button>
             </View>
@@ -219,18 +236,18 @@ export default function Homepage() {
             <ThemedText style={styles.emptyStateText}>
               Create a shopping list, add products, and use "Shop Now" to track your expenses.
             </ThemedText>
-            <Button onPress={() => router.push('/(index)/list/new')} style={styles.emptyStateButton}>
+            <Button onPress={navigateToNewList} style={styles.emptyStateButton}>
               Create Your First List
             </Button>
           </View>
         )}
       </ScrollView>
 
-      {/* 🛒 Shopping List Selector Modal */}
+      {/* Shopping List Selector Modal */}
       {selectedProduct && (
         <ShoppingListSelectorModal
           visible={modalVisible}
-          onClose={() => setModalVisible(false)}
+          onClose={handleCloseModal}
           productId={selectedProduct.productId}
           productName={selectedProduct.productName}
           price={selectedProduct.price}
