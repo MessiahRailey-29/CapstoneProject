@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { useShoppingListProductIds, useShoppingListProductCell } from '@/stores/ShoppingListStore';
-
+import { Colors } from '@/constants/Colors';
+import {LinearGradient} from 'expo-linear-gradient';
 interface BudgetSummaryProps {
   listId: string;
   budget: number;
@@ -64,6 +65,11 @@ export default function BudgetSummary({
     };
   }).filter(Boolean); // Remove null entries
 
+            // Color scheme and styles
+        const scheme = useColorScheme();
+        const colors = Colors[scheme ?? 'light'];
+        const styles = createStyles(colors);
+
   // Calculate totals
   const totalSpent = productCosts.reduce((sum, item) => sum + (item?.cost || 0), 0);
   const remainingBudget = budget - totalSpent;
@@ -104,8 +110,14 @@ export default function BudgetSummary({
     return null;
   }
 
+
+
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={[colors.background, '#22c55e', '#16a34a']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 6 }}
+    style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Budget Summary</Text>
         <Text style={[styles.status, { color: getStatusColor() }]}>
@@ -191,21 +203,21 @@ export default function BudgetSummary({
           </Text>
         </View>
       )}
-    </View>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
-    backgroundColor: 'white',
     margin: 16,
     padding: 16,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
-    elevation: 5,
+    elevation: 7,
   },
   header: {
     flexDirection: 'row',
@@ -216,11 +228,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000',
+    color: colors.text,
   },
   status: {
     fontSize: 14,
     fontWeight: '600',
+    color: colors.text,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -232,27 +245,30 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    color: '#666',
+    color: colors.text,
     marginBottom: 4,
   },
   amount: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: colors.text,
   },
   budgetAmount: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#666',
+    color: colors.text,
   },
   progressContainer: {
     marginBottom: 12,
   },
   progressBackground: {
     height: 8,
-    backgroundColor: '#e9ecef',
+    backgroundColor: 'rgba(223, 223, 223, 0.7)',
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 4,
+    borderColor: colors.borderColor,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   progressBar: {
     height: '100%',
@@ -260,7 +276,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 12,
-    color: '#666',
+    color: colors.text,
     textAlign: 'center',
   },
   remainingContainer: {
@@ -273,13 +289,13 @@ const styles = StyleSheet.create({
   },
   breakdown: {
     borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
+    borderTopColor: colors.borderColor,
     paddingTop: 12,
   },
   breakdownTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.text,
     marginBottom: 8,
   },
   breakdownItem: {
@@ -291,7 +307,7 @@ const styles = StyleSheet.create({
   productName: {
     flex: 1,
     fontSize: 14,
-    color: '#000',
+    color: colors.text,
   },
   productCost: {
     fontSize: 14,
@@ -315,3 +331,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+}

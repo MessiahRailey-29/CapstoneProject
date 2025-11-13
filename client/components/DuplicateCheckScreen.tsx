@@ -1,12 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { BodyScrollView } from '@/components/ui/BodyScrollView';
 import Button from '@/components/ui/button';
 import { StatusBar } from 'expo-status-bar';
 import DuplicateResults from '@/components/DuplicateResults';
 import { useDuplicateDetection } from '@/hooks/useDuplicateDetection';
 import { useShoppingListStore } from '@/stores/ShoppingListStore';
+import { Colors } from '@/constants/Colors';
 
 export default function DuplicateCheckScreen() {
   const router = useRouter();
@@ -24,6 +25,11 @@ export default function DuplicateCheckScreen() {
   } = useDuplicateDetection(listId);
 
   const store = useShoppingListStore(listId);
+
+  // Color scheme and styles
+        const scheme = useColorScheme();
+        const colors = Colors[scheme ?? 'light'];
+        const styles = createStyles(colors);
 
   // Safety check: ensure productNameToIdMap exists
   const safeProductNameToIdMap = productNameToIdMap || new Map();
@@ -243,8 +249,11 @@ export default function DuplicateCheckScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: colors.mainBackground,
     padding: 16,
   },
   headerSection: {
@@ -253,12 +262,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000',
+    color: colors.text,
     marginBottom: 8,
   },
   description: {
     fontSize: 16,
-    color: '#666',
+    color: '#999',
     lineHeight: 22,
   },
   settingsInfoBox: {
@@ -379,3 +388,4 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
 });
+}

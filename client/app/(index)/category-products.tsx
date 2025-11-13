@@ -1,6 +1,6 @@
 // app/(home)/category-products.tsx
 import React, { useMemo } from 'react';
-import { FlatList, StyleSheet, View, Pressable, Text } from 'react-native';
+import { FlatList, StyleSheet, View, Pressable, Text, useColorScheme } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ThemedText } from '@/components/ThemedText';
@@ -8,6 +8,7 @@ import { BodyScrollView } from '@/components/ui/BodyScrollView';
 import { useProducts } from '@/hooks/useProducts';
 import { DatabaseProduct } from '@/services/productsApi';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
 
 function ProductItem({ 
   product, 
@@ -18,6 +19,11 @@ function ProductItem({
   categoryColor: string;
   onPress: () => void;
 }) {
+
+  // Color scheme and styles
+      const scheme = useColorScheme();
+      const colors = Colors[scheme ?? 'light'];
+      const styles = createStyles(colors);
   return (
     <Pressable
       onPress={onPress}
@@ -49,6 +55,11 @@ export default function CategoryProductsScreen() {
   };
   
   const { products } = useProducts();
+  
+  // Color scheme and styles
+      const scheme = useColorScheme();
+      const colors = Colors[scheme ?? 'light'];
+      const styles = createStyles(colors);
 
   // Filter products by category
   const categoryProducts = useMemo(() => {
@@ -115,10 +126,11 @@ export default function CategoryProductsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.mainBackground,
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -135,7 +147,7 @@ const styles = StyleSheet.create({
   categoryHeaderTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
     marginBottom: 4,
   },
   categoryHeaderCount: {
@@ -150,17 +162,17 @@ const styles = StyleSheet.create({
   productItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     marginHorizontal: 16,
     marginVertical: 6,
     padding: 16,
     borderRadius: 12,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    elevation: 2,
+    elevation: 3,
   },
   productIconContainer: {
     width: 50,
@@ -213,3 +225,4 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
 });
+}

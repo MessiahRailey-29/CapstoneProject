@@ -34,8 +34,25 @@ export const useNickname = () => {
                 if (storedNickname) {
                     setNickname(storedNickname);
                 } else {
-                    // Default to first name or email username
-                    const defaultName = user?.firstName || user?.emailAddresses[0]?.emailAddress.split('@')[0] || '';
+                    // Build full name from metadata
+                    const metaFirstName = user.unsafeMetadata?.firstName as string;
+                    const metaLastName = user.unsafeMetadata?.lastName as string;
+                    
+                    let defaultName = '';
+                    
+                    // Use full name from metadata if available
+                    if (metaFirstName && metaLastName) {
+                        defaultName = `${metaFirstName} ${metaLastName}`;
+                    } else if (metaFirstName) {
+                        defaultName = metaFirstName;
+                    } else {
+                        // Fallback to Clerk fields or email
+                        defaultName = user?.firstName || 
+                                     user?.fullName || 
+                                     user?.emailAddresses[0]?.emailAddress.split('@')[0] || 
+                                     'Friend';
+                    }
+                    
                     setNickname(defaultName);
                 }
             }
@@ -44,7 +61,7 @@ export const useNickname = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.id, user?.firstName, user?.emailAddresses, user?.unsafeMetadata]);
+    }, [user?.id, user?.firstName, user?.fullName, user?.emailAddresses, user?.unsafeMetadata]);
 
     // Load nickname on mount and when user changes
     useEffect(() => {
@@ -113,8 +130,16 @@ export const useNickname = () => {
         }
     };
 
+    // Get display name with fallback logic
+    const getDisplayName = () => {
+        if (nickname) return nickname;
+        if (user?.firstName) return user.firstName;
+        if (user?.fullName) return user.fullName;
+        return 'Friend';
+    };
+
     return {
-        nickname: nickname || user?.firstName || 'Friend',
+        nickname: getDisplayName(),
         loading,
         updateNickname,
         refresh: loadNickname,

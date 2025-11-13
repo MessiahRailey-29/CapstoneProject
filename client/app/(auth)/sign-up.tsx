@@ -15,6 +15,12 @@ export default function SignUpScreen() {
     const { signUp, setActive, isLoaded } = useSignUp();
     const router = useRouter();
 
+    // Step management
+    const [step, setStep] = React.useState<'name' | 'credentials' | 'verification'>('name');
+
+    // Form fields
+    const [firstName, setFirstName] = React.useState("");
+    const [lastName, setLastName] = React.useState("");
     const [emailAddress, setEmailAddress] = React.useState("");
     const [password, setPassword] = React.useState("");
     const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -22,7 +28,6 @@ export default function SignUpScreen() {
     const [errors, setErrors] = React.useState<ClerkAPIError[]>([]);
     const [passwordError, setPasswordError] = React.useState("");
     const [code, setCode] = React.useState("");
-    const [pendingVerification, setPendingVerification] = React.useState(false);
     const [codeExpiryTime, setCodeExpiryTime] = React.useState<number | null>(null);
     const [remainingTime, setRemainingTime] = React.useState<string>('');
 
@@ -45,7 +50,7 @@ export default function SignUpScreen() {
 
     // Timer for verification code expiration
     React.useEffect(() => {
-        if (!pendingVerification || !codeExpiryTime) return;
+        if (step !== 'verification' || !codeExpiryTime) return;
 
         const interval = setInterval(() => {
             const now = Date.now();
@@ -67,7 +72,15 @@ export default function SignUpScreen() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [pendingVerification, codeExpiryTime]);
+    }, [step, codeExpiryTime]);
+
+    const handleNameContinue = () => {
+        if (!firstName.trim() || !lastName.trim()) {
+            Alert.alert('Required Fields', 'Please enter both your first and last name.');
+            return;
+        }
+        setStep('credentials');
+    };
 
     const onSignUpPress = async () => {
         if (!isLoaded) return;
@@ -92,9 +105,14 @@ export default function SignUpScreen() {
         setErrors([]);
 
         try {
+            // Create account with email and password only
             await signUp.create({
                 emailAddress,
-                password
+                password,
+                unsafeMetadata: {
+                    firstName: firstName.trim(),
+                    lastName: lastName.trim(),
+                }
             });
 
             await signUp.prepareEmailAddressVerification({
@@ -106,7 +124,7 @@ export default function SignUpScreen() {
             setCodeExpiryTime(expiryTime);
             await storeVerificationCode(emailAddress, '', 'signup');
 
-            setPendingVerification(true);
+            setStep('verification');
         } catch (e) {
             console.log(e);
             if (isClerkAPIResponseError(e)) {
@@ -156,7 +174,63 @@ export default function SignUpScreen() {
         }
     };
 
-    if (pendingVerification) {
+    // Step 1: Name input
+    if (step === 'name') {
+        return (
+            <BodyScrollView contentContainerStyle={{ padding: 16 }}>
+                <View style={styles.header}>
+                    <ThemedText style={styles.headerTitle}>Let's get started</ThemedText>
+                    <ThemedText style={styles.headerSubtitle}>
+                        First, tell us your name
+                    </ThemedText>
+                </View>
+
+                <View style={styles.stepIndicator}>
+                    <View style={[styles.stepDot, styles.stepDotActive]} />
+                    <View style={styles.stepDot} />
+                    <View style={styles.stepDot} />
+                </View>
+
+                <TextInput
+                    label="First Name"
+                    value={firstName}
+                    placeholder="Enter your first name"
+                    autoCapitalize="words"
+                    onChangeText={setFirstName}
+                />
+
+                <TextInput
+                    label="Last Name"
+                    value={lastName}
+                    placeholder="Enter your last name"
+                    autoCapitalize="words"
+                    onChangeText={setLastName}
+                />
+
+                <Button
+                    onPress={handleNameContinue}
+                    disabled={!firstName.trim() || !lastName.trim()}
+                >
+                    Continue
+                </Button>
+
+                <View style={styles.linkContainer}>
+                    <ThemedText style={styles.linkText}>
+                        Already have an account?
+                    </ThemedText>
+                    <Button
+                        variant="ghost"
+                        onPress={() => router.back()}
+                    >
+                        Sign In
+                    </Button>
+                </View>
+            </BodyScrollView>
+        );
+    }
+
+    // Step 2: Verification
+    if (step === 'verification') {
         return (
             <BodyScrollView contentContainerStyle={{ padding: 16 }}>
                 <View style={styles.header}>
@@ -166,6 +240,12 @@ export default function SignUpScreen() {
                     <ThemedText style={styles.headerSubtitle}>
                         We sent a verification code to {emailAddress}
                     </ThemedText>
+                </View>
+
+                <View style={styles.stepIndicator}>
+                    <View style={[styles.stepDot, styles.stepDotComplete]} />
+                    <View style={[styles.stepDot, styles.stepDotComplete]} />
+                    <View style={[styles.stepDot, styles.stepDotActive]} />
                 </View>
 
                 <View style={styles.securityTip}>
@@ -214,17 +294,22 @@ export default function SignUpScreen() {
         );
     }
 
+    // Step 3: Credentials (email and password)
     return (
-        <BodyScrollView
-            contentContainerStyle={{
-                padding: 16,
-            }}
-        >
+        <BodyScrollView contentContainerStyle={{ padding: 16 }}>
             <View style={styles.header}>
-                <ThemedText style={styles.headerTitle}>Create an account</ThemedText>
-                <ThemedText style={styles.headerSubtitle}>
-                    Sign up to get started with your shopping lists
+                <ThemedText style={styles.headerTitle}>
+                    Hi {firstName}! 👋
                 </ThemedText>
+                <ThemedText style={styles.headerSubtitle}>
+                    Now, let's set up your account credentials
+                </ThemedText>
+            </View>
+
+            <View style={styles.stepIndicator}>
+                <View style={[styles.stepDot, styles.stepDotComplete]} />
+                <View style={[styles.stepDot, styles.stepDotActive]} />
+                <View style={styles.stepDot} />
             </View>
 
             <View style={styles.securityBanner}>
@@ -275,15 +360,12 @@ export default function SignUpScreen() {
             </Button>
 
             <View style={styles.linkContainer}>
-                <ThemedText style={styles.linkText}>
-                    Already have an account?
-                </ThemedText>
                 <Button
                     variant="ghost"
-                    onPress={() => router.back()}
+                    onPress={() => setStep('name')}
                     disabled={isLoading}
                 >
-                    Sign In
+                    ← Back to Name
                 </Button>
             </View>
 
@@ -311,6 +393,28 @@ const styles = StyleSheet.create({
         opacity: 0.7,
         textAlign: 'center',
         lineHeight: 20,
+    },
+    stepIndicator: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 24,
+    },
+    stepDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#E0E0E0',
+    },
+    stepDotActive: {
+        backgroundColor: '#3B82F6',
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+    stepDotComplete: {
+        backgroundColor: '#22C55E',
     },
     securityBanner: {
         backgroundColor: '#DBEAFE',

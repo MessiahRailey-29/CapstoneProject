@@ -4,27 +4,26 @@ import { useClerk, useUser } from '@clerk/clerk-expo';
 import Button from '@/components/ui/button';
 import { appleRed } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
-import { Alert, View, StyleSheet, TouchableOpacity, TextInput, Modal, Image, useColorScheme, Text } from 'react-native';
-import { useNickname } from '@/hooks/useNickname';
+import { Alert, View, StyleSheet, TouchableOpacity, Image, useColorScheme, Text, Modal, TextInput } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import { useResetExpenseData } from '@/hooks/useResetExpenseData';
 import * as Haptics from 'expo-haptics';
-import { Colors } from '@/constants/Colors'
-import { SwipeableTabWrapper } from "@/components/SwipeableTabWrapper";
+import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
     const { signOut } = useClerk();
     const { user } = useUser();
     const router = useRouter();
-    const { nickname, updateNickname } = useNickname();
     const { resetAllExpenseData } = useResetExpenseData();
-    const [isEditingNickname, setIsEditingNickname] = React.useState(false);
-    const [tempNickname, setTempNickname] = React.useState('');
     const [profilePicture, setProfilePicture] = React.useState<string | null>(null);
     const [showAvatarOptions, setShowAvatarOptions] = React.useState(false);
     const [isUploadingImage, setIsUploadingImage] = React.useState(false);
+    const [showNameEdit, setShowNameEdit] = React.useState(false);
+    const [editedFirstName, setEditedFirstName] = React.useState('');
+    const [editedLastName, setEditedLastName] = React.useState('');
+    const [isSavingName, setIsSavingName] = React.useState(false);
 
     // Load profile picture from Clerk's imageUrl
     React.useEffect(() => {
@@ -34,50 +33,45 @@ export default function ProfileScreen() {
     }, [user?.imageUrl]);
 
     const saveProfilePicture = async (uri: string) => {
-    try {
-        if (!user) {
-            console.error('❌ No user found');
-            Alert.alert('Error', 'No user found. Please try logging out and back in.');
-            return;
+        try {
+            if (!user) {
+                console.error('❌ No user found');
+                Alert.alert('Error', 'No user found. Please try logging out and back in.');
+                return;
+            }
+            
+            setIsUploadingImage(true);
+            console.log('📸 Uploading profile picture...');
+            
+            const filename = uri.split('/').pop() || 'profile.jpg';
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : `image/jpeg`;
+            
+            const file = {
+                uri: uri,
+                type: type,
+                name: filename,
+            } as any;
+            
+            await user.setProfileImage({ file });
+            
+            console.log('✅ Profile picture uploaded successfully');
+            
+            await user.reload();
+            setProfilePicture(user.imageUrl);
+            
+            Alert.alert('Success', 'Profile picture updated!');
+        } catch (error: any) {
+            console.error('❌ Error saving profile picture:', error);
+            console.error('Error details:', JSON.stringify(error, null, 2));
+            Alert.alert('Error', `Failed to save profile picture: ${error.message || 'Unknown error'}`);
+        } finally {
+            setIsUploadingImage(false);
         }
-        
-        setIsUploadingImage(true);
-        console.log('📸 Uploading profile picture...');
-        
-        // Get file info to determine mime type
-        const filename = uri.split('/').pop() || 'profile.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : `image/jpeg`;
-        
-        // For Clerk in React Native, use the file object format
-        const file = {
-            uri: uri,
-            type: type,
-            name: filename,
-        } as any; // Type assertion needed for Clerk's types
-        
-        // Use Clerk's built-in profile image upload
-        await user.setProfileImage({ file });
-        
-        console.log('✅ Profile picture uploaded successfully');
-        
-        // Reload user to get new image URL
-        await user.reload();
-        setProfilePicture(user.imageUrl);
-        
-        Alert.alert('Success', 'Profile picture updated!');
-    } catch (error: any) {
-        console.error('❌ Error saving profile picture:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        Alert.alert('Error', `Failed to save profile picture: ${error.message || 'Unknown error'}`);
-    } finally {
-        setIsUploadingImage(false);
-    }
-};
+    };
 
     const pickImage = async () => {
         try {
-            // Request permission
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             
             if (status !== 'granted') {
@@ -85,7 +79,6 @@ export default function ProfileScreen() {
                 return;
             }
 
-            // Launch image picker
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
@@ -105,7 +98,6 @@ export default function ProfileScreen() {
 
     const takePhoto = async () => {
         try {
-            // Request permission
             const { status } = await ImagePicker.requestCameraPermissionsAsync();
             
             if (status !== 'granted') {
@@ -113,7 +105,6 @@ export default function ProfileScreen() {
                 return;
             }
 
-            // Launch camera
             const result = await ImagePicker.launchCameraAsync({
                 allowsEditing: true,
                 aspect: [1, 1],
@@ -133,7 +124,6 @@ export default function ProfileScreen() {
     const removeProfilePicture = async () => {
         try {
             if (user) {
-                // Use Clerk's built-in method to remove profile image
                 await user.setProfileImage({ file: null });
                 await user.reload();
                 
@@ -147,23 +137,46 @@ export default function ProfileScreen() {
         }
     };
 
-    const handleEditNickname = useCallback(() => {
-        setTempNickname(nickname);
-        setIsEditingNickname(true);
-    }, [nickname]);
+    const openNameEdit = () => {
+        const metaFirstName = user?.unsafeMetadata?.firstName as string;
+        const metaLastName = user?.unsafeMetadata?.lastName as string;
+        
+        setEditedFirstName(metaFirstName || user?.firstName || '');
+        setEditedLastName(metaLastName || user?.lastName || '');
+        setShowNameEdit(true);
+    };
 
-    const handleSaveNickname = async () => {
-        if (tempNickname.trim()) {
-            try {
-                await updateNickname(tempNickname);
-                setIsEditingNickname(false);
-                Alert.alert('Success', 'Nickname updated successfully!');
-            } catch (error) {
-                console.error('Error saving nickname:', error);
-                Alert.alert('Error', 'Failed to save nickname');
+    const saveName = async () => {
+        try {
+            if (!user) {
+                Alert.alert('Error', 'No user found');
+                return;
             }
-        } else {
-            Alert.alert('Error', 'Nickname cannot be empty');
+
+            if (!editedFirstName.trim() || !editedLastName.trim()) {
+                Alert.alert('Error', 'Please enter both first and last name');
+                return;
+            }
+
+            setIsSavingName(true);
+
+            // Update user metadata with new names
+            await user.update({
+                unsafeMetadata: {
+                    ...user.unsafeMetadata,
+                    firstName: editedFirstName.trim(),
+                    lastName: editedLastName.trim(),
+                },
+            });
+
+            await user.reload();
+            setShowNameEdit(false);
+            Alert.alert('Success', 'Name updated successfully!');
+        } catch (error: any) {
+            console.error('Error saving name:', error);
+            Alert.alert('Error', `Failed to update name: ${error.message || 'Unknown error'}`);
+        } finally {
+            setIsSavingName(false);
         }
     };
 
@@ -195,7 +208,20 @@ export default function ProfileScreen() {
 
     // Get user initials for avatar
     const getInitials = () => {
-        const name = nickname || user?.fullName || user?.firstName || user?.emailAddresses[0]?.emailAddress;
+        // Try metadata first
+        const metaFirstName = user?.unsafeMetadata?.firstName as string;
+        const metaLastName = user?.unsafeMetadata?.lastName as string;
+        
+        if (metaFirstName && metaLastName) {
+            return `${metaFirstName[0]}${metaLastName[0]}`.toUpperCase();
+        }
+        
+        // Fallback to Clerk's built-in fields
+        if (user?.firstName && user?.lastName) {
+            return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+        }
+        
+        const name = user?.fullName || user?.firstName || user?.emailAddresses[0]?.emailAddress;
         if (!name) return '?';
         const parts = name.split(' ');
         if (parts.length >= 2) {
@@ -211,13 +237,27 @@ export default function ProfileScreen() {
         return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     };
 
-    const displayName = nickname || user?.fullName || user?.firstName || 'User';
+    // Get full name for display
+    const getFullName = () => {
+        // Try to get from metadata first
+        const metaFirstName = user?.unsafeMetadata?.firstName as string;
+        const metaLastName = user?.unsafeMetadata?.lastName as string;
+        
+        if (metaFirstName && metaLastName) {
+            return `${metaFirstName} ${metaLastName}`;
+        }
+        
+        // Fallback to Clerk's built-in fields
+        if (user?.firstName && user?.lastName) {
+            return `${user.firstName} ${user.lastName}`;
+        }
+        return user?.fullName || user?.firstName || 'User';
+    };
     
     const insets = useSafeAreaInsets();
-      // Color scheme and styles
-      const theme = useColorScheme();
-      const colors = Colors[theme ?? 'light'];
-      const styles = useMemo(() => createStyles(colors), [colors]);
+    const theme = useColorScheme();
+    const colors = Colors[theme ?? 'light'];
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
     return (
         <BodyScrollView contentContainerStyle={{paddingBottom: insets.bottom + 130}}>
@@ -253,16 +293,17 @@ export default function ProfileScreen() {
                     {/* User Info */}
                     <View style={styles.userInfo}>
                         <View style={styles.nameContainer}>
-                            <ThemedText style={styles.userName}>
-                                {displayName}
+                            <ThemedText style={styles.fullName}>
+                                {getFullName()}
                             </ThemedText>
                             <TouchableOpacity 
-                                onPress={handleEditNickname}
-                                style={styles.editButton}
+                                style={styles.editNameButton}
+                                onPress={openNameEdit}
                             >
                                 <ThemedText style={styles.editIcon}>✏️</ThemedText>
                             </TouchableOpacity>
                         </View>
+                        
                         <ThemedText style={styles.userEmail}>
                             {user?.emailAddresses[0]?.emailAddress}
                         </ThemedText>
@@ -399,57 +440,6 @@ export default function ProfileScreen() {
                 </ThemedText>
             </View>
 
-            {/* Edit Nickname Modal */}
-            <Modal
-                visible={isEditingNickname}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setIsEditingNickname(false)}
-            >
-                <TouchableOpacity 
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setIsEditingNickname(false)}
-                >
-                    <TouchableOpacity 
-                        activeOpacity={1}
-                        onPress={(e) => e.stopPropagation()}
-                    >
-                        <View style={styles.modalContent}>
-                            <ThemedText style={styles.modalTitle}>Edit Nickname</ThemedText>
-                            <ThemedText style={styles.modalSubtitle}>
-                                This is how we'll greet you in the app
-                            </ThemedText>
-                            <TextInput
-                                style={styles.input}
-                                value={tempNickname}
-                                onChangeText={setTempNickname}
-                                placeholder="Enter your nickname"
-                                placeholderTextColor="#999"
-                                maxLength={30}
-                                autoFocus
-                                returnKeyType="done"
-                                onSubmitEditing={handleSaveNickname}
-                            />
-                            <View style={styles.modalButtons}>
-                                <TouchableOpacity
-                                    style={[styles.modalButton, styles.cancelButton]}
-                                    onPress={() => setIsEditingNickname(false)}
-                                >
-                                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.modalButton, styles.saveButton]}
-                                    onPress={handleSaveNickname}
-                                >
-                                    <Text style={styles.saveButtonText}>Save</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </TouchableOpacity>
-                </TouchableOpacity>
-            </Modal>
-
             {/* Avatar Options Modal */}
             <Modal
                 visible={showAvatarOptions}
@@ -505,15 +495,78 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </TouchableOpacity>
             </Modal>
+
+            {/* Name Edit Modal */}
+            <Modal
+                visible={showNameEdit}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowNameEdit(false)}
+            >
+                <TouchableOpacity 
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowNameEdit(false)}
+                >
+                    <TouchableOpacity 
+                        activeOpacity={1}
+                        onPress={(e) => e.stopPropagation()}
+                    >
+                        <View style={styles.avatarModalContent}>
+                            <ThemedText style={styles.modalTitle}>Edit Name</ThemedText>
+                            
+                            <View style={styles.inputContainer}>
+                                <ThemedText style={styles.inputLabel}>First Name</ThemedText>
+                                <TextInput
+                                    style={styles.input}
+                                    value={editedFirstName}
+                                    onChangeText={setEditedFirstName}
+                                    placeholder="Enter first name"
+                                    placeholderTextColor="#999"
+                                    autoCapitalize="words"
+                                />
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <ThemedText style={styles.inputLabel}>Last Name</ThemedText>
+                                <TextInput
+                                    style={styles.input}
+                                    value={editedLastName}
+                                    onChangeText={setEditedLastName}
+                                    placeholder="Enter last name"
+                                    placeholderTextColor="#999"
+                                    autoCapitalize="words"
+                                />
+                            </View>
+
+                            <View style={styles.modalButtonContainer}>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.cancelButton, { flex: 1, marginRight: 8 }]}
+                                    onPress={() => setShowNameEdit(false)}
+                                    disabled={isSavingName}
+                                >
+                                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.saveButton, { flex: 1, marginLeft: 8 }]}
+                                    onPress={saveName}
+                                    disabled={isSavingName}
+                                >
+                                    <Text style={styles.saveButtonText}>
+                                        {isSavingName ? 'Saving...' : 'Save'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            </Modal>
         </BodyScrollView>
     );
 }
 
 const createStyles = (colors: any) => StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.background,
-    },
     profileCard: {
         backgroundColor: colors.background,
         marginHorizontal: 16,
@@ -607,15 +660,13 @@ const createStyles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         marginBottom: 8,
     },
-    userName: {
+    fullName: {
         fontSize: 28,
         fontWeight: '700',
         color: colors.text,
-        marginRight: 8,
-        paddingBottom: 3,
-        overflow: 'visible'
     },
-    editButton: {
+    editNameButton: {
+        marginLeft: 8,
         padding: 4,
     },
     editIcon: {
@@ -638,34 +689,6 @@ const createStyles = (colors: any) => StyleSheet.create({
         fontSize: 13,
         color: '#007AFF',
         fontWeight: '600',
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        paddingTop: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
-    },
-    statItem: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    statValue: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#1a1a1a',
-        marginBottom: 4,
-    },
-    statLabel: {
-        fontSize: 13,
-        color: '#666',
-        fontWeight: '500',
-    },
-    statDivider: {
-        width: 1,
-        height: 40,
-        backgroundColor: '#e5e5e5',
     },
     section: {
         backgroundColor: colors.background,
@@ -740,25 +763,13 @@ const createStyles = (colors: any) => StyleSheet.create({
         color: '#999',
     },
     modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 20,
     },
-    modalContent: {
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 24,
-        width: '100%',
-        maxWidth: 400,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-        elevation: 10,
-    },
-        avatarModalContent: {
+    avatarModalContent: {
         backgroundColor: '#fff',
         borderRadius: 20,
         padding: 24,
@@ -771,63 +782,13 @@ const createStyles = (colors: any) => StyleSheet.create({
         shadowOpacity: 0.4,
         shadowRadius: 16,
         elevation: 10,
-        },
+    },
     modalTitle: {
         fontSize: 24,
         fontWeight: '700',
         marginBottom: 20,
         textAlign: 'center',
         color: '#1a1a1a',
-    },
-    modalSubtitle: {
-        fontSize: 14,
-        color: '#666',
-        textAlign: 'center',
-        marginBottom: 24,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-        borderRadius: 12,
-        padding: 16,
-        fontSize: 16,
-        marginBottom: 24,
-        backgroundColor: '#f8f9fa',
-        color: '#000',
-    },
-    modalButtons: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    modalButton: {
-        flex: 1,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 14,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-        elevation: 5,
-    },
-    cancelButton: {
-        backgroundColor: '#f5f5f5',
-        borderWidth: 2,
-        borderColor: '#e0e0e0',
-    },
-    cancelButtonText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#ff0000',
-    },
-    saveButton: {
-        backgroundColor: '#007AFF',
-    },
-    saveButtonText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#fff',
     },
     avatarOption: {
         flexDirection: 'row',
@@ -841,6 +802,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 2,
+        width: '100%',
     },
     avatarOptionIcon: {
         fontSize: 24,
@@ -860,5 +822,60 @@ const createStyles = (colors: any) => StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#d32f2f',
+    },
+    inputContainer: {
+        width: '100%',
+        marginBottom: 16,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1a1a1a',
+        marginBottom: 8,
+    },
+    input: {
+        backgroundColor: '#f8f9fa',
+        borderRadius: 12,
+        padding: 14,
+        fontSize: 16,
+        color: '#1a1a1a',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+    },
+    modalButtonContainer: {
+        flexDirection: 'row',
+        width: '100%',
+        marginTop: 8,
+    },
+    modalButton: {
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+        elevation: 5,
+    },
+    cancelButton: {
+        backgroundColor: '#f5f5f5',
+        borderWidth: 2,
+        borderColor: '#e0e0e0',
+    },
+    cancelButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#666',
+    },
+    saveButton: {
+        backgroundColor: '#007AFF',
+        borderWidth: 2,
+        borderColor: '#007AFF',
+    },
+    saveButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#fff',
     },
 });

@@ -20,6 +20,7 @@ import { Colors, appleBlue} from "@/constants/Colors";
 import * as Haptics from "expo-haptics";
 import { SwipeableTabWrapper } from "@/components/SwipeableTabWrapper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FontAwesome } from "@expo/vector-icons";
 type TabType = 'active' | 'ongoing' | 'history';
 type SortOption = 'name' | 'date' | 'items' | 'budget';
 type FilterOption = 'all' | 'scheduled' | 'unscheduled';
@@ -513,7 +514,7 @@ export default function HomeScreen() {
                 <ThemedText style={styles.optionIcon}>{option.icon}</ThemedText>
                 <ThemedText style={styles.optionLabel}>{option.label}</ThemedText>
                 {sortBy === option.value && (
-                  <IconSymbol name="checkmark" size={20} color="#007AFF" />
+                  <IconSymbol name="checkmark" size={20} color="#000" />
                 )}
               </Pressable>
             ))}
@@ -629,7 +630,7 @@ export default function HomeScreen() {
                 setShowFilterModal(true);
               }}
             >
-              <IconSymbol name="line.3.horizontal.decrease.circle" size={20} color="#007AFF" />
+              <FontAwesome name="filter" size={20} color="#50C878" />
               <ThemedText style={styles.filterSortButtonText}>
                 Filter: {filterBy === 'all' ? 'All' : filterBy === 'scheduled' ? 'Scheduled' : 'Unscheduled'}
               </ThemedText>
@@ -646,7 +647,7 @@ export default function HomeScreen() {
                 setShowSortModal(true);
               }}
             >
-              <IconSymbol name="arrow.up.arrow.down" size={20} color="#007AFF" />
+              <FontAwesome name="sort" size={20} color="#50C878" />
               <ThemedText style={styles.filterSortButtonText}>
                 Sort: {sortBy === 'date' ? 'Date' : sortBy === 'name' ? 'Name' : sortBy === 'items' ? 'Items' : 'Budget'}
               </ThemedText>

@@ -1,13 +1,13 @@
 import React from "react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View, useColorScheme } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import Reanimated, {
   SharedValue,
   useAnimatedStyle,
 } from "react-native-reanimated";
-import { appleRed, borderColor } from "@/constants/Colors";
+import { appleRed, backgroundColors, borderColor } from "@/constants/Colors";
 import {
   useDelShoppingListProductCallback,
   useShoppingListProductCell,
@@ -17,6 +17,7 @@ import { useShoppingListData } from "@/stores/ShoppingListsStore";
 import { useListNotifications } from "@/utils/notifyCollaborators";
 import { ThemedText } from "./ThemedText";
 import { IconSymbol } from "./ui/IconSymbol";
+import { Colors } from "@/constants/Colors"
 
 export default function ShoppingListProductItem({
   listId,
@@ -35,6 +36,11 @@ export default function ShoppingListProductItem({
     productId,
     "isPurchased"
   );
+
+  
+      const theme = useColorScheme();
+      const colors = Colors[theme ?? 'light'];
+      const styles = createStyles(colors);
   
   // New store selection fields
   const [selectedStore] = useShoppingListProductCell(listId, productId, "selectedStore");
@@ -95,8 +101,8 @@ export default function ShoppingListProductItem({
     });
 
     return (
-      <Pressable onPress={handleDelete}>
-        <Reanimated.View style={[styleAnimation, styles.rightAction]}>
+      <Pressable onPress={handleDelete} >
+        <Reanimated.View style={[styleAnimation, styles.rightAction,styles.delete]}>
           <IconSymbol name="trash.fill" size={24} color="white" />
         </Reanimated.View>
       </Pressable>
@@ -227,8 +233,11 @@ export default function ShoppingListProductItem({
   );
 }
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
+    backgroundColor: colors.mainBackground,
+    flex: 1,
     paddingBottom: 12,
     paddingHorizontal: 16,
   },
@@ -272,10 +281,12 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   storeInfo: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: colors.background,
     borderRadius: 6,
     padding: 8,
     gap: 4,
+    borderColor: colors.borderColor,
+    borderWidth: 0.7,
   },
   storeContainer: {
     flexDirection: "row",
@@ -293,6 +304,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   priceText: {
+    marginLeft: 6,
     fontSize: 14,
     color: "#007AFF",
   },
@@ -312,4 +324,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  delete:{
+    backgroundColor: 'red',
+    flex: 1
+  }
 });

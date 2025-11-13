@@ -7,8 +7,9 @@ import { appleBlue, backgroundColors } from "@/constants/Colors";
 import { useShoppingListIds, useShoppingListsValues, useShoppingListData } from "@/stores/ShoppingListsStore";
 import { useShoppingListProductIds } from "@/stores/ShoppingListStore";
 import { Stack, useRouter } from "expo-router";
-import {Platform, Pressable, StyleSheet, View, SectionList} from "react-native";
+import {Platform, Pressable, StyleSheet, View, SectionList, useColorScheme} from "react-native";
 import { useMemo } from "react";
+import { Colors } from "@/constants/Colors";
 
 type Section = {
     title: string;
@@ -22,6 +23,11 @@ function ShoppingListItem({ listId }: { listId: string }) {
   const listData = useShoppingListData(listId);
   const productIds = useShoppingListProductIds(listId);
 
+  
+        const theme = useColorScheme();
+        const colors = Colors[theme ?? 'light'];
+        const styles = createStyles(colors);
+
   const name = listData?.name || '';
   const emoji = listData?.emoji || '🛒';
   const color = listData?.color || '#007AFF';
@@ -29,6 +35,7 @@ function ShoppingListItem({ listId }: { listId: string }) {
   const status = listData?.status || 'regular';
   const shoppingDate = listData?.shoppingDate || null;
   const completedAt = listData?.completedAt || null;
+
 
   const handlePress = () => {
     router.push(`/list/${listId}`);
@@ -145,6 +152,10 @@ export default function HomeScreen(){
     const shoppingListIds = useShoppingListIds();
     const shoppingListsValues = useShoppingListsValues();
 
+          const theme = useColorScheme();
+          const colors = Colors[theme ?? 'light'];
+          const styles = createStyles(colors);
+
     // Categorize shopping lists into sections
     const sections = useMemo(() => {
         const regularLists: string[] = [];
@@ -260,9 +271,11 @@ export default function HomeScreen(){
 
     return(
         <>
-        <Stack.Screen options={{
+        <Stack.Screen
+        options={{
             headerRight: renderHeaderRight,
-        }}/>
+        }}
+        />
         <SectionList
             sections={sections}
             renderItem={renderItem}
@@ -277,9 +290,11 @@ export default function HomeScreen(){
     );
 }
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   listContainer: {
     paddingTop: 8,
+    backgroundColor: colors.mainBackground,
   },
   emptyStateContainer: {
     alignItems: "center",

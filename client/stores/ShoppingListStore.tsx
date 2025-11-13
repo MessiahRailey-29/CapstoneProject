@@ -17,7 +17,7 @@ const VALUES_SCHEMA = {
   emoji: { type: "string" },
   color: { type: "string" },
   shoppingDate: { type: "string" },
-  budget: { type: "number", default: 0 },
+  budget: { type: "number" },  // ✅ REMOVED default: 0 - let sync provide the value
   status: { type: "string", default: "regular" },
   completedAt: { type: "string", default: "" },
   createdAt: { type: "string" },

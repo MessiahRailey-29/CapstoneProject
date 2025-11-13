@@ -29,7 +29,10 @@ export function ErrorDisplay({ errors, style }: ErrorDisplayProps) {
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }, style]}>
       {errors.map((error, index) => (
-        <View key={error.code || index} style={styles.errorCard}>
+        <View 
+          key={`${error.code || 'error'}-${index}-${error.message?.substring(0, 20)}`} 
+          style={styles.errorCard}
+        >
           <View style={styles.iconContainer}>
             <ThemedText style={styles.errorIcon}>⚠️</ThemedText>
           </View>
@@ -58,6 +61,7 @@ function getErrorTitle(code?: string): string {
     'form_identifier_exists': 'Account Already Exists',
     'form_code_incorrect': 'Invalid Code',
     'session_exists': 'Already Signed In',
+    'form_param_unknown': 'Invalid Parameter',
   };
 
   return errorTitles[code || ''] || 'Error';

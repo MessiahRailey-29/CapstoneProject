@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, View, Alert, ActivityIndicator } from "react-native";
+import { Pressable, View, Alert, ActivityIndicator, useColorScheme } from "react-native";
 import Animated from "react-native-reanimated";
 import ShoppingListProductItem from "@/components/ShoppingListProductItem";
 import BudgetSummary from "@/components/BudgetSummary";
@@ -18,11 +18,17 @@ import ShopNowButton from "@/components/ShopNowButton";
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotifications";
 import { useListNotifications } from "@/utils/notifyCollaborators";
+import { Colors } from "@/constants/Colors";
 
 export default function ListScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const listId = params.listId as string;
+
+  
+            const theme = useColorScheme();
+            const colors = Colors[theme ?? 'light'];
+  
 
   // 📍 NEW: Get pending product params from URL
   const addProductId = params.addProductId ? Number(params.addProductId) : null;
@@ -40,6 +46,7 @@ export default function ListScreen() {
   const [name] = useShoppingListValue(listId, "name");
   const [emoji] = useShoppingListValue(listId, "emoji");
   const [description] = useShoppingListValue(listId, "description");
+  const [hydratedBudget] = useShoppingListValue(listId, "budget");  // ✅ Get hydrated budget
   const productIds = useShoppingListProductIds(listId);
 
   // ✅ CRITICAL FIX: Check if data is still loading
@@ -61,13 +68,16 @@ export default function ListScreen() {
   const displayName = name || listData.name || "";
   const displayEmoji = emoji || listData.emoji || "❓";
   const displayDescription = description || listData.description || "";
-  const budget = listData.budget || 0;  // ✅ Add fallback to 0
+  // ✅ FIX: Use hydrated budget if available, otherwise fall back to listData
+  const budget = hydratedBudget ?? listData.budget ?? 0;
   const status = listData.status || 'regular';
   const isHistory = status === 'completed';
 
   console.log("List Screen Debug:", {
     listId,
     budget,
+    hydratedBudget,
+    listDataBudget: listData.budget,
     budgetType: typeof budget,
     name,
     productCount: productIds.length,
@@ -163,7 +173,7 @@ export default function ListScreen() {
   }
 
   const ListHeaderComponent = () => (
-    <View>
+    <View >
       {displayDescription ? (
         <ThemedText
           style={{
@@ -189,6 +199,7 @@ export default function ListScreen() {
     <>
       <Stack.Screen
         options={{
+          headerStyle: {backgroundColor: colors.mainBackground},
           headerTitle: displayEmoji + " " + displayName,
           headerRight: () => (
             <View
@@ -252,7 +263,7 @@ export default function ListScreen() {
                 }}
                 style={{ padding: 8 }}
               >
-                <AntDesign name="check-square" size={24} color="black" />
+                <AntDesign name="check-square" size={24} color={'#007AFF'} />
               </Pressable>
             </View>
           ),
@@ -269,6 +280,7 @@ export default function ListScreen() {
         contentContainerStyle={{
           paddingTop: 12,
           paddingBottom: 100,
+          backgroundColor: colors.mainBackground,
         }}
         contentInsetAdjustmentBehavior="automatic"
         ListHeaderComponent={ListHeaderComponent}

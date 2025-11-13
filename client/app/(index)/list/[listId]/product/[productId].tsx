@@ -336,6 +336,7 @@ function createStyles(colors: typeof Colors.light) {
     container: {
       padding: 16,
       paddingBottom: 100,
+      
     },
     headerCard: {
       backgroundColor: colors.background,
