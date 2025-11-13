@@ -21,6 +21,7 @@ export default function SignUpScreen() {
     // Form fields
     const [firstName, setFirstName] = React.useState("");
     const [lastName, setLastName] = React.useState("");
+    const [phoneNumber, setPhoneNumber] = React.useState("");
     const [emailAddress, setEmailAddress] = React.useState("");
     const [password, setPassword] = React.useState("");
     const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -79,6 +80,20 @@ export default function SignUpScreen() {
             Alert.alert('Required Fields', 'Please enter both your first and last name.');
             return;
         }
+
+        // Validate phone number format (basic validation)
+        if (phoneNumber.trim()) {
+            // Remove all non-numeric characters for validation
+            const cleanedPhone = phoneNumber.replace(/\D/g, '');
+            if (cleanedPhone.length < 10 || cleanedPhone.length > 15) {
+                Alert.alert(
+                    'Invalid Phone Number',
+                    'Please enter a valid phone number (10-15 digits).'
+                );
+                return;
+            }
+        }
+
         setStep('credentials');
     };
 
@@ -105,13 +120,14 @@ export default function SignUpScreen() {
         setErrors([]);
 
         try {
-            // Create account with email and password only
+            // Create account with email and password
             await signUp.create({
                 emailAddress,
                 password,
                 unsafeMetadata: {
                     firstName: firstName.trim(),
                     lastName: lastName.trim(),
+                    phoneNumber: phoneNumber.trim() || null,
                 }
             });
 
@@ -205,6 +221,14 @@ export default function SignUpScreen() {
                     placeholder="Enter your last name"
                     autoCapitalize="words"
                     onChangeText={setLastName}
+                />
+
+                <TextInput
+                    label="Cellphone Number (Optional)"
+                    value={phoneNumber}
+                    placeholder="Enter your cellphone number"
+                    keyboardType="phone-pad"
+                    onChangeText={setPhoneNumber}
                 />
 
                 <Button

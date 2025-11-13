@@ -23,6 +23,7 @@ export default function ProfileScreen() {
     const [showNameEdit, setShowNameEdit] = React.useState(false);
     const [editedFirstName, setEditedFirstName] = React.useState('');
     const [editedLastName, setEditedLastName] = React.useState('');
+    const [editedPhoneNumber, setEditedPhoneNumber] = React.useState('');
     const [isSavingName, setIsSavingName] = React.useState(false);
 
     // Load profile picture from Clerk's imageUrl
@@ -140,9 +141,11 @@ export default function ProfileScreen() {
     const openNameEdit = () => {
         const metaFirstName = user?.unsafeMetadata?.firstName as string;
         const metaLastName = user?.unsafeMetadata?.lastName as string;
-        
+        const metaPhoneNumber = user?.unsafeMetadata?.phoneNumber as string;
+
         setEditedFirstName(metaFirstName || user?.firstName || '');
         setEditedLastName(metaLastName || user?.lastName || '');
+        setEditedPhoneNumber(metaPhoneNumber || '');
         setShowNameEdit(true);
     };
 
@@ -158,23 +161,36 @@ export default function ProfileScreen() {
                 return;
             }
 
+            // Validate phone number if provided
+            if (editedPhoneNumber.trim()) {
+                const cleanedPhone = editedPhoneNumber.replace(/\D/g, '');
+                if (cleanedPhone.length < 10 || cleanedPhone.length > 15) {
+                    Alert.alert(
+                        'Invalid Phone Number',
+                        'Please enter a valid phone number (10-15 digits) or leave it empty.'
+                    );
+                    return;
+                }
+            }
+
             setIsSavingName(true);
 
-            // Update user metadata with new names
+            // Update user metadata with new names and phone number
             await user.update({
                 unsafeMetadata: {
                     ...user.unsafeMetadata,
                     firstName: editedFirstName.trim(),
                     lastName: editedLastName.trim(),
+                    phoneNumber: editedPhoneNumber.trim() || null,
                 },
             });
 
             await user.reload();
             setShowNameEdit(false);
-            Alert.alert('Success', 'Name updated successfully!');
+            Alert.alert('Success', 'Profile updated successfully!');
         } catch (error: any) {
-            console.error('Error saving name:', error);
-            Alert.alert('Error', `Failed to update name: ${error.message || 'Unknown error'}`);
+            console.error('Error saving profile:', error);
+            Alert.alert('Error', `Failed to update profile: ${error.message || 'Unknown error'}`);
         } finally {
             setIsSavingName(false);
         }
@@ -307,6 +323,11 @@ export default function ProfileScreen() {
                         <ThemedText style={styles.userEmail}>
                             {user?.emailAddresses[0]?.emailAddress}
                         </ThemedText>
+                        {user?.unsafeMetadata?.phoneNumber && (
+                            <ThemedText style={styles.userPhone}>
+                                📱 {user.unsafeMetadata.phoneNumber as string}
+                            </ThemedText>
+                        )}
                         <View style={styles.memberBadge}>
                             <ThemedText style={styles.memberBadgeText}>
                                 🎉 Member since {getMemberSince()}
@@ -513,8 +534,8 @@ export default function ProfileScreen() {
                         onPress={(e) => e.stopPropagation()}
                     >
                         <View style={styles.avatarModalContent}>
-                            <ThemedText style={styles.modalTitle}>Edit Name</ThemedText>
-                            
+                            <ThemedText style={styles.modalTitle}>Edit Profile</ThemedText>
+
                             <View style={styles.inputContainer}>
                                 <ThemedText style={styles.inputLabel}>First Name</ThemedText>
                                 <TextInput
@@ -536,6 +557,18 @@ export default function ProfileScreen() {
                                     placeholder="Enter last name"
                                     placeholderTextColor="#999"
                                     autoCapitalize="words"
+                                />
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <ThemedText style={styles.inputLabel}>Cellphone Number (Optional)</ThemedText>
+                                <TextInput
+                                    style={styles.input}
+                                    value={editedPhoneNumber}
+                                    onChangeText={setEditedPhoneNumber}
+                                    placeholder="Enter cellphone number"
+                                    placeholderTextColor="#999"
+                                    keyboardType="phone-pad"
                                 />
                             </View>
 
@@ -675,7 +708,13 @@ const createStyles = (colors: any) => StyleSheet.create({
     userEmail: {
         fontSize: 15,
         color: colors.text,
+        marginBottom: 4,
+    },
+    userPhone: {
+        fontSize: 14,
+        color: colors.text,
         marginBottom: 12,
+        opacity: 0.8,
     },
     memberBadge: {
         backgroundColor: '#f0f8ff',
