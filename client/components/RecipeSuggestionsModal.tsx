@@ -1,4 +1,6 @@
-import React from 'react';
+// client/components/RecipeSuggestionsModal.tsx
+
+import React, { useState } from 'react';
 import { 
   Modal, 
   View, 
@@ -8,21 +10,21 @@ import {
   Image, 
   ActivityIndicator,
   useColorScheme,
-  Linking,
 } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { IconSymbol } from './ui/IconSymbol';
 import { Recipe } from '@/services/recipeApi';
 import { Colors } from '@/constants/Colors';
 import * as Haptics from 'expo-haptics';
+import { RecipeDetailsModal } from './RecipeDetailsModal';
 
 interface RecipeSuggestionsModalProps {
   visible: boolean;
   recipes: Recipe[];
   loading: boolean;
   listName?: string;
+  listId: string; // ⭐ NEW: Need listId to pass to details modal
   onClose: () => void;
-  onSelectRecipe?: (recipe: Recipe) => void;
 }
 
 export function RecipeSuggestionsModal({ 
@@ -30,145 +32,161 @@ export function RecipeSuggestionsModal({
   recipes, 
   loading, 
   listName = 'your list',
+  listId, // ⭐ NEW
   onClose,
-  onSelectRecipe 
 }: RecipeSuggestionsModalProps) {
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
+
+  // State for showing recipe details
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   const handleRecipePress = (recipe: Recipe) => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     
-    if (onSelectRecipe) {
-      onSelectRecipe(recipe);
-    } else if (recipe.sourceUrl) {
-      // Open recipe URL in browser
-      Linking.openURL(recipe.sourceUrl);
-    }
+    // Open recipe details modal instead of external link
+    setSelectedRecipe(recipe);
+    setShowDetails(true);
+  };
+
+  const handleCloseDetails = () => {
+    setShowDetails(false);
+    setSelectedRecipe(null);
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <IconSymbol name="book.fill" size={24} color="#007AFF" />
-            <View style={styles.headerText}>
-              <ThemedText style={styles.title}>Recipe Suggestions</ThemedText>
-              <ThemedText style={styles.subtitle}>For "{listName}"</ThemedText>
+    <>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={onClose}
+      >
+        <View style={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerContent}>
+              <IconSymbol name="book.fill" size={24} color="#007AFF" />
+              <View style={styles.headerText}>
+                <ThemedText style={styles.title}>Recipe Suggestions</ThemedText>
+                <ThemedText style={styles.subtitle}>For "{listName}"</ThemedText>
+              </View>
             </View>
+            <Pressable onPress={onClose} style={styles.closeButton}>
+              <IconSymbol name="xmark.circle.fill" size={28} color="#666" />
+            </Pressable>
           </View>
-          <Pressable onPress={onClose} style={styles.closeButton}>
-            <IconSymbol name="xmark.circle.fill" size={28} color="#666" />
-          </Pressable>
-        </View>
 
-        {/* Content */}
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <ThemedText style={styles.loadingText}>Finding delicious recipes...</ThemedText>
-          </View>
-        ) : recipes.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <IconSymbol name="fork.knife" size={64} color="#ccc" />
-            <ThemedText style={styles.emptyTitle}>No Recipes Found</ThemedText>
-            <ThemedText style={styles.emptyText}>
-              We couldn't find any recipes for this list. Try a different list name!
-            </ThemedText>
-          </View>
-        ) : (
-          <ScrollView 
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={true}
-          >
-            <ThemedText style={styles.recipeCount}>
-              {recipes.length} recipe{recipes.length !== 1 ? 's' : ''} found
-            </ThemedText>
-            
-            {recipes.map((recipe, index) => (
-              <Pressable
-                key={recipe.id || index}
-                style={({ pressed }) => [
-                  styles.recipeCard,
-                  pressed && styles.recipeCardPressed,
-                ]}
-                onPress={() => handleRecipePress(recipe)}
-              >
-                {recipe.image ? (
-                  <Image 
-                    source={{ uri: recipe.image }} 
-                    style={styles.recipeImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={[styles.recipeImage, styles.recipeImagePlaceholder]}>
-                    <IconSymbol name="photo" size={32} color="#ccc" />
-                  </View>
-                )}
-                
-                <View style={styles.recipeContent}>
-                  <ThemedText style={styles.recipeTitle} numberOfLines={2}>
-                    {recipe.title}
-                  </ThemedText>
-                  
-                  <View style={styles.recipeMetadata}>
-                    {recipe.readyInMinutes && (
-                      <View style={styles.recipeInfo}>
-                        <IconSymbol name="clock" size={14} color="#666" />
-                        <ThemedText style={styles.recipeInfoText}>
-                          {recipe.readyInMinutes} min
-                        </ThemedText>
-                      </View>
-                    )}
-                    
-                    {recipe.servings && (
-                      <View style={styles.recipeInfo}>
-                        <IconSymbol name="person.2" size={14} color="#666" />
-                        <ThemedText style={styles.recipeInfoText}>
-                          {recipe.servings} servings
-                        </ThemedText>
-                      </View>
-                    )}
-                  </View>
-
-                  {recipe.ingredients && recipe.ingredients.length > 0 && (
-                    <View style={styles.ingredientsPreview}>
-                      <ThemedText style={styles.ingredientsLabel}>Ingredients:</ThemedText>
-                      <ThemedText style={styles.ingredientsText} numberOfLines={2}>
-                        {recipe.ingredients.slice(0, 3).join(', ')}
-                        {recipe.ingredients.length > 3 ? '...' : ''}
-                      </ThemedText>
+          {/* Content */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <ThemedText style={styles.loadingText}>Finding delicious recipes...</ThemedText>
+            </View>
+          ) : recipes.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <IconSymbol name="fork.knife" size={64} color="#ccc" />
+              <ThemedText style={styles.emptyTitle}>No Recipes Found</ThemedText>
+              <ThemedText style={styles.emptyText}>
+                We couldn't find any recipes for this list. Try a different list name!
+              </ThemedText>
+            </View>
+          ) : (
+            <ScrollView 
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={true}
+            >
+              <ThemedText style={styles.recipeCount}>
+                {recipes.length} recipe{recipes.length !== 1 ? 's' : ''} found
+              </ThemedText>
+              
+              {recipes.map((recipe, index) => (
+                <Pressable
+                  key={recipe.id || index}
+                  style={({ pressed }) => [
+                    styles.recipeCard,
+                    pressed && styles.recipeCardPressed,
+                  ]}
+                  onPress={() => handleRecipePress(recipe)}
+                >
+                  {recipe.image ? (
+                    <Image 
+                      source={{ uri: recipe.image }} 
+                      style={styles.recipeImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.recipeImage, styles.recipeImagePlaceholder]}>
+                      <IconSymbol name="photo" size={32} color="#ccc" />
                     </View>
                   )}
-                </View>
-                
-                <IconSymbol name="chevron.right" size={20} color="#ccc" />
-              </Pressable>
-            ))}
-          </ScrollView>
-        )}
+                  
+                  <View style={styles.recipeContent}>
+                    <ThemedText style={styles.recipeTitle} numberOfLines={2}>
+                      {recipe.title}
+                    </ThemedText>
+                    
+                    <View style={styles.recipeMetadata}>
+                      {recipe.readyInMinutes && (
+                        <View style={styles.recipeInfo}>
+                          <IconSymbol name="clock" size={14} color="#666" />
+                          <ThemedText style={styles.recipeInfoText}>
+                            {recipe.readyInMinutes} min
+                          </ThemedText>
+                        </View>
+                      )}
+                      
+                      {recipe.servings && (
+                        <View style={styles.recipeInfo}>
+                          <IconSymbol name="person.2" size={14} color="#666" />
+                          <ThemedText style={styles.recipeInfoText}>
+                            {recipe.servings} servings
+                          </ThemedText>
+                        </View>
+                      )}
+                    </View>
 
-        {/* Footer */}
-        {!loading && recipes.length > 0 && (
-          <View style={styles.footer}>
-            <ThemedText style={styles.footerText}>
-              Tap any recipe to view details
-            </ThemedText>
-          </View>
-        )}
-      </View>
-    </Modal>
+                    {recipe.ingredients && recipe.ingredients.length > 0 && (
+                      <View style={styles.ingredientsPreview}>
+                        <ThemedText style={styles.ingredientsLabel}>Ingredients:</ThemedText>
+                        <ThemedText style={styles.ingredientsText} numberOfLines={2}>
+                          {recipe.ingredients.slice(0, 3).join(', ')}
+                          {recipe.ingredients.length > 3 ? '...' : ''}
+                        </ThemedText>
+                      </View>
+                    )}
+                  </View>
+                  
+                  <IconSymbol name="chevron.right" size={20} color="#ccc" />
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+
+          {/* Footer */}
+          {!loading && recipes.length > 0 && (
+            <View style={styles.footer}>
+              <ThemedText style={styles.footerText}>
+                Tap any recipe to view full details
+              </ThemedText>
+            </View>
+          )}
+        </View>
+      </Modal>
+
+      {/* Recipe Details Modal */}
+      <RecipeDetailsModal
+        visible={showDetails}
+        recipe={selectedRecipe}
+        listId={listId}
+        onClose={handleCloseDetails}
+      />
+    </>
   );
 }
 

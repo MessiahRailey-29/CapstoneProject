@@ -18,7 +18,7 @@ interface Recipe {
   sourceUrl?: string;
 }
 
-// ⭐ NEW: Spoonacular API response types
+// ⭐ Spoonacular API response types
 interface SpoonacularRecipe {
   id: number;
   title: string;
@@ -41,8 +41,33 @@ interface SpoonacularRecipeDetailsResponse extends SpoonacularRecipe {
   // Additional fields from the details endpoint
 }
 
+// ✅ FIX: Use globalThis.fetch to avoid type conflicts with Express Response
+// This explicitly uses the global Fetch API Response type, not Express's Response
+async function fetchRecipeData(url: string): Promise<any> {
+  try {
+    // For Node 18+
+    if (typeof globalThis.fetch !== 'undefined') {
+      const response = await globalThis.fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    }
+    
+    // For Node < 18, use dynamic import of node-fetch
+    const nodeFetch = await import('node-fetch');
+    const response = await nodeFetch.default(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('❌ Fetch error:', error);
+    throw error;
+  }
+}
+
 // Simple recipe suggestion based on keywords
-// You can replace this with OpenAI, Anthropic, or Spoonacular API
 router.post('/suggest', async (req: Request, res: Response) => {
   try {
     const { listName, products } = req.body as RecipeSuggestionRequest;
@@ -58,31 +83,42 @@ router.post('/suggest', async (req: Request, res: Response) => {
     const SPOONACULAR_API_KEY = process.env.SPOONACULAR_API_KEY || '';
     
     if (SPOONACULAR_API_KEY) {
-      const query = encodeURIComponent(listName);
-      const url = `https://api.spoonacular.com/recipes/complexSearch?query=${query}&number=5&addRecipeInformation=true&apiKey=${SPOONACULAR_API_KEY}`;
-      
-      const response = await fetch(url);
-      const data = await response.json() as SpoonacularSearchResponse;
-      
-      const recipes: Recipe[] = data.results.map((recipe: SpoonacularRecipe) => ({
-        id: recipe.id,
-        title: recipe.title,
-        image: recipe.image,
-        readyInMinutes: recipe.readyInMinutes,
-        servings: recipe.servings,
-        sourceUrl: recipe.sourceUrl,
-      }));
+      try {
+        const query = encodeURIComponent(listName);
+        const url = `https://api.spoonacular.com/recipes/complexSearch?query=${query}&number=5&addRecipeInformation=true&apiKey=${SPOONACULAR_API_KEY}`;
+        
+        console.log('🌐 Calling Spoonacular API...');
+        const data = await fetchRecipeData(url) as SpoonacularSearchResponse;
+        
+        const recipes: Recipe[] = data.results.map((recipe: SpoonacularRecipe) => ({
+          id: recipe.id,
+          title: recipe.title,
+          image: recipe.image,
+          readyInMinutes: recipe.readyInMinutes,
+          servings: recipe.servings,
+          sourceUrl: recipe.sourceUrl,
+        }));
 
-      return res.json({ recipes });
+        console.log('✅ Found', recipes.length, 'recipes from Spoonacular');
+        return res.json({ recipes });
+      } catch (apiError) {
+        console.error('❌ Spoonacular API failed, falling back to mock data:', apiError);
+        // Fall through to mock data
+      }
     }
 
     // Option 2: Fallback to mock data (for testing without API key)
+    console.log('📋 Using mock recipe data');
     const mockRecipes: Recipe[] = getMockRecipes(listName);
     
     res.json({ recipes: mockRecipes });
   } catch (error) {
     console.error('❌ Error fetching recipe suggestions:', error);
-    res.status(500).json({ error: 'Failed to fetch recipe suggestions' });
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    res.status(500).json({ 
+      error: 'Failed to fetch recipe suggestions',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
@@ -96,31 +132,42 @@ router.get('/search/:query', async (req: Request, res: Response) => {
     const SPOONACULAR_API_KEY = process.env.SPOONACULAR_API_KEY || '';
     
     if (SPOONACULAR_API_KEY) {
-      const searchQuery = encodeURIComponent(query);
-      const url = `https://api.spoonacular.com/recipes/complexSearch?query=${searchQuery}&number=10&addRecipeInformation=true&apiKey=${SPOONACULAR_API_KEY}`;
-      
-      const response = await fetch(url);
-      const data = await response.json() as SpoonacularSearchResponse;
-      
-      const recipes: Recipe[] = data.results.map((recipe: SpoonacularRecipe) => ({
-        id: recipe.id,
-        title: recipe.title,
-        image: recipe.image,
-        readyInMinutes: recipe.readyInMinutes,
-        servings: recipe.servings,
-        sourceUrl: recipe.sourceUrl,
-      }));
+      try {
+        const searchQuery = encodeURIComponent(query);
+        const url = `https://api.spoonacular.com/recipes/complexSearch?query=${searchQuery}&number=10&addRecipeInformation=true&apiKey=${SPOONACULAR_API_KEY}`;
+        
+        console.log('🌐 Calling Spoonacular API...');
+        const data = await fetchRecipeData(url) as SpoonacularSearchResponse;
+        
+        const recipes: Recipe[] = data.results.map((recipe: SpoonacularRecipe) => ({
+          id: recipe.id,
+          title: recipe.title,
+          image: recipe.image,
+          readyInMinutes: recipe.readyInMinutes,
+          servings: recipe.servings,
+          sourceUrl: recipe.sourceUrl,
+        }));
 
-      return res.json({ recipes });
+        console.log('✅ Found', recipes.length, 'recipes from Spoonacular');
+        return res.json({ recipes });
+      } catch (apiError) {
+        console.error('❌ Spoonacular API failed, falling back to mock data:', apiError);
+        // Fall through to mock data
+      }
     }
 
     // Fallback to mock data
+    console.log('📋 Using mock recipe data');
     const mockRecipes: Recipe[] = getMockRecipes(query);
     
     res.json({ recipes: mockRecipes });
   } catch (error) {
     console.error('❌ Error searching recipes:', error);
-    res.status(500).json({ error: 'Failed to search recipes' });
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    res.status(500).json({ 
+      error: 'Failed to search recipes',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
@@ -134,32 +181,43 @@ router.get('/details/:id', async (req: Request, res: Response) => {
     const SPOONACULAR_API_KEY = process.env.SPOONACULAR_API_KEY || '';
     
     if (SPOONACULAR_API_KEY) {
-      const url = `https://api.spoonacular.com/recipes/${id}/information?apiKey=${SPOONACULAR_API_KEY}`;
-      
-      const response = await fetch(url);
-      const data = await response.json() as SpoonacularRecipeDetailsResponse;
-      
-      const recipe: Recipe = {
-        id: data.id,
-        title: data.title,
-        image: data.image,
-        readyInMinutes: data.readyInMinutes,
-        servings: data.servings,
-        sourceUrl: data.sourceUrl,
-        ingredients: data.extendedIngredients?.map((ing) => ing.original),
-        instructions: data.instructions,
-      };
+      try {
+        const url = `https://api.spoonacular.com/recipes/${id}/information?apiKey=${SPOONACULAR_API_KEY}`;
+        
+        console.log('🌐 Calling Spoonacular API...');
+        const data = await fetchRecipeData(url) as SpoonacularRecipeDetailsResponse;
+        
+        const recipe: Recipe = {
+          id: data.id,
+          title: data.title,
+          image: data.image,
+          readyInMinutes: data.readyInMinutes,
+          servings: data.servings,
+          sourceUrl: data.sourceUrl,
+          ingredients: data.extendedIngredients?.map((ing) => ing.original),
+          instructions: data.instructions,
+        };
 
-      return res.json({ recipe });
+        console.log('✅ Found recipe:', recipe.title);
+        return res.json({ recipe });
+      } catch (apiError) {
+        console.error('❌ Spoonacular API failed, falling back to mock data:', apiError);
+        // Fall through to mock data
+      }
     }
 
     // Fallback to mock data
+    console.log('📋 Using mock recipe data');
     const mockRecipe = getMockRecipeDetails(parseInt(id));
     
     res.json({ recipe: mockRecipe });
   } catch (error) {
     console.error('❌ Error fetching recipe details:', error);
-    res.status(500).json({ error: 'Failed to fetch recipe details' });
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    res.status(500).json({ 
+      error: 'Failed to fetch recipe details',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 

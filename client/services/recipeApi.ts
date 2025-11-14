@@ -1,6 +1,6 @@
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.142:3000';
 
-console.log('🔧 Recipe API URL:', API_URL); // Debug log
+console.log('🔧 Recipe API URL:', API_URL);
 
 export interface Recipe {
   id: number;
@@ -26,9 +26,6 @@ interface RecipeDetailsResponse {
 }
 
 export const recipeApi = {
-  /**
-   * Get recipe suggestions based on list name and products
-   */
   async getSuggestions(listName: string, products?: string[]): Promise<Recipe[]> {
     try {
       console.log('🍳 Fetching recipe suggestions for:', listName);
@@ -62,9 +59,6 @@ export const recipeApi = {
     }
   },
 
-  /**
-   * Search recipes by query string
-   */
   async searchRecipes(query: string): Promise<Recipe[]> {
     try {
       console.log('🔍 Searching recipes for:', query);
@@ -94,9 +88,6 @@ export const recipeApi = {
     }
   },
 
-  /**
-   * Get detailed recipe information by ID
-   */
   async getRecipeDetails(id: number): Promise<Recipe | null> {
     try {
       console.log('📖 Fetching recipe details for ID:', id);

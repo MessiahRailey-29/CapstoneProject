@@ -25,8 +25,8 @@ const checkDB = (req: any, res: any, next: any) => {
 // ===== Routes that DON'T need DB check =====
 router.use(syncRoutes);
 
-// ✅ FIXED: Remove /api prefix (it's already added in index.ts)
-router.use('/recipes', recipeRoutes);  // Changed from '/api/recipes'
+// ✅ FIXED: Remove /api prefix since it's already added in index.ts (app.use('/api', routes))
+router.use('/recipes', recipeRoutes);  // Changed from '/api/recipes' to '/recipes'
 
 // ===== Routes that NEED DB check =====
 // Products Routes
