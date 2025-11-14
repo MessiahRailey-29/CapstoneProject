@@ -27,7 +27,8 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    mongodb: !!process.env.MONGODB_URI,
+    mongodb: mongoose.connection.readyState === 1,
+    mongodbState: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState],
   });
 });
 
@@ -67,6 +68,7 @@ async function loadRoutes() {
     console.error('❌ Failed to load main routes:', error);
   }
 
+  // Load notification routes ONCE
   try {
     const { default: notificationRoutes } = await import('./routes/notificationRoutes.js');
     app.use('/api/notifications', notificationRoutes);
@@ -91,45 +93,89 @@ async function start() {
     await loadRoutes();
 
     const mongoUri = process.env.MONGODB_URI;
+    
     if (mongoUri) {
+      console.log('🔌 Connecting to MongoDB...');
+      
       try {
-        const { connectDB } = await import('./db.js');
-        await connectDB(mongoUri);
-        console.log('✅ MongoDB features enabled');
+        // Connect to MongoDB
+        await mongoose.connect(mongoUri);
+        console.log('✅ MongoDB connected successfully');
         
-        // Start cron jobs
+        // Start cron jobs ONLY after successful MongoDB connection
         try {
           const { startAllNotificationCrons } = await import('./jobs/notificationCronJobs.js');
           startAllNotificationCrons();
-          console.log('✅ Cron jobs started');
+          console.log('✅ Notification cron jobs started');
         } catch (error) {
           console.error('❌ Failed to start cron jobs:', error);
+          console.error('Error details:', error);
         }
+        
       } catch (error) {
         console.error('❌ MongoDB connection failed:', error);
         console.warn('⚠️ Running without MongoDB features');
+        console.error('Connection error details:', error);
       }
     } else {
       console.log('ℹ️ No MONGODB_URI set - running in sync-only mode');
     }
-    
+
     // Start HTTP server on all interfaces
     const port = Number(PORT);
     httpServer.listen(port, '0.0.0.0', () => {
       console.log('');
-      console.log('🚀 Server running on port', port);
-      console.log('📡 Health: http://192.168.254.104:' + port + '/health');
-      console.log('📡 DB Status: http://192.168.254.104:' + port + '/api/db-status');
-      console.log('📡 Test: http://192.168.254.104:' + port + '/api/notifications/test');
-      console.log('🔔 Notifications: http://192.168.254.104:' + port + '/api/notifications');
-      console.log('📦 Products: http://192.168.254.104:' + port + '/api/products');
-      console.log('🔄 Sync: ws://192.168.254.104:' + port + '/sync/');
+      console.log('🚀 ===================================');
+      console.log('🚀 Server running successfully!');
+      console.log('🚀 ===================================');
+      console.log('');
+      console.log('📍 Port:', port);
+      console.log('📍 Host: 0.0.0.0 (all interfaces)');
+      console.log('');
+      console.log('🔗 API Endpoints:');
+      console.log('   Health:        http://192.168.254.104:' + port + '/health');
+      console.log('   DB Status:     http://192.168.254.104:' + port + '/api/db-status');
+      console.log('   Notifications: http://192.168.254.104:' + port + '/api/notifications');
+      console.log('   Products:      http://192.168.254.104:' + port + '/api/products');
+      console.log('   Test:          http://192.168.254.104:' + port + '/api/notifications/test');
+      console.log('');
+      console.log('🔗 WebSocket:');
+      console.log('   Sync:          ws://192.168.254.104:' + port + '/sync/');
+      console.log('');
+      console.log('💡 Test push notifications:');
+      console.log('   curl -X POST http://192.168.254.104:' + port + '/api/notifications/YOUR_USER_ID/test-push');
+      console.log('');
+      console.log('🐛 Debug info:');
+      console.log('   curl http://192.168.254.104:' + port + '/api/notifications/YOUR_USER_ID/debug');
+      console.log('');
+      console.log('🔄 Manually trigger reminders:');
+      console.log('   curl -X POST http://192.168.254.104:' + port + '/api/notifications/admin/trigger-reminders');
       console.log('');
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
+    console.error('Stack trace:', error);
     process.exit(1);
   }
 }
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  try {
+    await mongoose.connection.close();
+    console.log('✅ MongoDB connection closed');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error during shutdown:', error);
+    process.exit(1);
+  }
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise);
+  console.error('Reason:', reason);
+});
 
 start();

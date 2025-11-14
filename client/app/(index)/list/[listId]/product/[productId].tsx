@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import { View, Pressable, StyleSheet, Alert, useColorScheme } from "react-native";
+import { View, Pressable, StyleSheet, Alert, useColorScheme, Modal, FlatList, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
@@ -13,6 +13,15 @@ import {
   useShoppingListUserNicknames,
 } from "@/stores/ShoppingListStore";
 import { Colors } from "@/constants/Colors";
+import { useProductPrices } from "@/hooks/useProducts";
+
+// Define ProductPrice type locally to match the API structure
+interface ProductPrice {
+  id: number;
+  product_id: number;
+  price: number;
+  store: string;
+}
 
 export default function ProductScreen() {
   const { listId, productId } = useLocalSearchParams() as {
@@ -61,9 +70,10 @@ function ProductContent({
     "notes"
   );
   const [isPurchased] = useShoppingListProductCell(listId, productId, "isPurchased");
-  const [selectedStore] = useShoppingListProductCell(listId, productId, "selectedStore");
-  const [selectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
+  const [selectedStore, setSelectedStore] = useShoppingListProductCell(listId, productId, "selectedStore");
+  const [selectedPrice, setSelectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
   const [category] = useShoppingListProductCell(listId, productId, "category");
+  const [databaseProductId] = useShoppingListProductCell(listId, productId, "databaseProductId");
   
   const createdBy = useShoppingListProductCreatedByNickname(listId, productId);
   const [createdAt] = useShoppingListProductCell(
@@ -75,6 +85,11 @@ function ProductContent({
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingQuantity, setIsEditingQuantity] = useState(false);
+  const [showStorePicker, setShowStorePicker] = useState(false);
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+
+  // Fetch prices from database if product has databaseProductId
+  const { prices, loading: pricesLoading } = useProductPrices(databaseProductId || null);
 
   // Convert selectedPrice to number for calculations
   const price = typeof selectedPrice === 'number' ? selectedPrice : 0;
@@ -85,6 +100,17 @@ function ProductContent({
     if (newQuantity >= 1) {
       setQuantity(newQuantity);
     }
+  };
+
+  const handleStoreSelect = (priceItem: ProductPrice) => {
+    setSelectedStore(priceItem.store);
+    setSelectedPrice(priceItem.price);
+    setShowStorePicker(false);
+  };
+
+  const handleCustomPriceSubmit = () => {
+    setIsEditingPrice(false);
+    setShowStorePicker(false);
   };
 
   const handleDeleteProduct = () => {
@@ -106,48 +132,48 @@ function ProductContent({
   };
 
   return (
-    <BodyScrollView
-      contentContainerStyle={styles.container}
-    >
-      <StatusBar style="light" animated />
+    <>
+      <BodyScrollView
+        contentContainerStyle={styles.container}
+      >
+        <StatusBar style="light" animated />
 
-      {/* Header Card - Product Name & Status */}
-      <View style={styles.headerCard}>
-        <View style={styles.headerContent}>
-          <View style={styles.headerLeft}>
-            {isPurchased ? (
-              <IconSymbol name="checkmark.circle.fill" size={32} color="#34C759" />
-            ) : (
-              <IconSymbol name="circle" size={32} color="#999" />
-            )}
-            <View style={styles.headerTextContainer}>
-              {isEditingName ? (
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  autoFocus
-                  onBlur={() => setIsEditingName(false)}
-                  inputStyle={styles.nameInput}
-                />
+        {/* Header Card - Product Name & Status */}
+        <View style={styles.headerCard}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              {isPurchased ? (
+                <IconSymbol name="checkmark.circle.fill" size={32} color="#34C759" />
               ) : (
-                <Pressable onPress={() => setIsEditingName(true)}>
-                  <ThemedText type="title" style={styles.productName}>
-                    {name}
-                  </ThemedText>
-                </Pressable>
+                <IconSymbol name="circle" size={32} color="#999" />
               )}
-              {category && (
-                <View style={styles.categoryBadge}>
-                  <ThemedText style={styles.categoryText}>{category}</ThemedText>
-                </View>
-              )}
+              <View style={styles.headerTextContainer}>
+                {isEditingName ? (
+                  <TextInput
+                    value={name}
+                    onChangeText={setName}
+                    autoFocus
+                    onBlur={() => setIsEditingName(false)}
+                    inputStyle={styles.nameInput}
+                  />
+                ) : (
+                  <Pressable onPress={() => setIsEditingName(true)}>
+                    <ThemedText type="title" style={styles.productName}>
+                      {name}
+                    </ThemedText>
+                  </Pressable>
+                )}
+                {category && (
+                  <View style={styles.categoryBadge}>
+                    <ThemedText style={styles.categoryText}>{category}</ThemedText>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
         </View>
-      </View>
 
-      {/* Price & Store Card */}
-      {(store || price) && (
+        {/* Price & Store Card - Always visible to allow editing */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <IconSymbol name="cart.fill" size={20} color="#007AFF" />
@@ -156,23 +182,58 @@ function ProductContent({
             </ThemedText>
           </View>
           <View style={styles.priceStoreContainer}>
-            {store && (
-              <View style={styles.infoRow}>
-                <ThemedText style={styles.infoLabel}>Store:</ThemedText>
-                <ThemedText type="defaultSemiBold" style={styles.storeName}>
-                  {store}
+            {/* Store Display */}
+            <Pressable 
+              style={styles.infoRow} 
+              onPress={() => setShowStorePicker(true)}
+            >
+              <ThemedText style={styles.infoLabel}>Store:</ThemedText>
+              <View style={styles.storeValueContainer}>
+                <ThemedText 
+                  type="defaultSemiBold" 
+                  style={[styles.storeName, !store && styles.placeholderText]}
+                >
+                  {store || "Tap to select store"}
                 </ThemedText>
+                <IconSymbol name="chevron.right" size={16} color="#007AFF" />
               </View>
-            )}
-            {price && (
+            </Pressable>
+
+            {/* Price Display */}
+            {(price > 0 || isEditingPrice) ? (
               <>
                 <View style={styles.infoRow}>
                   <ThemedText style={styles.infoLabel}>Unit Price:</ThemedText>
-                  <ThemedText type="defaultSemiBold" style={styles.priceText}>
-                    ₱{price.toFixed(2)}
-                  </ThemedText>
+                  {isEditingPrice ? (
+                    <View style={styles.priceInputWrapper}>
+                      <ThemedText style={styles.currencySymbol}>₱</ThemedText>
+                      <TextInput
+                        value={price > 0 ? price.toString() : ""}
+                        onChangeText={(text) => {
+                          const numValue = parseFloat(text) || 0;
+                          setSelectedPrice(numValue);
+                        }}
+                        keyboardType="decimal-pad"
+                        autoFocus
+                        onBlur={handleCustomPriceSubmit}
+                        placeholder="0.00"
+                        inputStyle={styles.priceInputText}
+                        containerStyle={styles.priceInputContainer}
+                      />
+                    </View>
+                  ) : (
+                    <Pressable 
+                      style={styles.priceValueContainer}
+                      onPress={() => setShowStorePicker(true)}
+                    >
+                      <ThemedText type="defaultSemiBold" style={styles.priceText}>
+                        ₱{price.toFixed(2)}
+                      </ThemedText>
+                      <IconSymbol name="chevron.right" size={16} color="#34C759" />
+                    </Pressable>
+                  )}
                 </View>
-                {totalPrice && (
+                {totalPrice && !isEditingPrice && (
                   <View style={styles.infoRow}>
                     <ThemedText style={styles.infoLabel}>Total:</ThemedText>
                     <ThemedText type="defaultSemiBold" style={styles.totalPriceText}>
@@ -181,153 +242,318 @@ function ProductContent({
                   </View>
                 )}
               </>
+            ) : (
+              <Pressable 
+                onPress={() => setShowStorePicker(true)} 
+                style={styles.infoRow}
+              >
+                <ThemedText style={styles.infoLabel}>Unit Price:</ThemedText>
+                <View style={styles.priceValueContainer}>
+                  <ThemedText 
+                    type="defaultSemiBold" 
+                    style={[styles.priceText, styles.placeholderText]}
+                  >
+                    Tap to add price
+                  </ThemedText>
+                  <IconSymbol name="chevron.right" size={16} color="#999" />
+                </View>
+              </Pressable>
             )}
           </View>
         </View>
-      )}
 
-      {/* Quantity Card */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <IconSymbol name="number" size={20} color="#FF9500" />
-          <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
-            Quantity
-          </ThemedText>
-        </View>
-        <View style={styles.quantityContainer}>
-          <Button
-            variant="ghost"
-            onPress={() => handleQuantityChange(quantity - 1)}
-            disabled={quantity <= 1}
-            style={styles.quantityButton}
-          >
-            <IconSymbol
-              name="minus.circle.fill"
-              size={32}
-              color={quantity <= 1 ? "#CCC" : "#007AFF"}
-            />
-          </Button>
-          
-          {isEditingQuantity ? (
-            <TextInput
-              value={quantity.toString()}
-              onChangeText={(value) => {
-                const num = parseInt(value) || 1;
-                handleQuantityChange(num);
-              }}
-              keyboardType="numeric"
-              autoFocus
-              onBlur={() => setIsEditingQuantity(false)}
-              containerStyle={styles.quantityInputContainer}
-              inputStyle={styles.quantityInputText}
-            />
-          ) : (
-            <Pressable onPress={() => setIsEditingQuantity(true)}>
-              <ThemedText type="title" style={styles.quantityDisplay}>
-                {quantity}
-              </ThemedText>
-            </Pressable>
-          )}
-
-          <Button
-            variant="ghost"
-            onPress={() => handleQuantityChange(quantity + 1)}
-            style={styles.quantityButton}
-          >
-            <IconSymbol name="plus.circle.fill" size={32} color="#007AFF" />
-          </Button>
-        </View>
-      </View>
-
-      {/* Notes Card */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <IconSymbol name="note.text" size={20} color="#5856D6" />
-          <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
-            Notes
-          </ThemedText>
-        </View>
-        <TextInput
-          value={notes || ""}
-          editable={true}
-          onChangeText={setNotes}
-          variant="ghost"
-          placeholder="Add notes about this product..."
-          multiline
-          numberOfLines={3}
-          inputStyle={styles.notesInput}
-        />
-      </View>
-
-      {/* Metadata Card */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <IconSymbol name="info.circle" size={20} color="#8E8E93" />
-          <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
-            Product Information
-          </ThemedText>
-        </View>
-        <View style={styles.metadataContainer}>
-          <View style={styles.metadataRow}>
-            <ThemedText style={styles.metadataLabel}>Added by:</ThemedText>
-            <ThemedText type="defaultSemiBold" style={styles.metadataValue}>
-              {createdBy ?? "Unknown"}
-            </ThemedText>
-          </View>
-          <View style={styles.metadataRow}>
-            <ThemedText style={styles.metadataLabel}>Date added:</ThemedText>
-            <ThemedText style={styles.metadataValue}>
-              {createdAt ? new Date(createdAt).toLocaleDateString() : "Unknown"}
-            </ThemedText>
-          </View>
-          {isPurchased !== undefined && (
-            <View style={styles.metadataRow}>
-              <ThemedText style={styles.metadataLabel}>Status:</ThemedText>
-              <View style={[styles.statusBadge, isPurchased && styles.statusBadgeChecked]}>
-                <ThemedText style={[styles.statusText, isPurchased && styles.statusTextChecked]}>
-                  {isPurchased ? "Purchased" : "Pending"}
-                </ThemedText>
-              </View>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Shared With Card */}
-      {userNicknames.length > 0 && (
+        {/* Quantity Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <IconSymbol name="person.2" size={20} color="#FF2D55" />
+            <IconSymbol name="number" size={20} color="#FF9500" />
             <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
-              Shared With
+              Quantity
             </ThemedText>
           </View>
-          <View style={styles.sharedWithContainer}>
-            {userNicknames.map((nickname, index) => (
-              <View key={nickname} style={styles.userChip}>
-                <IconSymbol name="person.circle.fill" size={16} color="#007AFF" />
-                <ThemedText style={styles.userChipText}>{nickname}</ThemedText>
-              </View>
-            ))}
+          <View style={styles.quantityContainer}>
+            <Button
+              variant="ghost"
+              onPress={() => handleQuantityChange(quantity - 1)}
+              disabled={quantity <= 1}
+              style={styles.quantityButton}
+            >
+              <IconSymbol
+                name="minus.circle.fill"
+                size={32}
+                color={quantity <= 1 ? "#CCC" : "#007AFF"}
+              />
+            </Button>
+            
+            {isEditingQuantity ? (
+              <TextInput
+                value={quantity.toString()}
+                onChangeText={(value) => {
+                  const num = parseInt(value) || 1;
+                  handleQuantityChange(num);
+                }}
+                keyboardType="numeric"
+                autoFocus
+                onBlur={() => setIsEditingQuantity(false)}
+                containerStyle={styles.quantityInputContainer}
+                inputStyle={styles.quantityInputText}
+              />
+            ) : (
+              <Pressable onPress={() => setIsEditingQuantity(true)}>
+                <ThemedText type="title" style={styles.quantityDisplay}>
+                  {quantity}
+                </ThemedText>
+              </Pressable>
+            )}
+
+            <Button
+              variant="ghost"
+              onPress={() => handleQuantityChange(quantity + 1)}
+              style={styles.quantityButton}
+            >
+              <IconSymbol name="plus.circle.fill" size={32} color="#007AFF" />
+            </Button>
           </View>
         </View>
-      )}
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        <Button
-          variant="outline"
-          onPress={handleDeleteProduct}
-          style={styles.deleteButton}
-        >
-          <IconSymbol name="trash" size={18} color="#FF3B30" />
-          <ThemedText style={styles.deleteButtonText}>Remove from List</ThemedText>
-        </Button>
+        {/* Notes Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <IconSymbol name="note.text" size={20} color="#5856D6" />
+            <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
+              Notes
+            </ThemedText>
+          </View>
+          <TextInput
+            value={notes || ""}
+            editable={true}
+            onChangeText={setNotes}
+            variant="ghost"
+            placeholder="Add notes about this product..."
+            multiline
+            numberOfLines={3}
+            inputStyle={styles.notesInput}
+          />
+        </View>
+
+        {/* Metadata Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <IconSymbol name="info.circle" size={20} color="#8E8E93" />
+            <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
+              Product Information
+            </ThemedText>
+          </View>
+          <View style={styles.metadataContainer}>
+            <View style={styles.metadataRow}>
+              <ThemedText style={styles.metadataLabel}>Added by:</ThemedText>
+              <ThemedText type="defaultSemiBold" style={styles.metadataValue}>
+                {createdBy ?? "Unknown"}
+              </ThemedText>
+            </View>
+            <View style={styles.metadataRow}>
+              <ThemedText style={styles.metadataLabel}>Date added:</ThemedText>
+              <ThemedText style={styles.metadataValue}>
+                {createdAt ? new Date(createdAt).toLocaleDateString() : "Unknown"}
+              </ThemedText>
+            </View>
+            {isPurchased !== undefined && (
+              <View style={styles.metadataRow}>
+                <ThemedText style={styles.metadataLabel}>Status:</ThemedText>
+                <View style={[styles.statusBadge, isPurchased && styles.statusBadgeChecked]}>
+                  <ThemedText style={[styles.statusText, isPurchased && styles.statusTextChecked]}>
+                    {isPurchased ? "Purchased" : "Pending"}
+                  </ThemedText>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Shared With Card */}
+        {userNicknames.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <IconSymbol name="person.2" size={20} color="#FF2D55" />
+              <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
+                Shared With
+              </ThemedText>
+            </View>
+            <View style={styles.sharedWithContainer}>
+              {userNicknames.map((nickname, index) => (
+                <View key={nickname} style={styles.userChip}>
+                  <IconSymbol name="person.circle.fill" size={16} color="#007AFF" />
+                  <ThemedText style={styles.userChipText}>{nickname}</ThemedText>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <Button
+            variant="outline"
+            onPress={handleDeleteProduct}
+            style={styles.deleteButton}
+          >
+            <IconSymbol name="trash" size={18} color="#FF3B30" />
+            <ThemedText style={styles.deleteButtonText}>Remove from List</ThemedText>
+          </Button>
+        </View>
+
+        {/* Bottom padding */}
+        <View style={{ height: 40 }} />
+      </BodyScrollView>
+
+      {/* Store & Price Picker Modal */}
+      <Modal
+        visible={showStorePicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowStorePicker(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Pressable onPress={() => setShowStorePicker(false)}>
+              <IconSymbol name="xmark" size={24} color="#007AFF" />
+            </Pressable>
+            <ThemedText type="title" style={styles.modalTitle}>
+              Select Store & Price
+            </ThemedText>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <View style={styles.modalContent}>
+            {databaseProductId && prices.length > 0 ? (
+              <>
+                <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                  Available Stores for {name}
+                </ThemedText>
+                {pricesLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#007AFF" />
+                    <ThemedText style={styles.loadingText}>Loading prices...</ThemedText>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={prices}
+                    renderItem={({ item }) => (
+                      <StoreSelectionItem
+                        price={item}
+                        onSelect={handleStoreSelect}
+                        isSelected={selectedStore === item.store && selectedPrice === item.price}
+                        colors={colors}
+                      />
+                    )}
+                    keyExtractor={(item) => item.id.toString()}
+                    contentContainerStyle={styles.storeList}
+                  />
+                )}
+              </>
+            ) : (
+              <View style={styles.noPricesContainer}>
+                <IconSymbol name="exclamationmark.triangle" size={48} color="#FF9500" />
+                <ThemedText type="subtitle" style={styles.noPricesTitle}>
+                  No Store Data Available
+                </ThemedText>
+                <ThemedText style={styles.noPricesText}>
+                  This product doesn't have store prices in our database. You can enter a custom price below.
+                </ThemedText>
+              </View>
+            )}
+
+            {/* Custom Price Entry */}
+            <View style={styles.customPriceSection}>
+              <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                Or Enter Custom Price
+              </ThemedText>
+              <View style={styles.customPriceRow}>
+                <TextInput
+                  label="Store Name"
+                  value={selectedStore || ""}
+                  onChangeText={setSelectedStore}
+                  placeholder="Enter store name"
+                  containerStyle={styles.customStoreInput}
+                />
+                <View style={styles.customPriceInputWrapper}>
+                  <ThemedText style={styles.customCurrencySymbol}>₱</ThemedText>
+                  <TextInput
+                    label="Price"
+                    value={price > 0 ? price.toString() : ""}
+                    onChangeText={(text) => {
+                      const numValue = parseFloat(text) || 0;
+                      setSelectedPrice(numValue);
+                    }}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                    containerStyle={styles.customPriceInput}
+                  />
+                </View>
+              </View>
+              <Button
+                onPress={() => {
+                  if (selectedStore && price > 0) {
+                    setShowStorePicker(false);
+                  } else {
+                    Alert.alert("Incomplete", "Please enter both store name and price");
+                  }
+                }}
+                style={styles.saveButton}
+              >
+                Save Custom Price
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
+function StoreSelectionItem({ 
+  price, 
+  onSelect, 
+  isSelected,
+  colors
+}: { 
+  price: ProductPrice; 
+  onSelect: (price: ProductPrice) => void;
+  isSelected: boolean;
+  colors: typeof Colors.light;
+}) {
+  const styles = createStyles(colors);
+  
+  return (
+    <Pressable
+      style={[styles.storeItem, isSelected && styles.storeItemSelected]}
+      onPress={() => onSelect(price)}
+    >
+      <View style={styles.storeItemContent}>
+        <View style={styles.storeItemLeft}>
+          <IconSymbol 
+            name="storefront.fill" 
+            size={24} 
+            color={isSelected ? "#007AFF" : "#666"} 
+          />
+          <View style={styles.storeItemInfo}>
+            <ThemedText type="defaultSemiBold" style={styles.storeItemName}>
+              {price.store}
+            </ThemedText>
+            <ThemedText style={styles.storeItemDate}>
+              Price ID: #{price.id}
+            </ThemedText>
+          </View>
+        </View>
+        <View style={styles.storeItemRight}>
+          <ThemedText type="title" style={styles.storeItemPrice}>
+            ₱{price.price.toFixed(2)}
+          </ThemedText>
+          {isSelected && (
+            <IconSymbol name="checkmark.circle.fill" color="#34C759" size={20} />
+          )}
+        </View>
       </View>
-
-      {/* Bottom padding */}
-      <View style={{ height: 40 }} />
-    </BodyScrollView>
+    </Pressable>
   );
 }
 
@@ -336,7 +562,6 @@ function createStyles(colors: typeof Colors.light) {
     container: {
       padding: 16,
       paddingBottom: 100,
-      
     },
     headerCard: {
       backgroundColor: colors.background,
@@ -404,19 +629,54 @@ function createStyles(colors: typeof Colors.light) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 4,
+      paddingVertical: 8,
     },
     infoLabel: {
       fontSize: 14,
       color: '#8E8E93',
     },
+    storeValueContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    priceValueContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
     storeName: {
       fontSize: 16,
       color: '#007AFF',
     },
+    priceInputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    currencySymbol: {
+      fontSize: 16,
+      color: '#34C759',
+      fontWeight: '600',
+    },
+    priceInputContainer: {
+      width: 100,
+    },
+    priceInputText: {
+      fontSize: 16,
+      color: '#34C759',
+      fontWeight: '600',
+      padding: 8,
+      textAlign: 'right',
+    },
+    placeholderText: {
+      opacity: 0.5,
+      fontStyle: 'italic',
+    },
     priceText: {
       fontSize: 16,
       color: '#34C759',
+      fontWeight: '600',
     },
     totalPriceText: {
       fontSize: 18,
@@ -522,6 +782,132 @@ function createStyles(colors: typeof Colors.light) {
     deleteButtonText: {
       color: '#FF3B30',
       fontWeight: '600',
+    },
+    // Modal Styles
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderColor,
+    },
+    modalTitle: {
+      fontSize: 18,
+    },
+    modalContent: {
+      flex: 1,
+      padding: 16,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      marginBottom: 12,
+      color: '#666',
+    },
+    loadingContainer: {
+      padding: 40,
+      alignItems: 'center',
+      gap: 12,
+    },
+    loadingText: {
+      color: '#999',
+    },
+    storeList: {
+      gap: 8,
+    },
+    storeItem: {
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.borderColor,
+      marginBottom: 8,
+    },
+    storeItemSelected: {
+      borderColor: '#007AFF',
+      backgroundColor: '#007AFF10',
+    },
+    storeItemContent: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    storeItemLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      flex: 1,
+    },
+    storeItemInfo: {
+      flex: 1,
+    },
+    storeItemName: {
+      fontSize: 16,
+      marginBottom: 4,
+    },
+    storeItemDate: {
+      fontSize: 12,
+      color: '#999',
+    },
+    storeItemRight: {
+      alignItems: 'flex-end',
+      gap: 4,
+    },
+    storeItemPrice: {
+      fontSize: 20,
+      color: '#34C759',
+    },
+    noPricesContainer: {
+      padding: 40,
+      alignItems: 'center',
+      gap: 12,
+    },
+    noPricesTitle: {
+      fontSize: 18,
+      textAlign: 'center',
+      marginTop: 8,
+    },
+    noPricesText: {
+      textAlign: 'center',
+      color: '#666',
+      lineHeight: 20,
+    },
+    customPriceSection: {
+      marginTop: 24,
+      paddingTop: 24,
+      borderTopWidth: 1,
+      borderTopColor: colors.borderColor,
+    },
+    customPriceRow: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 16,
+    },
+    customStoreInput: {
+      flex: 1,
+    },
+    customPriceInputWrapper: {
+      width: 120,
+      position: 'relative',
+    },
+    customCurrencySymbol: {
+      position: 'absolute',
+      left: 12,
+      top: 40,
+      fontSize: 16,
+      color: '#34C759',
+      fontWeight: '600',
+      zIndex: 1,
+    },
+    customPriceInput: {
+      paddingLeft: 24,
+    },
+    saveButton: {
+      marginTop: 8,
     },
   });
 }

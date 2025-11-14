@@ -628,14 +628,14 @@ function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.mainBackground,
   },
   headerSection: {
     backgroundColor: colors.background,
     paddingHorizontal: 20,
     paddingVertical: 24,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderBottomColor,
+    borderBottomColor: colors.borderColor,
   },
   headerSubtitle: {
     fontSize: 16,
@@ -645,7 +645,7 @@ function createStyles(colors: typeof Colors.light) {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderBottomColor,
+    borderBottomColor: colors.borderColor,
   },
   searchInput: {
     marginBottom: 0,

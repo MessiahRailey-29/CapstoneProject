@@ -129,7 +129,7 @@ export async function checkShoppingReminders() {
                   scheduledDate: schedule.scheduledDate,
                   type: 'shopping_reminder'
                 },
-                // Remove badge - it will default to undefined
+                badge: 1,
               });
               console.log(`📲 [CRON] Push notification sent to token: ${settings.pushToken.substring(0, 20)}...`);
             }

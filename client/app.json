@@ -29,7 +29,9 @@
         "USE_BIOMETRIC",
         "USE_FINGERPRINT",
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ],
       "usesCleartextTraffic": true,
       "googleServicesFile": "./google-services.json"
@@ -57,6 +59,16 @@
           "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for secure authentication."
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#ffffff",
+          "sounds": ["./assets/sounds/notification.wav"],
+          "androidMode": "default",
+          "androidCollapsedTitle": "#{unread_notifications} new notifications"
+        }
+      ],
       "expo-secure-store",
       "expo-sqlite",
       "expo-web-browser",
@@ -66,6 +78,7 @@
       "typedRoutes": true
     },
     "extra": {
+      "apiUrl": "http://192.168.1.142:3000",
       "eas": {
         "projectId": "7bfe348f-3215-4eec-a3d7-2407d4ed839b"
       }

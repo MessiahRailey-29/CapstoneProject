@@ -385,6 +385,7 @@ function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
     container: {
       flex: 1,
+      backgroundColor: colors.mainBackground,
     },
     headerSection: {
       paddingHorizontal: 20,

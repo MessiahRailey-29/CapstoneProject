@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Colors } from "@/constants/Colors";
 
 interface DatePickerButtonProps {
   selectedDate: Date | null;
@@ -14,6 +15,11 @@ export default function DatePickerButton({
   borderColor = '#007AFF' 
 }: DatePickerButtonProps) {
   const [showPicker, setShowPicker] = useState(false);
+
+      //color scheme and styles
+      const scheme = useColorScheme();
+      const colors = Colors[scheme ?? 'light'];
+      const styles = createStyles(colors);
 
   const formatDate = (date: Date | null) => {
     if (!date) return 'Set date';
@@ -56,7 +62,8 @@ export default function DatePickerButton({
         style={[styles.dateButton, { borderColor }]}
         onPress={() => setShowPicker(true)}
       >
-        <Text style={[styles.dateText, { color: selectedDate ? '#000' : '#999' }]}>
+        <Text style={[ {color: colors.text
+         }]}>
         {formatDate(selectedDate)}
         </Text>
       </TouchableOpacity>
@@ -90,8 +97,10 @@ export default function DatePickerButton({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   dateButton: {
+    color: colors.text,
     padding: 8,
     borderWidth: 2,
     borderRadius: 8,
@@ -102,6 +111,7 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 14,
     fontWeight: '500',
+    color: colors.text
   },
   pickerContainer: {
     position: 'absolute',
@@ -141,3 +151,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+}

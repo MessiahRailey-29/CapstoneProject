@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import React, { useEffect, useState } from "react";
 import { Link, Stack, useRouter, useLocalSearchParams } from "expo-router";
-import { StyleSheet, Text, View, Alert } from "react-native";
+import { StyleSheet, Text, View, Alert, useColorScheme } from "react-native";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import Button from "@/components/ui/button";
 import TextInput from "@/components/ui/text-input";
@@ -12,6 +12,7 @@ import DatePickerButton from "@/components/DatePickerButton";
 import BudgetInput from "@/components/BudgetInput";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useUser } from "@clerk/clerk-expo";
+import { Colors } from "@/constants/Colors";
 
 export default function CreateListScreen() {
   const router = useRouter();
@@ -25,6 +26,12 @@ export default function CreateListScreen() {
 
   const [listName, setListName] = useState("");
   const [listDescription, setListDescription] = useState("");
+
+    //color scheme and styles
+    const scheme = useColorScheme();
+    const colors = Colors[scheme ?? 'light'];
+    const styles = createStyles(colors);
+  
   
   const { 
     selectedEmoji, 
@@ -214,7 +221,7 @@ export default function CreateListScreen() {
       <Stack.Screen
         options={{
           headerLargeTitle: false,
-          headerTitle: "New list",
+          headerTitle: "New List",
         }}
       />
       <BodyScrollView contentContainerStyle={styles.scrollViewContent}>
@@ -313,9 +320,12 @@ export default function CreateListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   scrollViewContent: {
     padding: 16,
+    flex: 1,
+    backgroundColor: colors.mainBackground
   },
   pendingProductBanner: {
     backgroundColor: '#E3F2FD',
@@ -327,7 +337,7 @@ const styles = StyleSheet.create({
   },
   pendingProductText: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   pendingProductName: {
     fontWeight: '600',
@@ -342,6 +352,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 28,
     padding: 0,
+    color: colors.text,
   },
   titleInputContainer: {
     flexGrow: 1,
@@ -381,11 +392,12 @@ const styles = StyleSheet.create({
   dateSection: {
     marginVertical: 16,
     gap: 8,
+    color: colors.text,
   },
   dateLabel: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#666",
+    color: colors.text
   },
   budgetSection: {
     marginVertical: 16,
@@ -394,6 +406,7 @@ const styles = StyleSheet.create({
   budgetLabel: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#666",
+    color: colors.text,
   },
 });
+}

@@ -179,6 +179,10 @@ export default function HomeRoutesLayout(){
             headerRight: () => <NotificationBell />,
           }}
         />
+        <Stack.Screen 
+          name="biometric-settings" 
+          options={{ headerTitle: "Biometric Settings" }} 
+        />
         </Stack>
       </ListCreationProvider>
     </TinyBaseProvider>

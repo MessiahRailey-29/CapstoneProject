@@ -21,6 +21,8 @@ import * as Haptics from "expo-haptics";
 import { SwipeableTabWrapper } from "@/components/SwipeableTabWrapper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
+import QuickAddFab from "@/components/AddShoppingListFaB";
+
 type TabType = 'active' | 'ongoing' | 'history';
 type SortOption = 'name' | 'date' | 'items' | 'budget';
 type FilterOption = 'all' | 'scheduled' | 'unscheduled';
@@ -233,6 +235,10 @@ export default function HomeScreen() {
   const [showSortModal, setShowSortModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const scrollX = useRef(new Animated.Value(0)).current;
+
+  const handleAddList = () => {
+        router.push('/list/new');
+    };
 
   // Categorize shopping lists
   const { regularLists, ongoingLists, historyLists } = useMemo(() => {
@@ -579,11 +585,10 @@ export default function HomeScreen() {
   );
 
   return (
-    <SwipeableTabWrapper currentTab="shopping-lists">
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack.Screen options={{
-        headerRight: renderHeaderRight,
-      }} />
+      <Stack.Screen/>
+
+      <QuickAddFab onPress={handleAddList} />
 
       <View style={styles.container}>
         {/* Tab Bar */}
@@ -692,20 +697,21 @@ export default function HomeScreen() {
       <SortModal />
       <FilterModal />
     </GestureHandlerRootView>
-    </SwipeableTabWrapper>
   );
 }
 function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
     container: {
       flex: 1,
+      backgroundColor: colors.mainBackground
     },
     tabBar: {
+      backgroundColor: colors.background,
       flexDirection: 'row',
       paddingHorizontal: 16,
       paddingTop: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: '#50C878',
+      borderBottomColor: colors.borderColor,
     },
     tabButton: {
       flex: 1,
