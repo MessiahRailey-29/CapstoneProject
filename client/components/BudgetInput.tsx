@@ -6,6 +6,9 @@ import {
   View,
   TextInput,
 } from "react-native";
+import { ColorSpace } from "react-native-reanimated";
+import { Colors } from "@/constants/Colors";
+import { useColorScheme } from "react-native";
 
 interface BudgetInputProps {
   budget: number;
@@ -30,6 +33,11 @@ export default function BudgetInput({
       maximumFractionDigits: 0,
     });
   };
+
+      //color scheme and styles
+      const scheme = useColorScheme();
+      const colors = Colors[scheme ?? 'light'];
+      const styles = createStyles(colors);
 
   const handleInputChange = (value: string) => {
     const cleanValue = value.replace(/[^0-9]/g, ""); // only digits
@@ -118,7 +126,8 @@ export default function BudgetInput({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
     marginVertical: 8,
   },
@@ -131,6 +140,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   currencySymbol: {
+    color: colors.text,
     fontSize: 24,
     fontWeight: "bold",
   },
@@ -143,6 +153,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   budgetInput: {
+    color: colors.text,
     fontSize: 24,
     fontWeight: "bold",
   },
@@ -204,3 +215,4 @@ const styles = StyleSheet.create({
     color: "white",
   },
 });
+}

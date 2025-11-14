@@ -10,6 +10,7 @@ import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotific
 import { useProducts, useProductPrices } from "@/hooks/useProducts";
 import { DatabaseProduct, ProductPrice } from "@/services/productsApi";
 import { Colors } from "@/constants/Colors";
+import { HeaderTitle } from "@react-navigation/elements";
 
 
 
@@ -209,25 +210,19 @@ export default function NewItemScreen() {
   const styles = createStyles(colors);
 
   return (
-    <>
+    <View style={{backgroundColor: colors.mainBackground, flex: 1}}>
       <Stack.Screen
         options={{
           headerLargeTitle: false,
           headerTitle: queuedProducts.length > 0 
             ? `Add product (${queuedProducts.length} queued)` 
             : "Add product",
+            headerTitleStyle:{
+              fontSize: queuedProducts.length > 0 ? 17 : 20,
+              fontWeight: "600",
+            },
           headerRight: () => (
             <View style={styles.headerButtons}>
-              {name.trim() && (
-                <Button
-                  variant="ghost"
-                  onPress={handleAddAnother}
-                  disabled={addingAnother}
-                  style={styles.headerButton}
-                >
-                  + Queue
-                </Button>
-              )}
               <Button
                 variant="ghost"
                 onPress={handleCreateProduct}
@@ -495,25 +490,13 @@ export default function NewItemScreen() {
                 variant="ghost"
                 style={styles.addAnotherButton}
               >
-                + Add another
+                + Add to Queue
               </Button>
             )}
-            <Button
-              onPress={handleCreateProduct}
-              disabled={(!name.trim() && queuedProducts.length === 0) || addingAnother}
-              style={styles.addButton}
-            >
-              {addingAnother 
-                ? "Adding..." 
-                : queuedProducts.length > 0 
-                  ? `Add All to List (${queuedProducts.length + (name.trim() ? 1 : 0)})` 
-                  : "Add to List"
-              }
-            </Button>
           </View>
         )}
       </BodyScrollView>
-    </>
+    </View>
   );
 }
 
@@ -561,7 +544,7 @@ function ProductSuggestionItem({
             {product.category}
           </ThemedText>
         </View>
-        <IconSymbol name="chevron.right" color="#007AFF" size={16} />
+        <IconSymbol name="chevron.right" color="#007AFF" size={25} />
       </View>
     </Pressable>
   );
@@ -612,7 +595,9 @@ function StoreSelectionItem({
 function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
     container: {
-      padding: 16
+      padding: 16,
+      backgroundColor: colors.mainBackground,
+      paddingBottom: 130
     },
     queuedSection: {
       marginBottom: 24,
@@ -623,7 +608,7 @@ function createStyles(colors: typeof Colors.light) {
       padding: 16,
     },
     queuedHeader: {
-      marginBottom: 12,
+      marginBottom: 1,
     },
     queuedTitle: {
       fontSize: 16,
@@ -690,7 +675,7 @@ function createStyles(colors: typeof Colors.light) {
     nameInputContainer: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      position: 'relative'
+      position: 'relative',
     },
     nameInput: {
       flex: 1,
@@ -777,7 +762,9 @@ function createStyles(colors: typeof Colors.light) {
       textAlign: 'center'
     },
     suggestionItem: {
-      backgroundColor: 'white',
+      backgroundColor: colors.background,
+      borderColor: colors.borderColor,
+      borderWidth: 0.8,
       borderRadius: 8,
       marginBottom: 6,
       shadowColor: '#000',
@@ -801,7 +788,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     suggestionCategory: {
       fontSize: 12,
-      color: '#666'
+      color: colors.text
     },
     storeItem: {
       backgroundColor: 'white',
@@ -898,7 +885,9 @@ function createStyles(colors: typeof Colors.light) {
     },
     addAnotherButton: {
       marginTop: 0,
-      backgroundColor: '#34C759',
+      backgroundColor: 'black',
+      borderColor: '#34C759',
+      borderWidth: 1
     },
     buttonContainer: {
       marginTop: 24,
@@ -915,6 +904,6 @@ function createStyles(colors: typeof Colors.light) {
     headerButtonPrimary: {
       paddingHorizontal: 8,
       fontWeight: '600',
-    },
+    }
   });
 }

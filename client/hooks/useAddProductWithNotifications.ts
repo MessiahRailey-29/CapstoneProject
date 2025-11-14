@@ -3,10 +3,12 @@ import { useCallback } from 'react';
 import { useAddShoppingListProductCallback } from '@/stores/ShoppingListStore';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useUser } from '@clerk/clerk-expo';
+import { useShoppingListData } from '@/stores/ShoppingListsStore';
+import { notifyCollaborators } from '@/utils/notifyCollaborators';
 
 /**
  * Helper hook that wraps useAddShoppingListProductCallback with notification support
- * This makes it easy to add products with automatic duplicate warning notifications
+ * Handles BOTH duplicate warnings AND collaborator notifications
  * 
  * Usage:
  * const addProduct = useAddProductWithNotifications(listId);
@@ -16,6 +18,9 @@ export function useAddProductWithNotifications(listId: string) {
   const { user } = useUser();
   const addProduct = useAddShoppingListProductCallback(listId);
   const { createDuplicateWarning } = useNotifications(user?.id || '');
+  
+  // Get list data for collaborator notifications
+  const listData = useShoppingListData(listId);
 
   return useCallback(
     async (
@@ -29,7 +34,7 @@ export function useAddProductWithNotifications(listId: string) {
       category?: string
     ) => {
       // Call the original add product function with duplicate warning support
-      return await addProduct(
+      const productId = await addProduct(
         name,
         quantity,
         units,
@@ -40,7 +45,30 @@ export function useAddProductWithNotifications(listId: string) {
         category,
         createDuplicateWarning // Automatically pass notification function
       );
+
+      // If product was added successfully, notify collaborators
+      if (productId && listData?.collaborators && listData.collaborators.length > 0) {
+        try {
+          await notifyCollaborators({
+            listId,
+            listName: listData.name || 'Shopping List',
+            emoji: listData.emoji || '🛒',
+            action: 'added_item',
+            itemName: name,
+            currentUserId: user?.id || '',
+            currentUserName: user?.firstName || user?.username || 'Someone',
+            collaborators: listData.collaborators,
+          });
+          
+          console.log('✅ Notified collaborators about added item:', name);
+        } catch (error) {
+          console.error('❌ Failed to notify collaborators:', error);
+          // Don't throw - product was still added successfully
+        }
+      }
+
+      return productId;
     },
-    [addProduct, createDuplicateWarning]
+    [addProduct, createDuplicateWarning, listData, user, listId]
   );
 }

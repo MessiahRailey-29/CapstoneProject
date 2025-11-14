@@ -28,7 +28,7 @@ export function WeeklyPurchaseSummary() {
             <ThemedText style={styles.title}>Weekly Purchase Summary</ThemedText>
             <ThemedText style={styles.weekRange}>{weekRange}</ThemedText>
           </View>
-          <Ionicons name="stats-chart-outline" size={24} color={colors.textSecondary} />
+          <Ionicons name="stats-chart-outline" size={24} color={'#fff'} />
         </View>
         <View style={styles.emptyState}>
           <ThemedText style={styles.emptyText}>
@@ -181,12 +181,12 @@ function createStyles(colors: typeof Colors.light) {
     },
     title: {
       fontSize: 18,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '700',
     },
     weekRange: {
       fontSize: 12,
-      color: colors.textSecondary,
+      color: '#fff',
       opacity: 0.8,
       marginTop: 2,
     },
@@ -195,7 +195,7 @@ function createStyles(colors: typeof Colors.light) {
       alignItems: 'center',
     },
     emptyText: {
-      color: colors.text,
+      color: '#ffffffa5',
       textAlign: 'center',
     },
     summaryRow: {
@@ -216,7 +216,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     summaryLabel: {
       fontSize: 11,
-      color: colors.textSecondary,
+      color: '#fff',
       marginBottom: 4,
     },
     summaryValue: {
@@ -226,7 +226,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     summarySubtext: {
       fontSize: 10,
-      color: colors.textSecondary,
+      color: '#fff',
       marginTop: 2,
       opacity: 0.8,
     },
@@ -246,18 +246,18 @@ function createStyles(colors: typeof Colors.light) {
     },
     insightLabel: {
       fontSize: 11,
-      color: colors.textSecondary,
+      color: '#fff',
       marginBottom: 4,
     },
     insightValue: {
       fontSize: 16,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '700',
       marginBottom: 2,
     },
     insightSubtext: {
       fontSize: 10,
-      color: colors.textSecondary,
+      color: '#fff',
       opacity: 0.8,
     },
     breakdownSection: {
@@ -265,7 +265,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     breakdownTitle: {
       fontSize: 14,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '600',
       marginBottom: 10,
     },
@@ -287,20 +287,20 @@ function createStyles(colors: typeof Colors.light) {
     },
     categoryName: {
       fontSize: 11,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '600',
       marginBottom: 4,
       textAlign: 'center',
     },
     categoryAmount: {
       fontSize: 14,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '700',
       marginBottom: 2,
     },
     categoryCount: {
       fontSize: 9,
-      color: colors.textSecondary,
+      color: '#fff',
       opacity: 0.8,
     },
     dailyContainer: {
@@ -317,18 +317,18 @@ function createStyles(colors: typeof Colors.light) {
     },
     dayName: {
       fontSize: 10,
-      color: colors.textSecondary,
+      color: '#fff',
       marginBottom: 4,
     },
     dayAmount: {
       fontSize: 14,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '700',
       marginBottom: 2,
     },
     dayCount: {
       fontSize: 9,
-      color: colors.textSecondary,
+      color: '#fff',
       opacity: 0.8,
     },
   });

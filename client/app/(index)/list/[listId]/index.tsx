@@ -21,6 +21,7 @@ import { useListNotifications } from "@/utils/notifyCollaborators";
 import { Colors } from "@/constants/Colors";
 import { useRecipeSuggestions } from "@/hooks/useRecipeSuggestions";
 import { RecipeSection } from "@/components/RecipeSection";
+import FloatingActionFab from "@/components/ShoppingListFaB";
 
 interface ProductSection {
   title: string;
@@ -32,7 +33,40 @@ export default function ListScreen() {
   const params = useLocalSearchParams();
   const listId = params.listId as string;
 
-  
+  // 🐛 DEBUG: Track render count
+  const renderCount = useRef(0);
+  renderCount.current++;
+  console.log(`🔄 RENDER #${renderCount.current} - ListScreen for ${listId}`);
+
+  const handleFabAction = (key)=>{
+    switch(key){
+      case 'edit':
+        router.push({
+          pathname: "/list/[listId]/edit",
+          params: { listId },
+        });
+      break;
+      case 'duplicates':
+        router.push({
+          pathname: "/list/[listId]/duplicate-check",
+          params: { listId },
+        });
+      break;
+      case 'share':
+        router.push({
+          pathname: "/list/[listId]/share",
+          params: { listId },
+        });
+      break;
+      case 'add':
+        router.push({
+          pathname: "/list/[listId]/product/new",
+          params: { listId },
+        });
+      break;
+    }
+}
+  //colors and schemes
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
@@ -58,6 +92,15 @@ export default function ListScreen() {
   const productIds = useShoppingListProductIds(listId);
   const store = useShoppingListStore(listId);
 
+  // 🐛 DEBUG: Log when productIds changes
+  const prevProductIdsRef = useRef(productIds);
+  useEffect(() => {
+    if (prevProductIdsRef.current.length !== productIds.length) {
+      console.log(`📦 PRODUCT IDS CHANGED: ${prevProductIdsRef.current.length} → ${productIds.length}`);
+      prevProductIdsRef.current = productIds;
+    }
+  }, [productIds]);
+
   // ⭐ NEW: Recipe suggestions state
   const { recipes, loading: recipesLoading, fetchSuggestions } = useRecipeSuggestions();
   const [recipeSuggestionsPrompted, setRecipeSuggestionsPrompted] = useShoppingListValue(
@@ -68,6 +111,23 @@ export default function ListScreen() {
     listId, 
     "recipeSuggestionsEnabled"
   );
+
+  // 🐛 DEBUG: Log when recipe state changes
+  const prevRecipePrompedRef = useRef(recipeSuggestionsPrompted);
+  const prevRecipeEnabledRef = useRef(recipeSuggestionsEnabled);
+  useEffect(() => {
+    if (prevRecipePrompedRef.current !== recipeSuggestionsPrompted) {
+      console.log(`🍳 recipeSuggestionsPrompted CHANGED: ${prevRecipePrompedRef.current} → ${recipeSuggestionsPrompted}`);
+      prevRecipePrompedRef.current = recipeSuggestionsPrompted;
+    }
+    if (prevRecipeEnabledRef.current !== recipeSuggestionsEnabled) {
+      console.log(`🍳 recipeSuggestionsEnabled CHANGED: ${prevRecipeEnabledRef.current} → ${recipeSuggestionsEnabled}`);
+      prevRecipeEnabledRef.current = recipeSuggestionsEnabled;
+    }
+  }, [recipeSuggestionsPrompted, recipeSuggestionsEnabled]);
+
+  // ✅ CRITICAL FIX: Track if we've already shown the recipe prompt (prevents looping)
+  const hasShownRecipePrompt = useRef(false);
 
   // ✅ CRITICAL FIX: Check if data is still loading
   // If BOTH listData and hydrated values are empty, we're still loading
@@ -126,12 +186,15 @@ export default function ListScreen() {
 
   // ⭐ NEW: Handle fetching recipe suggestions
   const handleFetchRecipes = async () => {
+    console.log('🍳 handleFetchRecipes called');
+    
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
     // Enable recipe suggestions if not already enabled
     if (!recipeSuggestionsEnabled) {
+      console.log('🍳 Enabling recipe suggestions');
       setRecipeSuggestionsEnabled(true);
     }
 
@@ -157,52 +220,78 @@ export default function ListScreen() {
     }
   };
 
-  // ⭐ NEW: Auto-fetch recipes when list is viewed
+  // 🐛 DEBUG: Count effect runs
+  const effectRunCount = useRef(0);
+
+  // ⭐ COMPLETELY DISABLED FOR DEBUGGING
   useEffect(() => {
-    // Only auto-fetch if:
-    // 1. Haven't been prompted before
-    // 2. List has a name
-    // 3. List is in regular status (not shopping or completed)
-    // 4. Has some products
-    if (
-      !recipeSuggestionsPrompted && 
-      displayName && 
-      status === 'regular' &&
-      productIds.length > 0
-    ) {
-      // Small delay to let the screen load
-      const timer = setTimeout(() => {
-        Alert.alert(
-          '🍳 Recipe Suggestions',
-          `Would you like recipe suggestions for "${displayName}"?`,
-          [
-            {
-              text: 'No Thanks',
-              style: 'cancel',
-              onPress: () => {
-                console.log('User declined recipe suggestions');
-                setRecipeSuggestionsPrompted(true);
-                setRecipeSuggestionsEnabled(false);
-              },
-            },
-            {
-              text: 'Yes, Show Me!',
-              onPress: async () => {
-                console.log('User accepted recipe suggestions');
-                setRecipeSuggestionsPrompted(true);
-                setRecipeSuggestionsEnabled(true);
-                await handleFetchRecipes();
-              },
-            },
-          ]
-        );
-      }, 1500);
+    effectRunCount.current++;
+    console.log(`🔥 RECIPE PROMPT EFFECT RUN #${effectRunCount.current}`);
+    console.log('📊 Effect State:', {
+      hasShownRecipePrompt: hasShownRecipePrompt.current,
+      recipeSuggestionsPrompted,
+      displayName,
+      status,
+      productCount: productIds.length,
+      isLoadingData,
+    });
 
-      return () => clearTimeout(timer);
+    // ✅ COMPLETELY PREVENT ANY PROMPTING FOR NOW
+    if (hasShownRecipePrompt.current) {
+      console.log('⏭️ Already shown, skipping');
+      return;
     }
-  }, [recipeSuggestionsPrompted, displayName, status, productIds.length]);
 
-  console.log("List Screen Debug:", {
+    if (recipeSuggestionsPrompted) {
+      console.log('⏭️ Already prompted before, marking and skipping');
+      hasShownRecipePrompt.current = true;
+      return;
+    }
+
+    const shouldShow = displayName && status === 'regular' && productIds.length > 0 && !isLoadingData;
+    
+    if (!shouldShow) {
+      console.log('⏭️ Conditions not met');
+      return;
+    }
+
+    console.log('🚨 WOULD SHOW PROMPT HERE - but disabled for debugging');
+    hasShownRecipePrompt.current = true;
+    
+    const timer = setTimeout(() => {
+      Alert.alert(
+        '🍳 Recipe Suggestions',
+        `Would you like recipe suggestions for "${displayName}"?`,
+        [
+          {
+            text: 'No Thanks',
+            style: 'cancel',
+            onPress: () => {
+              console.log('User declined recipe suggestions');
+              setRecipeSuggestionsPrompted(true);
+              setRecipeSuggestionsEnabled(false);
+            },
+          },
+          {
+            text: 'Yes, Show Me!',
+            onPress: async () => {
+              console.log('User accepted recipe suggestions');
+              setRecipeSuggestionsPrompted(true);
+              setRecipeSuggestionsEnabled(true);
+              await handleFetchRecipes();
+            },
+          },
+        ]
+      );
+    }, 1500);
+
+    return () => clearTimeout(timer);
+
+  }, [displayName, status, isLoadingData, recipeSuggestionsPrompted]);
+
+  console.log("📊 List Screen State:", {
+    renderCount: renderCount.current,
+    effectRunCount: effectRunCount.current,
     listId,
     budget,
     name: displayName,
@@ -212,11 +301,7 @@ export default function ListScreen() {
     recipeSuggestionsEnabled,
     recipesCount: recipes.length,
     recipesLoading,
-  });
-
-  console.log("🍳 Recipes State:", {
-    hasRecipes: recipes.length > 0,
-    recipesList: recipes.map(r => r.title),
+    hasShownRecipePrompt: hasShownRecipePrompt.current,
   });
 
   // 📍 Auto-add pending product when page loads
@@ -356,7 +441,9 @@ export default function ListScreen() {
   );
 
   return (
-    <>
+    <View style={{
+              backgroundColor: colors.mainBackground,
+              flex: 1}}>
       <Stack.Screen
         options={{
           headerStyle: {backgroundColor: colors.mainBackground},
@@ -375,68 +462,12 @@ export default function ListScreen() {
               >
                 <IconSymbol name="book.fill" size={24} color="#007AFF" />
               </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  if (process.env.EXPO_OS === "ios") {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  }
-                  router.push({
-                    pathname: "/list/[listId]/share",
-                    params: { listId },
-                  });
-                }}
-                style={{ padding: 8 }}
-              >
-                <IconSymbol name="square.and.arrow.up" color={"#007AFF"} />
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  if (isHistory) return;
-                  if (process.env.EXPO_OS === "ios") {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  }
-                  router.push({
-                    pathname: "/list/[listId]/edit",
-                    params: { listId },
-                  });
-                }}
-                style={{ padding: 8, opacity: isHistory ? 0.3 : 1 }}
-                disabled={isHistory}
-              >
-                <IconSymbol
-                  name="pencil.and.list.clipboard"
-                  color={"#007AFF"}
-                />
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  if (isHistory) return;
-                  if (process.env.EXPO_OS === "ios") {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  }
-                  navigateToNewProduct();
-                }}
-                style={{ paddingLeft: 8, opacity: isHistory ? 0.3 : 1 }}
-                disabled={isHistory}
-              >
-                <IconSymbol name="plus" color={"#007AFF"} />
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  router.push({
-                    pathname: "/list/[listId]/duplicate-check",
-                    params: { listId },
-                  });
-                }}
-                style={{ padding: 8 }}
-              >
-                <AntDesign name="check-square" size={24} color={'#007AFF'} />
-              </Pressable>
             </View>
           ),
         }}
       />
+      <FloatingActionFab position={{ bottom: 70, right: 24 }} onAction={handleFabAction}/>
+
       <SectionList
         sections={categorizedProducts}
         renderItem={renderItem}
@@ -444,7 +475,7 @@ export default function ListScreen() {
         keyExtractor={(item) => item}
         contentContainerStyle={{
           paddingTop: 12,
-          paddingBottom: 100,
+          paddingBottom: 100,         
           backgroundColor: colors.mainBackground,
         }}
         contentInsetAdjustmentBehavior="automatic"
@@ -477,7 +508,7 @@ export default function ListScreen() {
           </BodyScrollView>
         )}
       />
-    </>
+    </View>
   );
 }
 
@@ -493,7 +524,7 @@ function createStyles(colors: any) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 8,
+      marginBottom: 8
     },
     categoryTitle: {
       fontSize: 18,

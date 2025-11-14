@@ -295,8 +295,10 @@ const createStyles = (colors: any) => StyleSheet.create({
   listContainer: {
     paddingTop: 8,
     backgroundColor: colors.mainBackground,
+    flex: 1
   },
   emptyStateContainer: {
+    backgroundColor: colors.mainBackground,
     alignItems: "center",
     gap: 8,
     paddingTop: 100,

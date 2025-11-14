@@ -283,12 +283,12 @@ function createStyles(colors: typeof Colors.light) {
     },
     title: {
       fontSize: 18,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '700',
     },
     weekRange: {
       fontSize: 12,
-      color: colors.textSecondary,
+      color: '#fff',
       opacity: 0.8,
       marginTop: 2,
     },
@@ -297,7 +297,7 @@ function createStyles(colors: typeof Colors.light) {
       alignItems: 'center',
     },
     emptyText: {
-      color: colors.text,
+      color: '#ffffffa5',
       textAlign: 'center',
       marginBottom: 16,
     },
@@ -329,17 +329,17 @@ function createStyles(colors: typeof Colors.light) {
     },
     summaryLabel: {
       fontSize: 11,
-      color: colors.textSecondary,
+      color: '#fff',
       marginBottom: 4,
     },
     summaryValue: {
       fontSize: 18,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '700',
     },
     summarySubtext: {
       fontSize: 10,
-      color: colors.textSecondary,
+      color: '#fff',
       marginTop: 2,
       opacity: 0.8,
     },
@@ -385,7 +385,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     dayName: {
       fontSize: 12,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '600',
       textTransform: 'uppercase',
       marginBottom: 2,
@@ -396,7 +396,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     dayNumber: {
       fontSize: 20,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '700',
     },
     dayNumberToday: {
@@ -421,7 +421,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     noListsText: {
       fontSize: 24,
-      color: colors.textSecondary,
+      color: '#fff',
       opacity: 0.3,
     },
     listCard: {
@@ -445,7 +445,7 @@ function createStyles(colors: typeof Colors.light) {
       fontSize: 18,
     },
     listName: {
-      color: colors.textSecondary,
+      color: '#fff',
       fontSize: 13,
       fontWeight: '600',
       flex: 1,
@@ -460,19 +460,19 @@ function createStyles(colors: typeof Colors.light) {
     },
     statLabel: {
       fontSize: 10,
-      color: colors.textSecondary,
+      color: '#fff',
     },
     statValue: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.textSecondary,
+      color: '#fff',
     },
     statValueOverBudget: {
       color: '#FF3B30',
     },
     itemCount: {
       fontSize: 10,
-      color: "#222",
+      color: '#ffffffff',
       marginTop: 2,
     },
     ongoingBadge: {

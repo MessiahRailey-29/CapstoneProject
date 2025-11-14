@@ -120,10 +120,10 @@ function ListExpenseCard({
       colors={
         list.overBudget
           ? ["#FF5F6D", "#FFC371"]
-          : ["rgba(255, 255, 255, 0.3)", "rgba(255, 255, 255, 0.3)", list.color]
+          : [list.color,"rgba(195, 185, 255, 0.8)", "rgba(195, 185, 255, 0.8)", list.color]
       }
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      start={{ x: 2, y: 3 }}
+      end={{ x: 0, y: 0 }}
       style={[, styles.listCard,
         {
           backgroundColor: "rgba(150, 150, 150, 0.5)",
@@ -243,7 +243,7 @@ function createStyles(colors: typeof Colors.light) {
       alignItems: 'center',
     },
     emptyText: {
-      color: colors.text,
+      color: 'ffffffa5',
       textAlign: 'center',
     },
     summaryRow: {
@@ -264,7 +264,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     summaryLabel: {
       fontSize: 12,
-      color: colors.textSecondary,
+      color: '#fff',
       marginBottom: 4,
       shadowColor: colors.shadowColor,
       shadowOffset: { width: 0, height: 0 },
@@ -274,7 +274,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     summaryValue: {
       fontSize: 20,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '700',
     },
     warningBanner: {
@@ -318,7 +318,7 @@ function createStyles(colors: typeof Colors.light) {
       borderColor: colors.borderColor,
     },
     listHeader: {
-      color: colors.textSecondary,
+      color: '#fff',
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
@@ -328,7 +328,7 @@ function createStyles(colors: typeof Colors.light) {
       fontSize: 24,
     },
     listName: {
-      color: colors.textSecondary,
+      color: '#fff',
       fontSize: 16,
       fontWeight: '600',
       flex: 1,
@@ -343,12 +343,12 @@ function createStyles(colors: typeof Colors.light) {
     },
     statLabel: {
       fontSize: 12,
-      color: colors.textSecondary,
+      color: '#fff',
     },
     statValue: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.textSecondary,
+      color: '#fff',
     },
     statValueOverBudget: {
       color: '#FF3B30',
@@ -365,9 +365,15 @@ function createStyles(colors: typeof Colors.light) {
       borderRadius: 3,
     },
     budgetRemaining: {
+      alignSelf: "flex-start",
+      borderRadius: 8,
+      padding: 4,
+      backgroundColor:"#00b62dff",
       fontSize: 12,
-      color: '#34C759',
+      color: '#fff',
       fontWeight: '600',
+      borderWidth: 1.2,
+      borderColor: "#34C759"
     },
     budgetRemainingNegative: {
       color: '#FF3B30',

@@ -112,7 +112,7 @@ export default function SignInScreen() {
             }}
         >
             <View style={styles.header}>
-                <ThemedText style={styles.welcomeText}>Welcome back</ThemedText>
+                <ThemedText style={styles.welcomeText}>Hello!</ThemedText>
                 <ThemedText style={styles.subtitleText}>Sign in to your account</ThemedText>
             </View>
 

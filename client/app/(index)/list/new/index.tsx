@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Href, useGlobalSearchParams, useRouter } from "expo-router";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, useColorScheme, ScrollView, Pressable } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 // Components
 import { ThemedText } from "@/components/ThemedText";
@@ -11,6 +11,10 @@ import TextInput from "@/components/ui/text-input";
 import { backgroundColors, emojies } from "@/constants/Colors";
 import { useJoinShoppingListCallback } from "@/stores/ShoppingListsStore";
 import IconCircle from "@/components/IconCircle";
+import { LinearGradient } from "expo-linear-gradient";
+import { Colors } from "@/constants/Colors";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const isValidUUID = (id: string | null) => {
   if (!id) return false;
@@ -62,7 +66,18 @@ export default function NewListScreen() {
     }
   };
 
+  //color scheme and styles
+  const scheme = useColorScheme();
+  const colors = Colors[scheme ?? 'light'];
+  const styles = createStyles(colors);
+
   return (
+    <LinearGradient
+      colors={['#22c55e', '#16a34a', colors.background, colors.background]}
+      start={{ x: 1, y: 2 }}
+      end={{ x: 3, y: 0 }}
+      style={styles.container}
+    >
     <BodyScrollView contentContainerStyle={styles.scrollViewContent}>
       <StatusBar style="light" animated />
       <View style={styles.container}>
@@ -108,25 +123,40 @@ export default function NewListScreen() {
             <Button onPress={handleJoinList} disabled={!isValidListId}>
               Join list
             </Button>
-            <Button
-              variant="ghost"
-              onPress={() => handleDismissTo("/list/new/scan")}
-            >
-              Scan QR code
-            </Button>
+
+            
+            <View style={styles.divider}>
+            <View style={styles.line} />
+            <ThemedText type="default" style={styles.orText}>
+              Scan QR
+            </ThemedText>
+            <View style={styles.line} />
+          </View>
+            <Pressable onPress={() => handleDismissTo("/list/new/scan")} >
+              <MaterialCommunityIcons
+                name="qrcode-scan"
+                size={80}
+                color={'#000'}
+                style={styles.qrButton}>
+              </MaterialCommunityIcons>       
+            </Pressable>
           </View>
         </View>
       </View>
     </BodyScrollView>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   scrollViewContent: {
+    marginTop: 45,
     padding: 16,
     marginBottom: 100,
   },
   container: {
+    flex: 1,
     gap: 32,
   },
   heroSection: {
@@ -161,10 +191,10 @@ const styles = StyleSheet.create({
   line: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(150, 150, 150, 0.2)",
+    backgroundColor: "rgba(150, 150, 150, 0.69)",
   },
   orText: {
-    color: "gray",
+    color: "rgba(255, 255, 255, 0.8)",
   },
   joinSection: {
     gap: 16,
@@ -178,9 +208,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   qrButton: {
+    backgroundColor: 'white',
+    padding: 15,
     marginBottom: 16,
+    alignSelf: 'center',
+    borderRadius: 12,
+
   },
   joinButton: {
     marginTop: 8,
   },
+  
 });
+}

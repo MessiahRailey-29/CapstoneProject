@@ -276,7 +276,7 @@ export default function ProfileScreen() {
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     return (
-        <BodyScrollView contentContainerStyle={{paddingBottom: insets.bottom + 130}}>
+        <BodyScrollView contentContainerStyle={{backgroundColor: colors.mainBackground, paddingBottom: insets.bottom + 130}}>
             {/* Enhanced Profile Card */}
             <View style={styles.profileCard}>
                 <View style={styles.profileHeader}>
@@ -340,6 +340,21 @@ export default function ProfileScreen() {
             {/* Settings Section */}
             <View style={styles.section}>
                 <ThemedText style={styles.sectionTitle}>Preferences</ThemedText>
+
+                {/* Biometric Settings */}
+                <TouchableOpacity
+                    style={styles.settingItem}
+                    onPress={() => router.push('/(index)/biometric-settings' as any)}
+                >
+                    <View style={[styles.settingIcon, { backgroundColor: '#E0F2FF' }]}>
+                        <ThemedText style={styles.iconText}>🔐</ThemedText>
+                    </View>
+                    <View style={styles.settingContent}>
+                        <ThemedText style={styles.settingLabel}>Biometric Login</ThemedText>
+                        <ThemedText style={styles.settingDescription}>Face ID, Touch ID, and fingerprint</ThemedText>
+                    </View>
+                    <ThemedText style={styles.chevron}>›</ThemedText>
+                </TouchableOpacity>
 
                 {/* Notification Settings */}
                 <TouchableOpacity
@@ -454,10 +469,7 @@ export default function ProfileScreen() {
             {/* App Info */}
             <View style={styles.appInfo}>
                 <ThemedText style={styles.appInfoText}>
-                    SpendWise • Version 1.0.0
-                </ThemedText>
-                <ThemedText style={styles.appInfoText}>
-                    Made with 💚 by hola
+                    WasteMeNot
                 </ThemedText>
             </View>
 
@@ -811,7 +823,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     avatarModalContent: {
         backgroundColor: '#fff',
         borderRadius: 20,
-        padding: 24,
+        padding: 50,
         width: '85%',
         alignItems: 'center',
         justifyContent: 'center',
@@ -898,14 +910,15 @@ const createStyles = (colors: any) => StyleSheet.create({
         elevation: 5,
     },
     cancelButton: {
-        backgroundColor: '#f5f5f5',
+        padding: 12,
+        backgroundColor: '#ff4646ff',
         borderWidth: 2,
-        borderColor: '#e0e0e0',
+        borderColor: 'red',
     },
     cancelButtonText: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#666',
+        color: 'white',
     },
     saveButton: {
         backgroundColor: '#007AFF',

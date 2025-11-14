@@ -5,13 +5,11 @@ import * as Device from 'expo-device';
 import { Platform, AppState } from 'react-native';
 import Constants from 'expo-constants';
 
-// IMPORTANT: Replace with your actual server URL
-// For local development:
-// - Android Emulator: use http://10.0.2.2:3000
-// - iOS Simulator: use http://localhost:3000
-// - Physical Device: use your computer's local IP (e.g., http://192.168.1.100:3000)
-// For production: use your deployed server URL
-const API_URL = 'http://192.168.1.142:3000'; // CHANGE THIS to your server URL
+// Get API URL from app.json extra config, with fallback
+const API_URL = Constants.expoConfig?.extra?.apiUrl || 
+  (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
+
+console.log('📡 API_URL configured as:', API_URL);
 
 interface Notification {
   _id: string;
@@ -68,72 +66,111 @@ export function useNotifications(userId: string) {
   // Register for push notifications
   const registerForPushNotifications = useCallback(async () => {
     // Skip in Expo Go - only works in development builds
-    if (!Device.isDevice || Constants.appOwnership === 'expo') {
+    if (!Device.isDevice) {
+      console.log('⚠️ Push notifications require a physical device');
+      return;
+    }
+
+    if (Constants.appOwnership === 'expo') {
       console.log('⚠️ Push notifications require a development build (not available in Expo Go)');
       return;
     }
 
     try {
+      console.log('📱 Requesting notification permissions...');
+      
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
+
+      console.log('Current permission status:', existingStatus);
 
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
+        console.log('New permission status:', status);
       }
 
       if (finalStatus !== 'granted') {
-        console.log('Permission not granted for push notifications');
+        console.log('❌ Permission not granted for push notifications');
         return;
       }
+
+      console.log('✅ Notification permissions granted');
+      console.log('🔑 Getting Expo push token...');
+      console.log('EAS Project ID:', Constants.expoConfig?.extra?.eas?.projectId);
 
       const tokenData = await Notifications.getExpoPushTokenAsync({
         projectId: Constants.expoConfig?.extra?.eas?.projectId,
       });
       
       const token = tokenData.data;
+      console.log('✅ Got push token:', token.substring(0, 30) + '...');
       setExpoPushToken(token);
 
       // Send token to server
-      await fetch(`${API_URL}/api/notifications/${userId}/push-token`, {
+      console.log('📤 Sending push token to server...');
+      const response = await fetch(`${API_URL}/api/notifications/${userId}/push-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pushToken: token }),
       });
 
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}: ${await response.text()}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Push token registered on server:', data.success);
+
       if (Platform.OS === 'android') {
+        console.log('🤖 Setting up Android notification channel...');
         await Notifications.setNotificationChannelAsync('default', {
           name: 'default',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#FF231F7C',
         });
+        console.log('✅ Android notification channel configured');
       }
 
       console.log('✅ Push notifications registered successfully');
     } catch (error) {
-      console.error('Error registering for push notifications:', error);
+      console.error('❌ Error registering for push notifications:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+      }
     }
   }, [userId]);
 
   // Fetch notifications
   const fetchNotifications = useCallback(async (unreadOnly = false) => {
-    if (!userId) return;
+    if (!userId) {
+      console.log('⚠️ Skipping fetch - no userId');
+      return;
+    }
     
     setLoading(true);
     try {
+      console.log('📥 Fetching notifications for user:', userId);
       const response = await fetch(
         `${API_URL}/api/notifications/${userId}?limit=50&unreadOnly=${unreadOnly}`
       );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch notifications: ${response.status}`);
+      }
+      
       const data = await response.json();
 
       if (data.success) {
+        console.log(`✅ Fetched ${data.notifications.length} notifications`);
         setNotifications(data.notifications);
         const unread = data.notifications.filter((n: Notification) => !n.isRead).length;
         setUnreadCount(unread);
+        console.log(`📊 Unread count: ${unread}`);
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('❌ Error fetching notifications:', error);
     } finally {
       setLoading(false);
     }
@@ -141,17 +178,30 @@ export function useNotifications(userId: string) {
 
   // Fetch settings
   const fetchSettings = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      console.log('⚠️ Skipping settings fetch - no userId');
+      return;
+    }
     
     try {
+      console.log('⚙️ Fetching notification settings...');
       const response = await fetch(`${API_URL}/api/notifications/${userId}/settings`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch settings: ${response.status}`);
+      }
+      
       const data = await response.json();
 
       if (data.success) {
+        console.log('✅ Settings fetched:', {
+          enabled: data.settings.enabled,
+          hasPushToken: !!data.settings.pushToken,
+        });
         setSettings(data.settings);
       }
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      console.error('❌ Error fetching settings:', error);
     }
   }, [userId]);
 
@@ -171,7 +221,7 @@ export function useNotifications(userId: string) {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
     } catch (error) {
-      console.error('Error marking as read:', error);
+      console.error('❌ Error marking as read:', error);
     }
   }, []);
 
@@ -191,7 +241,7 @@ export function useNotifications(userId: string) {
         setUnreadCount(0);
       }
     } catch (error) {
-      console.error('Error marking all as read:', error);
+      console.error('❌ Error marking all as read:', error);
     }
   }, [userId]);
 
@@ -212,7 +262,7 @@ export function useNotifications(userId: string) {
         }
       }
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      console.error('❌ Error deleting notification:', error);
     }
   }, [notifications]);
 
@@ -233,7 +283,7 @@ export function useNotifications(userId: string) {
         setSettings(data.settings);
       }
     } catch (error) {
-      console.error('Error updating settings:', error);
+      console.error('❌ Error updating settings:', error);
     }
   }, [userId]);
 
@@ -256,12 +306,12 @@ export function useNotifications(userId: string) {
       }
       return false;
     } catch (error) {
-      console.error('Error scheduling reminder:', error);
+      console.error('❌ Error scheduling reminder:', error);
       return false;
     }
   }, [userId, fetchNotifications]);
 
-// Cancel shopping reminder
+  // Cancel shopping reminder
   const cancelShoppingReminder = useCallback(async (listId: string) => {
     try {
       const response = await fetch(
@@ -280,7 +330,7 @@ export function useNotifications(userId: string) {
       }
       return false;
     } catch (error) {
-      console.error('Error cancelling reminder:', error);
+      console.error('❌ Error cancelling reminder:', error);
       return false;
     }
   }, [userId, fetchNotifications]);
@@ -304,7 +354,7 @@ export function useNotifications(userId: string) {
       }
       return false;
     } catch (error) {
-      console.error('Error creating duplicate warning:', error);
+      console.error('❌ Error creating duplicate warning:', error);
       return false;
     }
   }, [userId, fetchNotifications]);
@@ -328,7 +378,7 @@ export function useNotifications(userId: string) {
       }
       return false;
     } catch (error) {
-      console.error('Error tracking purchase:', error);
+      console.error('❌ Error tracking purchase:', error);
       return false;
     }
   }, [userId]);
@@ -341,7 +391,7 @@ export function useNotifications(userId: string) {
       setNotifications([]);
       setUnreadCount(0);
     } catch (error) {
-      console.error('Error clearing all notifications:', error);
+      console.error('❌ Error clearing all notifications:', error);
     }
   }, [notifications, deleteNotification]);
 
@@ -365,8 +415,10 @@ export function useNotifications(userId: string) {
     console.log('🚀 Initializing notifications for userId:', userId);
     
     // Only register push notifications if not in Expo Go
-    if (Constants.appOwnership !== 'expo') {
+    if (Constants.appOwnership !== 'expo' && Device.isDevice) {
       registerForPushNotifications();
+    } else {
+      console.log('⚠️ Skipping push notification registration (Expo Go or not a device)');
     }
     
     fetchNotifications();
@@ -412,36 +464,36 @@ export function useNotifications(userId: string) {
     Notifications.setBadgeCountAsync(unreadCount);
   }, [unreadCount]);
 
-  // 1. Auto-refresh notifications every 30 seconds when app is active
-useEffect(() => {
-  if (!userId) return;
-  
-  console.log('🔄 Setting up auto-refresh for notifications');
-  
-  const interval = setInterval(() => {
-    fetchNotifications();
-  }, 30000); // Every 30 seconds
-  
-  return () => {
-    clearInterval(interval);
-  };
-}, [userId, fetchNotifications]);
-
-// 2. Refresh when app comes to foreground
-useEffect(() => {
-  if (!userId) return;
-
-  const subscription = AppState.addEventListener('change', (nextAppState) => {
-    if (nextAppState === 'active') {
-      console.log('📱 App became active - refreshing notifications');
+  // Auto-refresh notifications every 30 seconds when app is active
+  useEffect(() => {
+    if (!userId) return;
+    
+    console.log('🔄 Setting up auto-refresh for notifications');
+    
+    const interval = setInterval(() => {
       fetchNotifications();
-    }
-  });
+    }, 30000); // Every 30 seconds
+    
+    return () => {
+      clearInterval(interval);
+    };
+  }, [userId, fetchNotifications]);
 
-  return () => {
-    subscription.remove();
-  };
-}, [userId, fetchNotifications]);
+  // Refresh when app comes to foreground
+  useEffect(() => {
+    if (!userId) return;
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        console.log('📱 App became active - refreshing notifications');
+        fetchNotifications();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [userId, fetchNotifications]);
 
   return {
     // State

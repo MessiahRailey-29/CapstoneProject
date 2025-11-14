@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Pressable } from 'react-native';
+import { StyleSheet, View, Pressable, useColorScheme } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { BodyScrollView } from '@/components/ui/BodyScrollView';
@@ -7,6 +7,7 @@ import Button from '@/components/ui/button';
 import { productsApi, DatabaseProduct, ProductPrice } from '@/services/productsApi';
 import { useProductPrices } from '@/hooks/useProducts';
 import ShoppingListSelectorModal from '@/components/ShoppingListSelectorModal';
+import { Colors } from '@/constants/Colors';
 
 export default function ProductDetailScreen() {
   const { productId } = useLocalSearchParams() as { productId: string };
@@ -16,6 +17,11 @@ export default function ProductDetailScreen() {
   const { prices } = useProductPrices(parseInt(productId));
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<{ price: number; store: string } | null>(null);
+
+    //colors and schemes
+    const theme = useColorScheme();
+    const colors = Colors[theme ?? 'light'];
+    const styles = createStyles(colors);
 
   useEffect(() => {
     loadProduct();
@@ -138,9 +144,12 @@ export default function ProductDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: any) {
+  return StyleSheet.create({
   container: {
     padding: 16,
+    backgroundColor: colors.mainBackground,
+    flex: 1
   },
   centerContent: {
     alignItems: 'center',
@@ -148,10 +157,12 @@ const styles = StyleSheet.create({
     paddingTop: 100,
   },
   productInfo: {
+    marginTop: 8,
     marginBottom: 24,
   },
   productName: {
     marginBottom: 8,
+    color: colors.text
   },
   category: {
     color: 'gray',
@@ -168,14 +179,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   priceItemSelected: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#e3f2fd20',
     borderColor: '#007AFF',
   },
   priceValue: {
@@ -190,3 +201,4 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
 });
+}

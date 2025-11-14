@@ -18,31 +18,63 @@ interface Recipe {
   sourceUrl?: string;
 }
 
-// ⭐ Spoonacular API response types
-interface SpoonacularRecipe {
-  id: number;
-  title: string;
-  image?: string;
-  readyInMinutes?: number;
-  servings?: number;
-  sourceUrl?: string;
-  extendedIngredients?: Array<{ original: string }>;
-  instructions?: string;
+// 🍽️ TheMealDB API response types
+interface MealDBRecipe {
+  idMeal: string;
+  strMeal: string;
+  strMealThumb: string;
+  strInstructions: string;
+  strYoutube?: string;
+  strSource?: string;
+  // Ingredients (up to 20)
+  strIngredient1?: string;
+  strIngredient2?: string;
+  strIngredient3?: string;
+  strIngredient4?: string;
+  strIngredient5?: string;
+  strIngredient6?: string;
+  strIngredient7?: string;
+  strIngredient8?: string;
+  strIngredient9?: string;
+  strIngredient10?: string;
+  strIngredient11?: string;
+  strIngredient12?: string;
+  strIngredient13?: string;
+  strIngredient14?: string;
+  strIngredient15?: string;
+  strIngredient16?: string;
+  strIngredient17?: string;
+  strIngredient18?: string;
+  strIngredient19?: string;
+  strIngredient20?: string;
+  // Measures
+  strMeasure1?: string;
+  strMeasure2?: string;
+  strMeasure3?: string;
+  strMeasure4?: string;
+  strMeasure5?: string;
+  strMeasure6?: string;
+  strMeasure7?: string;
+  strMeasure8?: string;
+  strMeasure9?: string;
+  strMeasure10?: string;
+  strMeasure11?: string;
+  strMeasure12?: string;
+  strMeasure13?: string;
+  strMeasure14?: string;
+  strMeasure15?: string;
+  strMeasure16?: string;
+  strMeasure17?: string;
+  strMeasure18?: string;
+  strMeasure19?: string;
+  strMeasure20?: string;
 }
 
-interface SpoonacularSearchResponse {
-  results: SpoonacularRecipe[];
-  offset: number;
-  number: number;
-  totalResults: number;
+interface MealDBSearchResponse {
+  meals: MealDBRecipe[] | null;
 }
 
-interface SpoonacularRecipeDetailsResponse extends SpoonacularRecipe {
-  // Additional fields from the details endpoint
-}
-
-// ✅ FIX: Use globalThis.fetch to avoid type conflicts with Express Response
-// This explicitly uses the global Fetch API Response type, not Express's Response
+// ✅ Fetch helper function
 async function fetchRecipeData(url: string): Promise<any> {
   try {
     // For Node 18+
@@ -67,6 +99,40 @@ async function fetchRecipeData(url: string): Promise<any> {
   }
 }
 
+// Helper function to extract ingredients from MealDB recipe
+function extractIngredients(meal: MealDBRecipe): string[] {
+  const ingredients: string[] = [];
+  
+  for (let i = 1; i <= 20; i++) {
+    const ingredient = meal[`strIngredient${i}` as keyof MealDBRecipe];
+    const measure = meal[`strMeasure${i}` as keyof MealDBRecipe];
+    
+    if (ingredient && ingredient.trim()) {
+      const ingredientText = measure && measure.trim() 
+        ? `${measure.trim()} ${ingredient.trim()}`
+        : ingredient.trim();
+      ingredients.push(ingredientText);
+    }
+  }
+  
+  return ingredients;
+}
+
+// Helper function to convert MealDB recipe to our Recipe format
+function convertMealDBToRecipe(meal: MealDBRecipe): Recipe {
+  return {
+    id: parseInt(meal.idMeal),
+    title: meal.strMeal,
+    image: meal.strMealThumb,
+    ingredients: extractIngredients(meal),
+    instructions: meal.strInstructions,
+    sourceUrl: meal.strSource || meal.strYoutube || undefined,
+    // TheMealDB doesn't provide these, so we'll estimate
+    readyInMinutes: 30, // Default estimate
+    servings: 4, // Default estimate
+  };
+}
+
 // Simple recipe suggestion based on keywords
 router.post('/suggest', async (req: Request, res: Response) => {
   try {
@@ -79,35 +145,53 @@ router.post('/suggest', async (req: Request, res: Response) => {
     console.log('🍳 Fetching recipe suggestions for:', listName);
     console.log('📦 With products:', products);
 
-    // Option 1: Use Spoonacular API (you'll need an API key)
-    const SPOONACULAR_API_KEY = process.env.SPOONACULAR_API_KEY || '';
-    
-    if (SPOONACULAR_API_KEY) {
-      try {
-        const query = encodeURIComponent(listName);
-        const url = `https://api.spoonacular.com/recipes/complexSearch?query=${query}&number=5&addRecipeInformation=true&apiKey=${SPOONACULAR_API_KEY}`;
-        
-        console.log('🌐 Calling Spoonacular API...');
-        const data = await fetchRecipeData(url) as SpoonacularSearchResponse;
-        
-        const recipes: Recipe[] = data.results.map((recipe: SpoonacularRecipe) => ({
-          id: recipe.id,
-          title: recipe.title,
-          image: recipe.image,
-          readyInMinutes: recipe.readyInMinutes,
-          servings: recipe.servings,
-          sourceUrl: recipe.sourceUrl,
-        }));
+    try {
+      // TheMealDB API - Search by name
+      // Extract key ingredient/meal type from listName
+      const searchTerm = extractSearchTerm(listName);
+      const url = `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(searchTerm)}`;
+      
+      console.log('🌐 Calling TheMealDB API with search term:', searchTerm);
+      const data = await fetchRecipeData(url) as MealDBSearchResponse;
+      
+      if (data.meals && data.meals.length > 0) {
+        // Convert to our Recipe format and limit to 5 results
+        const recipes: Recipe[] = data.meals
+          .slice(0, 5)
+          .map(meal => convertMealDBToRecipe(meal));
 
-        console.log('✅ Found', recipes.length, 'recipes from Spoonacular');
+        console.log('✅ Found', recipes.length, 'recipes from TheMealDB');
         return res.json({ recipes });
-      } catch (apiError) {
-        console.error('❌ Spoonacular API failed, falling back to mock data:', apiError);
-        // Fall through to mock data
+      } else {
+        // Try searching by main ingredient if name search fails
+        console.log('🔄 No results for name search, trying ingredient search...');
+        const ingredientUrl = `https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(searchTerm)}`;
+        const ingredientData = await fetchRecipeData(ingredientUrl) as MealDBSearchResponse;
+        
+        if (ingredientData.meals && ingredientData.meals.length > 0) {
+          // Get detailed info for each meal (filter endpoint returns limited data)
+          const detailedRecipes = await Promise.all(
+            ingredientData.meals.slice(0, 5).map(async (meal) => {
+              const detailUrl = `https://www.themealdb.com/api/json/v1/1/lookup.php?i=${meal.idMeal}`;
+              const detailData = await fetchRecipeData(detailUrl) as MealDBSearchResponse;
+              return detailData.meals ? convertMealDBToRecipe(detailData.meals[0]) : null;
+            })
+          );
+          
+          const recipes = detailedRecipes.filter((r): r is Recipe => r !== null);
+          console.log('✅ Found', recipes.length, 'recipes from TheMealDB (by ingredient)');
+          return res.json({ recipes });
+        }
+        
+        console.log('📋 No results from TheMealDB, using mock data');
+        throw new Error('No results found');
       }
+    } catch (apiError) {
+      console.error('❌ TheMealDB API failed, falling back to mock data:', apiError);
+      // Fall through to mock data
     }
 
-    // Option 2: Fallback to mock data (for testing without API key)
+    // Fallback to mock data (for testing or when API fails)
     console.log('📋 Using mock recipe data');
     const mockRecipes: Recipe[] = getMockRecipes(listName);
     
@@ -129,31 +213,26 @@ router.get('/search/:query', async (req: Request, res: Response) => {
 
     console.log('🔍 Searching recipes for:', query);
 
-    const SPOONACULAR_API_KEY = process.env.SPOONACULAR_API_KEY || '';
-    
-    if (SPOONACULAR_API_KEY) {
-      try {
-        const searchQuery = encodeURIComponent(query);
-        const url = `https://api.spoonacular.com/recipes/complexSearch?query=${searchQuery}&number=10&addRecipeInformation=true&apiKey=${SPOONACULAR_API_KEY}`;
-        
-        console.log('🌐 Calling Spoonacular API...');
-        const data = await fetchRecipeData(url) as SpoonacularSearchResponse;
-        
-        const recipes: Recipe[] = data.results.map((recipe: SpoonacularRecipe) => ({
-          id: recipe.id,
-          title: recipe.title,
-          image: recipe.image,
-          readyInMinutes: recipe.readyInMinutes,
-          servings: recipe.servings,
-          sourceUrl: recipe.sourceUrl,
-        }));
+    try {
+      // TheMealDB API - Search by name
+      const url = `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`;
+      
+      console.log('🌐 Calling TheMealDB API...');
+      const data = await fetchRecipeData(url) as MealDBSearchResponse;
+      
+      if (data.meals && data.meals.length > 0) {
+        // Convert to our Recipe format
+        const recipes: Recipe[] = data.meals.map(meal => convertMealDBToRecipe(meal));
 
-        console.log('✅ Found', recipes.length, 'recipes from Spoonacular');
+        console.log('✅ Found', recipes.length, 'recipes from TheMealDB');
         return res.json({ recipes });
-      } catch (apiError) {
-        console.error('❌ Spoonacular API failed, falling back to mock data:', apiError);
-        // Fall through to mock data
+      } else {
+        console.log('📋 No results from TheMealDB, using mock data');
+        throw new Error('No results found');
       }
+    } catch (apiError) {
+      console.error('❌ TheMealDB API failed, falling back to mock data:', apiError);
+      // Fall through to mock data
     }
 
     // Fallback to mock data
@@ -178,32 +257,24 @@ router.get('/details/:id', async (req: Request, res: Response) => {
 
     console.log('📖 Fetching recipe details for ID:', id);
 
-    const SPOONACULAR_API_KEY = process.env.SPOONACULAR_API_KEY || '';
-    
-    if (SPOONACULAR_API_KEY) {
-      try {
-        const url = `https://api.spoonacular.com/recipes/${id}/information?apiKey=${SPOONACULAR_API_KEY}`;
-        
-        console.log('🌐 Calling Spoonacular API...');
-        const data = await fetchRecipeData(url) as SpoonacularRecipeDetailsResponse;
-        
-        const recipe: Recipe = {
-          id: data.id,
-          title: data.title,
-          image: data.image,
-          readyInMinutes: data.readyInMinutes,
-          servings: data.servings,
-          sourceUrl: data.sourceUrl,
-          ingredients: data.extendedIngredients?.map((ing) => ing.original),
-          instructions: data.instructions,
-        };
-
+    try {
+      // TheMealDB API - Lookup by ID
+      const url = `https://www.themealdb.com/api/json/v1/1/lookup.php?i=${id}`;
+      
+      console.log('🌐 Calling TheMealDB API...');
+      const data = await fetchRecipeData(url) as MealDBSearchResponse;
+      
+      if (data.meals && data.meals.length > 0) {
+        const recipe = convertMealDBToRecipe(data.meals[0]);
         console.log('✅ Found recipe:', recipe.title);
         return res.json({ recipe });
-      } catch (apiError) {
-        console.error('❌ Spoonacular API failed, falling back to mock data:', apiError);
-        // Fall through to mock data
+      } else {
+        console.log('📋 No recipe found, using mock data');
+        throw new Error('Recipe not found');
       }
+    } catch (apiError) {
+      console.error('❌ TheMealDB API failed, falling back to mock data:', apiError);
+      // Fall through to mock data
     }
 
     // Fallback to mock data
@@ -221,7 +292,44 @@ router.get('/details/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Mock recipe data for testing without API key
+// Helper function to extract meaningful search term from list name
+function extractSearchTerm(listName: string): string {
+  const lowerName = listName.toLowerCase();
+  
+  // Common list name patterns
+  const patterns: { [key: string]: string } = {
+    'breakfast': 'breakfast',
+    'lunch': 'chicken',
+    'dinner': 'beef',
+    'party': 'chicken',
+    'snack': 'dessert',
+    'dessert': 'dessert',
+    'adobo': 'chicken',
+    'pasta': 'pasta',
+    'chicken': 'chicken',
+    'beef': 'beef',
+    'pork': 'pork',
+    'fish': 'fish',
+    'seafood': 'seafood',
+    'vegetarian': 'vegetarian',
+    'salad': 'salad',
+    'soup': 'soup',
+    'rice': 'rice',
+  };
+  
+  // Check for pattern matches
+  for (const [key, value] of Object.entries(patterns)) {
+    if (lowerName.includes(key)) {
+      return value;
+    }
+  }
+  
+  // Default: use first meaningful word or just use the list name
+  const words = listName.split(/\s+/).filter(w => w.length > 3);
+  return words[0] || listName;
+}
+
+// Mock recipe data for testing without API
 function getMockRecipes(query: string): Recipe[] {
   const lowerQuery = query.toLowerCase();
   
@@ -229,42 +337,81 @@ function getMockRecipes(query: string): Recipe[] {
     {
       id: 1,
       title: 'Spaghetti Carbonara',
-      image: 'https://spoonacular.com/recipeImages/715538-312x231.jpg',
+      image: 'https://www.themealdb.com/images/media/meals/llcbn01574260722.jpg',
       readyInMinutes: 30,
       servings: 4,
-      sourceUrl: 'https://www.example.com',
+      ingredients: [
+        '200g Spaghetti',
+        '100g Pancetta',
+        '2 Eggs',
+        '50g Parmesan',
+        'Black Pepper',
+      ],
+      instructions: 'Cook pasta. Fry pancetta. Mix eggs and cheese. Combine all.',
+      sourceUrl: 'https://www.themealdb.com',
     },
     {
       id: 2,
       title: 'Chicken Adobo',
-      image: 'https://spoonacular.com/recipeImages/715497-312x231.jpg',
+      image: 'https://www.themealdb.com/images/media/meals/uwxqwy1483389553.jpg',
       readyInMinutes: 45,
       servings: 6,
-      sourceUrl: 'https://www.example.com',
+      ingredients: [
+        '1kg Chicken',
+        '1/2 cup Soy Sauce',
+        '1/2 cup Vinegar',
+        '6 cloves Garlic',
+        'Bay Leaves',
+      ],
+      instructions: 'Marinate chicken. Simmer in sauce until tender.',
+      sourceUrl: 'https://www.themealdb.com',
     },
     {
       id: 3,
       title: 'Vegetable Stir Fry',
-      image: 'https://spoonacular.com/recipeImages/716429-312x231.jpg',
+      image: 'https://www.themealdb.com/images/media/meals/wvpsxx1468256321.jpg',
       readyInMinutes: 20,
       servings: 4,
-      sourceUrl: 'https://www.example.com',
+      ingredients: [
+        '2 cups Mixed Vegetables',
+        '2 tbsp Soy Sauce',
+        '1 tbsp Oil',
+        '2 cloves Garlic',
+        '1 tsp Ginger',
+      ],
+      instructions: 'Heat oil. Stir fry vegetables. Add sauce.',
+      sourceUrl: 'https://www.themealdb.com',
     },
     {
       id: 4,
       title: 'Beef Tacos',
-      image: 'https://spoonacular.com/recipeImages/663050-312x231.jpg',
+      image: 'https://www.themealdb.com/images/media/meals/uvuyxu1503067369.jpg',
       readyInMinutes: 25,
       servings: 4,
-      sourceUrl: 'https://www.example.com',
+      ingredients: [
+        '500g Ground Beef',
+        '8 Taco Shells',
+        '1 cup Lettuce',
+        '1 cup Cheese',
+        'Salsa',
+      ],
+      instructions: 'Cook beef. Fill taco shells. Add toppings.',
+      sourceUrl: 'https://www.themealdb.com',
     },
     {
       id: 5,
       title: 'Caesar Salad',
-      image: 'https://spoonacular.com/recipeImages/546423-312x231.jpg',
+      image: 'https://www.themealdb.com/images/media/meals/wyxwsp1486979827.jpg',
       readyInMinutes: 15,
       servings: 2,
-      sourceUrl: 'https://www.example.com',
+      ingredients: [
+        '1 Romaine Lettuce',
+        '1/2 cup Caesar Dressing',
+        '1/2 cup Croutons',
+        '1/4 cup Parmesan',
+      ],
+      instructions: 'Chop lettuce. Add dressing and toppings.',
+      sourceUrl: 'https://www.themealdb.com',
     },
   ];
 
@@ -275,39 +422,17 @@ function getMockRecipes(query: string): Recipe[] {
     return [
       {
         id: 6,
-        title: 'Pancakes with Maple Syrup',
-        image: 'https://spoonacular.com/recipeImages/654812-312x231.jpg',
+        title: 'Pancakes',
+        image: 'https://www.themealdb.com/images/media/meals/rwuyqx1511383174.jpg',
         readyInMinutes: 20,
         servings: 4,
-      },
-      {
-        id: 7,
-        title: 'Scrambled Eggs and Toast',
-        image: 'https://spoonacular.com/recipeImages/648320-312x231.jpg',
-        readyInMinutes: 10,
-        servings: 2,
-      },
-    ];
-  } else if (lowerQuery.includes('party') || lowerQuery.includes('snack')) {
-    return [
-      {
-        id: 8,
-        title: 'Chicken Wings',
-        image: 'https://spoonacular.com/recipeImages/638247-312x231.jpg',
-        readyInMinutes: 40,
-        servings: 8,
-      },
-      {
-        id: 9,
-        title: 'Nachos Supreme',
-        image: 'https://spoonacular.com/recipeImages/547775-312x231.jpg',
-        readyInMinutes: 15,
-        servings: 6,
+        ingredients: ['2 cups Flour', '2 Eggs', '1 cup Milk', 'Butter'],
+        instructions: 'Mix ingredients. Cook on griddle.',
+        sourceUrl: 'https://www.themealdb.com',
       },
     ];
   }
 
-  // Default: return all recipes
   return allRecipes;
 }
 
@@ -315,7 +440,7 @@ function getMockRecipeDetails(id: number): Recipe {
   return {
     id,
     title: 'Sample Recipe',
-    image: 'https://spoonacular.com/recipeImages/715538-312x231.jpg',
+    image: 'https://www.themealdb.com/images/media/meals/llcbn01574260722.jpg',
     readyInMinutes: 30,
     servings: 4,
     ingredients: [
@@ -325,7 +450,7 @@ function getMockRecipeDetails(id: number): Recipe {
       '1 tsp salt',
     ],
     instructions: '1. Mix ingredients. 2. Cook. 3. Serve hot.',
-    sourceUrl: 'https://www.example.com',
+    sourceUrl: 'https://www.themealdb.com',
   };
 }
 
