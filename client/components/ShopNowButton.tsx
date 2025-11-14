@@ -200,10 +200,11 @@ const handleShopNow = () => {
     );
   };
 
+  // ⭐ NEW: Reset all products to unchecked when restoring
   const handleRestoreList = () => {
     Alert.alert(
       "Restore List",
-      "Move this list back to active shopping lists?",
+      "Move this list back to active shopping lists? All items will be marked as unpurchased.",
       [
         {
           text: "Cancel",
@@ -213,6 +214,23 @@ const handleShopNow = () => {
           text: "Restore",
           style: "default",
           onPress: () => {
+            console.log("♻️ Restoring list:", listId);
+            console.log("📦 Resetting all products to unchecked...");
+
+            // ⭐ Reset all products to unchecked (isPurchased = false)
+            if (store && productIds && productIds.length > 0) {
+              productIds.forEach(productId => {
+                try {
+                  store.setCell("products", productId, "isPurchased", false);
+                  console.log(`✅ Reset product ${productId} to unchecked`);
+                } catch (error) {
+                  console.error(`❌ Error resetting product ${productId}:`, error);
+                }
+              });
+              console.log(`✅ Reset ${productIds.length} products to unchecked`);
+            }
+
+            // Update status in both stores
             updateStatusInListStore('regular');
             updateStatusInListsStore(listId, 'regular');
 
@@ -220,7 +238,7 @@ const handleShopNow = () => {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
 
-            console.log("♻️ List restored:", listId);
+            console.log("✅ List restored successfully");
           },
         },
       ]

@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { Product, Price, ShoppingList } from '../models';
 import syncRoutes from './sync';
 import recommendationsRoutes from './recommendations';
+import recipeRoutes from './recipes';
 import mongoose from 'mongoose';
 
 const router = Router();
@@ -23,6 +24,9 @@ const checkDB = (req: any, res: any, next: any) => {
 
 // ===== Routes that DON'T need DB check =====
 router.use(syncRoutes);
+
+// ✅ FIXED: Remove /api prefix (it's already added in index.ts)
+router.use('/recipes', recipeRoutes);  // Changed from '/api/recipes'
 
 // ===== Routes that NEED DB check =====
 // Products Routes

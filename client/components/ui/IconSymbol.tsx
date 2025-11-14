@@ -97,6 +97,10 @@ const MAPPING = {
   // Food Categories
   leaf: "eco",
   "leaf.fill": "eco",
+
+    // Books & Recipes
+  book: "menu-book",
+  "book.fill": "menu-book",
   
   // Status & Info
   "info.circle": "info",
