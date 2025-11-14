@@ -190,57 +190,58 @@ export const useShoppingListValue = <ValueId extends ShoppingListValueId>(
 export const useUpdateListStatus = (listId: string) => {
   const storeId = useStoreId(listId);
   const store = useStore(storeId);
-  
+
   return useCallback((newStatus: 'regular' | 'ongoing' | 'completed') => {
     if (!store) {
       console.warn('⚠️ Store not initialized yet for:', listId);
       return;
     }
-    
+
     console.log('📝 Updating status in ShoppingListStore:', listId, 'to:', newStatus);
-    
+
     // CRITICAL: Check if we have products BEFORE updating status
     const currentProducts = store.getTable('products');
     const productCount = Object.keys(currentProducts).length;
-    
+
     console.log('📦 Current products count BEFORE status change:', productCount);
-    
+
     if (productCount === 0) {
       console.error('🚨 WARNING: No products found before status update!');
       console.error('🚨 This might indicate products were already lost');
     }
-    
+
     try {
-      // Update status without triggering unnecessary syncs
+      // ✅ Update status and timestamp in a single transaction
       store.transaction(() => {
         store.setValue('status', newStatus);
+        // ✅ Update timestamp when status actually changes
         store.setValue('updatedAt', new Date().toISOString());
-        
+
         if (newStatus === 'completed') {
           const currentCompletedAt = store.getValue('completedAt');
           if (!currentCompletedAt) {
             store.setValue('completedAt', new Date().toISOString());
           }
         }
-        
+
         if (newStatus === 'regular') {
           store.setValue('completedAt', '');
         }
       });
-      
+
       // Verify products are still there AFTER update
       const productsAfter = store.getTable('products');
       const productCountAfter = Object.keys(productsAfter).length;
-      
+
       console.log('📦 Current products count AFTER status change:', productCountAfter);
-      
+
       if (productCount !== productCountAfter) {
         console.error('🚨 PRODUCTS LOST DURING STATUS UPDATE!');
         console.error('Before:', productCount, 'After:', productCountAfter);
       } else {
         console.log('✅ Products preserved during status update');
       }
-      
+
       console.log('✅ Status updated successfully to:', newStatus);
     } catch (error) {
       console.error('❌ Error updating status:', error);
@@ -324,6 +325,8 @@ export default function ShoppingListStore({
   const [valuesCopy, setValuesCopy] = useValuesCopy(listId);
   const initialized = useRef(false);
   const hasReceivedSyncData = useRef(false);
+  const isSyncing = useRef(false); // ✅ NEW: Prevent recursive sync loops
+  const lastSyncedData = useRef<string>(''); // ✅ NEW: Track last synced data
 
   const store = useCreateMergeableStore(() =>
     createMergeableStore().setSchema(TABLES_SCHEMA, VALUES_SCHEMA)
@@ -427,35 +430,42 @@ export default function ShoppingListStore({
     listIdRef.current = listId;
   }, [listId]);
 
-  // ✅ COMPLETELY FIXED: The sync logic
+  // ✅ FIXED: Prevent sync loops by checking if data actually changed
   const syncStoreData = useCallback(() => {
     if (!store) return;
-    
+
+    // ✅ Prevent recursive sync calls
+    if (isSyncing.current) {
+      console.log('⚠️ Already syncing, skipping to prevent loop');
+      return;
+    }
+
     const currentName = store.getValue('name');
-    
-    // ✅ FIXED: Only skip if we have no data at all (empty placeholder)
-    // Once WebSocket provides ANY data, allow syncing
+
+    // ✅ Only skip if we have no data at all (empty placeholder)
     const hasNoData = !currentName && !hasReceivedSyncData.current && !initialized.current;
-    
+
     if (hasNoData) {
       console.log('⏳ No data yet, waiting for WebSocket sync...');
       return;
     }
-    
+
     // ✅ Mark as initialized once we have ANY real data
     if (!initialized.current && currentName) {
       console.log('✅ Received data from WebSocket, initializing');
       initialized.current = true;
       hasReceivedSyncData.current = true;
     }
-    
+
     // ✅ Now sync is allowed!
     if (!initialized.current) {
       console.log('⏳ Not yet initialized, skipping sync');
       return;
     }
-    
+
     try {
+      isSyncing.current = true;
+
       const storeData = {
         tables: {
           products: store.getTable('products'),
@@ -464,22 +474,40 @@ export default function ShoppingListStore({
         values: {
           ...store.getValues(),
           listId: listIdRef.current,
-          updatedAt: new Date().toISOString(),
+          // ✅ CRITICAL FIX: Don't create new timestamp - use existing one!
+          // This prevents the infinite loop caused by always-changing data
         },
       };
-      
+
+      const serializedData = JSON.stringify(storeData);
+
+      // ✅ CRITICAL: Only sync if data actually changed!
+      if (serializedData === lastSyncedData.current) {
+        console.log('⏭️ Data unchanged, skipping sync to prevent loop');
+        isSyncing.current = false;
+        return;
+      }
+
       const budget = store.getValue('budget');
       const name = store.getValue('name');
       const status = store.getValue('status');
-      
-      console.log('🔄 Syncing data:', { budget, name, status });
-      
+
+      console.log('🔄 Syncing data (data changed):', { budget, name, status });
+
+      // Update last synced data
+      lastSyncedData.current = serializedData;
+
       // Use debounced version to avoid too frequent updates
-      const serializedData = JSON.stringify(storeData);
       debouncedSetValuesCopyRef.current(serializedData, setValuesCopyRef.current);
-      
+
+      // Reset syncing flag after a short delay
+      setTimeout(() => {
+        isSyncing.current = false;
+      }, 100);
+
     } catch (error) {
       console.error('❌ SYNC ERROR:', error);
+      isSyncing.current = false;
     }
   }, [store]);
 
