@@ -20,7 +20,7 @@ import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotific
 import { useListNotifications } from "@/utils/notifyCollaborators";
 import { Colors } from "@/constants/Colors";
 import { useRecipeSuggestions } from "@/hooks/useRecipeSuggestions";
-import { RecipeSuggestionsModal } from "@/components/RecipeSuggestionsModal";
+import { RecipeSection } from "@/components/RecipeSection";
 
 interface ProductSection {
   title: string;
@@ -59,7 +59,6 @@ export default function ListScreen() {
   const store = useShoppingListStore(listId);
 
   // ⭐ NEW: Recipe suggestions state
-  const [showRecipeModal, setShowRecipeModal] = useState(false);
   const { recipes, loading: recipesLoading, fetchSuggestions } = useRecipeSuggestions();
   const [recipeSuggestionsPrompted, setRecipeSuggestionsPrompted] = useShoppingListValue(
     listId, 
@@ -131,6 +130,11 @@ export default function ListScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
+    // Enable recipe suggestions if not already enabled
+    if (!recipeSuggestionsEnabled) {
+      setRecipeSuggestionsEnabled(true);
+    }
+
     // Get product names for better suggestions
     const productNames = productIds.map(id => {
       const product = store?.getRow("products", id);
@@ -138,26 +142,28 @@ export default function ListScreen() {
     }).filter(Boolean);
 
     console.log('🍳 Fetching recipes for:', displayName);
+    console.log('📦 With products:', productNames);
+    
     const results = await fetchSuggestions(displayName, productNames);
     
-    if (results.length > 0) {
-      setShowRecipeModal(true);
-    } else {
+    console.log('✅ Received recipes:', results.length);
+    
+    if (results.length === 0) {
       Alert.alert(
-        'No Recipes Found', 
+        'No Recipes Found',
         `Sorry, we couldn't find any recipes for "${displayName}".`,
         [{ text: 'OK' }]
       );
     }
   };
 
-  // ⭐ NEW: Auto-prompt for recipe suggestions on first view
+  // ⭐ NEW: Auto-fetch recipes when list is viewed
   useEffect(() => {
-    // Only prompt if:
+    // Only auto-fetch if:
     // 1. Haven't been prompted before
     // 2. List has a name
     // 3. List is in regular status (not shopping or completed)
-    // 4. Has some products (optional, but makes sense)
+    // 4. Has some products
     if (
       !recipeSuggestionsPrompted && 
       displayName && 
@@ -204,6 +210,13 @@ export default function ListScreen() {
     status,
     recipeSuggestionsPrompted,
     recipeSuggestionsEnabled,
+    recipesCount: recipes.length,
+    recipesLoading,
+  });
+
+  console.log("🍳 Recipes State:", {
+    hasRecipes: recipes.length > 0,
+    recipesList: recipes.map(r => r.title),
   });
 
   // 📍 Auto-add pending product when page loads
@@ -240,34 +253,33 @@ export default function ListScreen() {
 
           if (productAddedId) {
             console.log('✅ Product auto-added successfully:', productAddedId);
-            await listNotifications.notifyItemAdded(addProductName);
-            
             Alert.alert(
               'Product Added',
               `${addProductName} has been added to your list!`,
               [{ text: 'OK' }]
             );
-          } else {
-            console.log('⚠️ Product was duplicate or failed to add');
           }
         } catch (error) {
-          console.error('❌ Error auto-adding product:', error);
+          console.error('❌ Failed to auto-add product:', error);
           Alert.alert(
             'Error',
-            'Failed to add product. Please try adding it manually.',
+            'Failed to add product to the list.',
             [{ text: 'OK' }]
           );
         }
-      }, 800);
+      }, 500);
       
       return () => clearTimeout(timer);
     }
-  }, [addProduct, addProductId, addProductName, addProductPrice, addProductStore, listId, listNotifications]);
+  }, [addProduct, addProductId, addProductName, addProductPrice, addProductStore]);
 
-  const newProductHref = {
-    pathname: "/list/[listId]/product/new",
-    params: { listId },
-  } as const;
+  // ✅ FIX: Use correct route path
+  const navigateToNewProduct = () => {
+    router.push({
+      pathname: "/list/[listId]/product/new",
+      params: { listId },
+    });
+  };
 
   // ✅ SHOW LOADING STATE while data is syncing
   if (isLoadingData) {
@@ -289,7 +301,7 @@ export default function ListScreen() {
   }
 
   const ListHeaderComponent = () => (
-    <View >
+    <View>
       {displayDescription ? (
         <ThemedText
           style={{
@@ -305,6 +317,16 @@ export default function ListScreen() {
 
       {/* Budget Summary */}
       <BudgetSummary listId={listId} budget={budget} />
+
+      {/* ⭐ NEW: Recipe Suggestions Section - Show if enabled OR if recipes exist */}
+      {(recipeSuggestionsEnabled || recipes.length > 0) && (
+        <RecipeSection 
+          recipes={recipes}
+          loading={recipesLoading}
+          listId={listId}
+          onRefresh={handleFetchRecipes}
+        />
+      )}
 
       {/* Shop Now Button with status */}
       <ShopNowButton listId={listId} currentStatus={status} />
@@ -346,7 +368,7 @@ export default function ListScreen() {
                 alignItems: "center",
               }}
             >
-              {/* ⭐ NEW: Recipe suggestions button */}
+              {/* ⭐ Recipe book icon - always visible, click to fetch/refresh */}
               <Pressable
                 onPress={handleFetchRecipes}
                 style={{ padding: 8 }}
@@ -393,7 +415,7 @@ export default function ListScreen() {
                   if (process.env.EXPO_OS === "ios") {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   }
-                  router.push(newProductHref);
+                  navigateToNewProduct();
                 }}
                 style={{ paddingLeft: 8, opacity: isHistory ? 0.3 : 1 }}
                 disabled={isHistory}
@@ -440,7 +462,7 @@ export default function ListScreen() {
               <Button
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  router.push(newProductHref);
+                  navigateToNewProduct();
                 }}
                 variant="ghost"
               >
@@ -454,39 +476,6 @@ export default function ListScreen() {
             )}
           </BodyScrollView>
         )}
-      />
-
-      {/* ⭐ NEW: Recipe Suggestions Modal */}
-      <RecipeSuggestionsModal
-        visible={showRecipeModal}
-        recipes={recipes}
-        loading={recipesLoading}
-        listName={displayName}
-        onClose={() => setShowRecipeModal(false)}
-        onSelectRecipe={(recipe) => {
-          console.log('Selected recipe:', recipe);
-          // You can navigate to a recipe detail screen here if needed
-          // For now, just close the modal
-          setShowRecipeModal(false);
-          
-          // Optionally open the recipe URL in browser
-          if (recipe.sourceUrl) {
-            Alert.alert(
-              recipe.title,
-              'Would you like to view this recipe in your browser?',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { 
-                  text: 'Open', 
-                  onPress: () => {
-                    const { Linking } = require('react-native');
-                    Linking.openURL(recipe.sourceUrl!);
-                  }
-                },
-              ]
-            );
-          }
-        }}
       />
     </>
   );
