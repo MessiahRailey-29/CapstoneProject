@@ -22,9 +22,11 @@ import { Colors } from "@/constants/Colors"
 export default function ShoppingListProductItem({
   listId,
   productId,
+  status = 'regular',
 }: {
   listId: string;
   productId: string;
+  status?: 'regular' | 'ongoing' | 'completed';
 }) {
   const router = useRouter();
   const [name] = useShoppingListProductCell(listId, productId, "name");
@@ -70,7 +72,13 @@ export default function ShoppingListProductItem({
   };
 
   // ✅ Enhanced toggle purchased with notification
+  // ⭐ NEW: Only allow toggling when in "Shopping" mode (ongoing status)
   const handleTogglePurchased = async () => {
+    // Prevent toggle if not in shopping mode
+    if (status !== 'ongoing') {
+      return;
+    }
+
     if (process.env.EXPO_OS === "ios") {
       Haptics.notificationAsync(
         Haptics.NotificationFeedbackType.Success
@@ -89,6 +97,9 @@ export default function ShoppingListProductItem({
   };
 
   const totalPrice = selectedPrice * quantity;
+
+  // ⭐ NEW: Check button is only enabled in "Shopping" mode
+  const isCheckButtonEnabled = status === 'ongoing';
 
   const RightAction = (
     prog: SharedValue<number>,
@@ -122,7 +133,11 @@ export default function ShoppingListProductItem({
     >
       <View style={styles.productContainer}>
         <View style={styles.checkboxContainer}>
-          <Pressable onPress={handleTogglePurchased}>
+          <Pressable 
+            onPress={handleTogglePurchased}
+            disabled={!isCheckButtonEnabled}
+            style={{ opacity: isCheckButtonEnabled ? 1 : 0.3 }}
+          >
             <IconSymbol
               name={isPurchased ? "checkmark.circle.fill" : "circle"}
               size={28}

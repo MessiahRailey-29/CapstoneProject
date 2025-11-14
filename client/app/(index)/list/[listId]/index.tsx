@@ -1,8 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, View, Alert, ActivityIndicator, useColorScheme } from "react-native";
-import Animated from "react-native-reanimated";
+import { Pressable, View, Alert, ActivityIndicator, useColorScheme, StyleSheet, SectionList } from "react-native";
 import ShoppingListProductItem from "@/components/ShoppingListProductItem";
 import BudgetSummary from "@/components/BudgetSummary";
 import { ThemedText } from "@/components/ThemedText";
@@ -12,6 +11,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import {
   useShoppingListProductIds,
   useShoppingListValue,
+  useShoppingListStore,
 } from "@/stores/ShoppingListStore";
 import { useShoppingListData } from "@/stores/ShoppingListsStore";
 import ShopNowButton from "@/components/ShopNowButton";
@@ -19,6 +19,13 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotifications";
 import { useListNotifications } from "@/utils/notifyCollaborators";
 import { Colors } from "@/constants/Colors";
+import { useRecipeSuggestions } from "@/hooks/useRecipeSuggestions";
+import { RecipeSuggestionsModal } from "@/components/RecipeSuggestionsModal";
+
+interface ProductSection {
+  title: string;
+  data: string[];
+}
 
 export default function ListScreen() {
   const router = useRouter();
@@ -26,8 +33,9 @@ export default function ListScreen() {
   const listId = params.listId as string;
 
   
-            const theme = useColorScheme();
-            const colors = Colors[theme ?? 'light'];
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
   
 
   // 📍 NEW: Get pending product params from URL
@@ -46,8 +54,21 @@ export default function ListScreen() {
   const [name] = useShoppingListValue(listId, "name");
   const [emoji] = useShoppingListValue(listId, "emoji");
   const [description] = useShoppingListValue(listId, "description");
-  const [hydratedBudget] = useShoppingListValue(listId, "budget");  // ✅ Get hydrated budget
+  const [hydratedBudget] = useShoppingListValue(listId, "budget");
   const productIds = useShoppingListProductIds(listId);
+  const store = useShoppingListStore(listId);
+
+  // ⭐ NEW: Recipe suggestions state
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const { recipes, loading: recipesLoading, fetchSuggestions } = useRecipeSuggestions();
+  const [recipeSuggestionsPrompted, setRecipeSuggestionsPrompted] = useShoppingListValue(
+    listId, 
+    "recipeSuggestionsPrompted"
+  );
+  const [recipeSuggestionsEnabled, setRecipeSuggestionsEnabled] = useShoppingListValue(
+    listId, 
+    "recipeSuggestionsEnabled"
+  );
 
   // ✅ CRITICAL FIX: Check if data is still loading
   // If BOTH listData and hydrated values are empty, we're still loading
@@ -68,27 +89,125 @@ export default function ListScreen() {
   const displayName = name || listData.name || "";
   const displayEmoji = emoji || listData.emoji || "❓";
   const displayDescription = description || listData.description || "";
-  // ✅ FIX: Use hydrated budget if available, otherwise fall back to listData
   const budget = hydratedBudget ?? listData.budget ?? 0;
   const status = listData.status || 'regular';
   const isHistory = status === 'completed';
 
+  // ⭐ NEW: Group products by category
+  const categorizedProducts = useMemo(() => {
+    if (!store || !productIds || productIds.length === 0) {
+      return [];
+    }
+
+    const categoryMap = new Map<string, string[]>();
+
+    productIds.forEach(productId => {
+      const product = store.getRow("products", productId);
+      const category = (product?.category as string) || 'Uncategorized';
+      
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, []);
+      }
+      categoryMap.get(category)!.push(productId);
+    });
+
+    const sections: ProductSection[] = Array.from(categoryMap.entries())
+      .sort(([catA], [catB]) => {
+        if (catA === 'Uncategorized') return 1;
+        if (catB === 'Uncategorized') return -1;
+        return catA.localeCompare(catB);
+      })
+      .map(([category, productIds]) => ({
+        title: category,
+        data: productIds,
+      }));
+
+    return sections;
+  }, [store, productIds]);
+
+  // ⭐ NEW: Handle fetching recipe suggestions
+  const handleFetchRecipes = async () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
+    // Get product names for better suggestions
+    const productNames = productIds.map(id => {
+      const product = store?.getRow("products", id);
+      return product?.name as string;
+    }).filter(Boolean);
+
+    console.log('🍳 Fetching recipes for:', displayName);
+    const results = await fetchSuggestions(displayName, productNames);
+    
+    if (results.length > 0) {
+      setShowRecipeModal(true);
+    } else {
+      Alert.alert(
+        'No Recipes Found', 
+        `Sorry, we couldn't find any recipes for "${displayName}".`,
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  // ⭐ NEW: Auto-prompt for recipe suggestions on first view
+  useEffect(() => {
+    // Only prompt if:
+    // 1. Haven't been prompted before
+    // 2. List has a name
+    // 3. List is in regular status (not shopping or completed)
+    // 4. Has some products (optional, but makes sense)
+    if (
+      !recipeSuggestionsPrompted && 
+      displayName && 
+      status === 'regular' &&
+      productIds.length > 0
+    ) {
+      // Small delay to let the screen load
+      const timer = setTimeout(() => {
+        Alert.alert(
+          '🍳 Recipe Suggestions',
+          `Would you like recipe suggestions for "${displayName}"?`,
+          [
+            {
+              text: 'No Thanks',
+              style: 'cancel',
+              onPress: () => {
+                console.log('User declined recipe suggestions');
+                setRecipeSuggestionsPrompted(true);
+                setRecipeSuggestionsEnabled(false);
+              },
+            },
+            {
+              text: 'Yes, Show Me!',
+              onPress: async () => {
+                console.log('User accepted recipe suggestions');
+                setRecipeSuggestionsPrompted(true);
+                setRecipeSuggestionsEnabled(true);
+                await handleFetchRecipes();
+              },
+            },
+          ]
+        );
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [recipeSuggestionsPrompted, displayName, status, productIds.length]);
+
   console.log("List Screen Debug:", {
     listId,
     budget,
-    hydratedBudget,
-    listDataBudget: listData.budget,
-    budgetType: typeof budget,
-    name,
+    name: displayName,
     productCount: productIds.length,
     status,
-    listData,
-    collaborators: (listData as any)?.collaborators,
+    recipeSuggestionsPrompted,
+    recipeSuggestionsEnabled,
   });
 
-  // 📍 NEW: Auto-add pending product when page loads
+  // 📍 Auto-add pending product when page loads
   useEffect(() => {
-    // Check all conditions
     if (
       !hasAddedProduct.current &&
       addProduct &&
@@ -145,9 +264,6 @@ export default function ListScreen() {
     }
   }, [addProduct, addProductId, addProductName, addProductPrice, addProductStore, listId, listNotifications]);
 
-  console.log("🔍 Current list status:", status);
-  console.log("🔍 List data:", listData);
-
   const newProductHref = {
     pathname: "/list/[listId]/product/new",
     params: { listId },
@@ -190,9 +306,31 @@ export default function ListScreen() {
       {/* Budget Summary */}
       <BudgetSummary listId={listId} budget={budget} />
 
-      {/* Shop Now Button with status - this will show map when ongoing */}
+      {/* Shop Now Button with status */}
       <ShopNowButton listId={listId} currentStatus={status} />
     </View>
+  );
+
+  // Render category header
+  const renderSectionHeader = ({ section }: { section: ProductSection }) => (
+    <View style={styles.categoryHeader}>
+      <View style={styles.categoryHeaderContent}>
+        <ThemedText style={styles.categoryTitle}>{section.title}</ThemedText>
+        <View style={styles.categoryBadge}>
+          <ThemedText style={styles.categoryCount}>{section.data.length}</ThemedText>
+        </View>
+      </View>
+      <View style={styles.categoryDivider} />
+    </View>
+  );
+
+  // Render product item
+  const renderItem = ({ item: productId }: { item: string }) => (
+    <ShoppingListProductItem 
+      listId={listId} 
+      productId={productId}
+      status={status}
+    />
   );
 
   return (
@@ -208,6 +346,14 @@ export default function ListScreen() {
                 alignItems: "center",
               }}
             >
+              {/* ⭐ NEW: Recipe suggestions button */}
+              <Pressable
+                onPress={handleFetchRecipes}
+                style={{ padding: 8 }}
+              >
+                <IconSymbol name="book.fill" size={24} color="#007AFF" />
+              </Pressable>
+
               <Pressable
                 onPress={() => {
                   if (process.env.EXPO_OS === "ios") {
@@ -269,14 +415,11 @@ export default function ListScreen() {
           ),
         }}
       />
-      <Animated.FlatList
-        data={productIds}
-        renderItem={({ item: productId }) => (
-          <ShoppingListProductItem 
-            listId={listId} 
-            productId={productId}
-          />
-        )}
+      <SectionList
+        sections={categorizedProducts}
+        renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
+        keyExtractor={(item) => item}
         contentContainerStyle={{
           paddingTop: 12,
           paddingBottom: 100,
@@ -284,6 +427,7 @@ export default function ListScreen() {
         }}
         contentInsetAdjustmentBehavior="automatic"
         ListHeaderComponent={ListHeaderComponent}
+        stickySectionHeadersEnabled={true}
         ListEmptyComponent={() => (
           <BodyScrollView
             contentContainerStyle={{
@@ -311,6 +455,81 @@ export default function ListScreen() {
           </BodyScrollView>
         )}
       />
+
+      {/* ⭐ NEW: Recipe Suggestions Modal */}
+      <RecipeSuggestionsModal
+        visible={showRecipeModal}
+        recipes={recipes}
+        loading={recipesLoading}
+        listName={displayName}
+        onClose={() => setShowRecipeModal(false)}
+        onSelectRecipe={(recipe) => {
+          console.log('Selected recipe:', recipe);
+          // You can navigate to a recipe detail screen here if needed
+          // For now, just close the modal
+          setShowRecipeModal(false);
+          
+          // Optionally open the recipe URL in browser
+          if (recipe.sourceUrl) {
+            Alert.alert(
+              recipe.title,
+              'Would you like to view this recipe in your browser?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { 
+                  text: 'Open', 
+                  onPress: () => {
+                    const { Linking } = require('react-native');
+                    Linking.openURL(recipe.sourceUrl!);
+                  }
+                },
+              ]
+            );
+          }
+        }}
+      />
     </>
   );
+}
+
+function createStyles(colors: any) {
+  return StyleSheet.create({
+    categoryHeader: {
+      backgroundColor: colors.mainBackground,
+      paddingTop: 16,
+      paddingBottom: 8,
+      paddingHorizontal: 16,
+    },
+    categoryHeaderContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    categoryTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      textTransform: 'capitalize',
+    },
+    categoryBadge: {
+      backgroundColor: '#007AFF',
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      minWidth: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    categoryCount: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: '#fff',
+    },
+    categoryDivider: {
+      height: 1,
+      backgroundColor: colors.borderColor,
+      opacity: 0.3,
+    },
+  });
 }

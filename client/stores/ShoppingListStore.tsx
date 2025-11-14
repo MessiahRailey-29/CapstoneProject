@@ -17,11 +17,14 @@ const VALUES_SCHEMA = {
   emoji: { type: "string" },
   color: { type: "string" },
   shoppingDate: { type: "string" },
-  budget: { type: "number" },  // ✅ REMOVED default: 0 - let sync provide the value
+  budget: { type: "number" },
   status: { type: "string", default: "regular" },
   completedAt: { type: "string", default: "" },
   createdAt: { type: "string" },
   updatedAt: { type: "string" },
+  // ⭐ NEW: Track recipe suggestion state
+  recipeSuggestionsPrompted: { type: "boolean", default: false },
+  recipeSuggestionsEnabled: { type: "boolean", default: false },
 } as const;
 
 const TABLES_SCHEMA = {

@@ -18,6 +18,8 @@ import { recommendationsApi } from '@/services/recommendationsApi';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useNickname } from '@/hooks/useNickname';
 import { ShoppingListExpenses } from '@/components/Dashboard/ShoppingListExpenses';
+import { WeeklyShoppingListSummary } from '@/components/Dashboard/WeeklyShoppingListSummary';
+import { WeeklyPurchaseSummary } from '@/components/Dashboard/WeeklyPurchaseSummary';
 import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,6 +30,8 @@ const MemoizedMonthlyTrend = memo(MonthlyTrend);
 const MemoizedStorageOverview = memo(StorageOverview);
 const MemoizedRecommendations = memo(RecommendationsByStrategy);
 const MemoizedShoppingListExpenses = memo(ShoppingListExpenses);
+const MemoizedWeeklyShoppingListSummary = memo(WeeklyShoppingListSummary);
+const MemoizedWeeklyPurchaseSummary = memo(WeeklyPurchaseSummary);
 
 export default function Homepage() {
   const router = useRouter();
@@ -127,6 +131,16 @@ export default function Homepage() {
             Hey there, {nickname}!
           </ThemedText>
           <ThemedText style={styles.welcomeSubtext}>Here's your grocery spending overview</ThemedText>
+        </View>
+
+        {/* NEW: Weekly Shopping List Summary */}
+        <View style={styles.section}>
+          <MemoizedWeeklyShoppingListSummary />
+        </View>
+
+        {/* NEW: Weekly Purchase Summary */}
+        <View style={styles.section}>
+          <MemoizedWeeklyPurchaseSummary />
         </View>
 
         {/* 1. Monthly Trend Chart */}
