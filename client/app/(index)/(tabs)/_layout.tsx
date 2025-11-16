@@ -8,6 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const TABS = ['index', 'shopping-lists', 'inventory', 'product-browser', 'profile'];
 
+export const FLOATING_TAB_BAR_HEIGHT = 70;
+
 export default function TabsLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];

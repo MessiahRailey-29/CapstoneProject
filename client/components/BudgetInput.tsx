@@ -164,7 +164,7 @@ function createStyles(colors: typeof Colors.light) {
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "white",
+    backgroundColor: colors.mainBackground,
   },
   suggestionButtonText: {
     fontSize: 20,

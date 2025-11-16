@@ -13,6 +13,7 @@ import BudgetInput from "@/components/BudgetInput";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useUser } from "@clerk/clerk-expo";
 import { Colors } from "@/constants/Colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function CreateListScreen() {
   const router = useRouter();
@@ -27,10 +28,12 @@ export default function CreateListScreen() {
   const [listName, setListName] = useState("");
   const [listDescription, setListDescription] = useState("");
 
+  const  insets =  useSafeAreaInsets();
+
     //color scheme and styles
     const scheme = useColorScheme();
     const colors = Colors[scheme ?? 'light'];
-    const styles = createStyles(colors);
+    const styles = createStyles(colors, insets);
   
   
   const { 
@@ -237,15 +240,16 @@ export default function CreateListScreen() {
         <View style={styles.inputContainer}>
           <TextInput
             placeholder="Grocery Essentials"
+            placeholderTextColor={colors.ghost}
             value={listName}
             onChangeText={setListName}
             onSubmitEditing={handleCreateList}
             returnKeyType="done"
             variant="ghost"
-            size="lg"
+            size='lg'
             autoFocus
             inputStyle={styles.titleInput}
-            containerStyle={styles.titleInputContainer}
+            containerStyle={(styles.titleInputContainer,{})}
           />
           <Link
             href={{ pathname: "/emoji-picker" }}
@@ -264,7 +268,7 @@ export default function CreateListScreen() {
                 style={{
                   width: 24,
                   height: 24,
-                  borderRadius: 100,
+                  borderRadius: 999,
                   backgroundColor: selectedColor,
                 }}
               />
@@ -274,6 +278,12 @@ export default function CreateListScreen() {
         
         <TextInput
           placeholder="Description (optional)"
+          placeholderTextColor={colors.ghost}
+          containerStyle={{
+            borderWidth: 1,
+            borderRadius: 12,
+            justifyContent: 'flex-start'
+          }}
           value={listDescription}
           onChangeText={setListDescription}
           onSubmitEditing={handleCreateList}
@@ -308,19 +318,12 @@ export default function CreateListScreen() {
         >
           {pendingProductName ? 'Create list and add product' : 'Create list'}
         </Button>
-        <Button
-          onPress={handleCreateTestLists}
-          variant="ghost"
-          textStyle={styles.createButtonText}
-        >
-          Create 10 test lists
-        </Button>
       </BodyScrollView>
     </>
   );
 }
 
-function createStyles(colors: typeof Colors.light) {
+function createStyles(colors: typeof Colors.light, insets) {
   return StyleSheet.create({
   scrollViewContent: {
     padding: 16,
@@ -344,20 +347,23 @@ function createStyles(colors: typeof Colors.light) {
     color: '#007AFF',
   },
   inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems:  'baseline',
     gap: 8,
+    maxWidth: 265,
   },
   titleInput: {
+    height: 'auto',
+    width:265,
     fontWeight: "600",
     fontSize: 28,
-    padding: 0,
+    paddingLeft: 16,
     color: colors.text,
   },
   titleInputContainer: {
     flexGrow: 1,
     flexShrink: 1,
-    maxWidth: "auto",
+    maxWidth: 'auto',
     marginBottom: 0,
   },
   emojiButton: {
@@ -372,11 +378,14 @@ function createStyles(colors: typeof Colors.light) {
     justifyContent: "center",
   },
   descriptionInput: {
-    padding: 0,
+    paddingLeft: 16,
   },
   createButtonText: {
     color: appleBlue,
     fontWeight: "normal",
+    textShadowColor: '#666',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 2,
   },
   colorButton: {
     padding: 1,

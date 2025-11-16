@@ -12,7 +12,7 @@ import {
 } from "@/stores/ShoppingListsStore";
 import { useShoppingListProductIds } from "@/stores/ShoppingListStore";
 import { Stack, useRouter } from "expo-router";
-import { Pressable, StyleSheet, View, FlatList, Animated, Alert, useColorScheme, Modal } from "react-native";
+import { Pressable, StyleSheet, View, FlatList, Animated, Alert, useColorScheme, Modal, StyleProp } from 'react-native';
 import React, { useMemo, useState, useRef, memo, useCallback } from "react";
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -22,6 +22,7 @@ import { SwipeableTabWrapper } from "@/components/SwipeableTabWrapper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import QuickAddFab from "@/components/AddShoppingListFaB";
+import ColorPickerScreen from '../color-picker';
 
 type TabType = 'active' | 'ongoing' | 'history';
 type SortOption = 'name' | 'date' | 'items' | 'budget';
@@ -588,7 +589,7 @@ export default function HomeScreen() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack.Screen/>
 
-      <QuickAddFab onPress={handleAddList} />
+      <QuickAddFab onPress={handleAddList}/>
 
       <View style={styles.container}>
         {/* Tab Bar */}
@@ -708,6 +709,7 @@ function createStyles(colors: typeof Colors.light) {
     tabBar: {
       backgroundColor: colors.background,
       flexDirection: 'row',
+      alignContent:'center',
       paddingHorizontal: 16,
       paddingTop: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
