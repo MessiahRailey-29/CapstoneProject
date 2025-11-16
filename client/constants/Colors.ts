@@ -32,6 +32,9 @@ export const Colors = {
     text: "#0f172a",
     textSecondary: "#ffffffff",
     oppositeText: "#f8fafc",
+    ghost: '#555',
+    exposedGhost: '#333333df',
+
     mainBackground: "#e8f4ffff",
     background: "#ffffff",
     tint: tintColorLight,
@@ -42,7 +45,7 @@ export const Colors = {
     borderColor: "#000",
     borderBottomColor: "#22c55e40",
     oppositeBackground: "#0f172a",
-    oppositeBorder: "#f8fafc",
+    oppositeBorder: "#fff",
 
     //Gradient Colors
     gradient: "#86efac",
@@ -79,6 +82,9 @@ export const Colors = {
     text: "#f8fafc",
     textSecondary: "#0f172a",
     oppositeText: "#0f172a",
+    ghost: '#777',
+    exposedGhost: '#ccccccdf',
+
     mainBackground: "#111a2e",
     background: "#1e293b",
     tint: tintColorDark,
@@ -89,7 +95,7 @@ export const Colors = {
     shadowColor: "#fff",
     borderBottomColor: "#86efac60",
     oppositeBackground: "#f8fafc",
-    oppositeBorder: "#1e293b",
+    oppositeBorder: "#000",
 
 
     //Gradient Colors

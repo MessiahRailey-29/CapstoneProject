@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Platform, View, FlatList, Pressable, StyleSheet, Keyboard, Alert, useColorScheme } from "react-native";
+import { Platform, View, FlatList, Pressable, StyleSheet, Keyboard, Alert, KeyboardAvoidingView } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
+import useColorScheme from "@/hooks/useColorScheme";
 import Button from "@/components/ui/button";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import TextInput from "@/components/ui/text-input";
@@ -11,8 +12,10 @@ import { useProducts, useProductPrices } from "@/hooks/useProducts";
 import { DatabaseProduct, ProductPrice } from "@/services/productsApi";
 import { Colors } from "@/constants/Colors";
 import { HeaderTitle } from "@react-navigation/elements";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
+  // color scheme for styles
 
 interface SelectedStoreInfo {
   store: string;
@@ -22,8 +25,7 @@ interface SelectedStoreInfo {
 
 export default function NewItemScreen() {
 
-
-
+  const insets = useSafeAreaInsets();
 
   const { listId } = useLocalSearchParams() as { listId: string };
   const [name, setName] = useState("");
@@ -240,6 +242,11 @@ export default function NewItemScreen() {
           ),
         }}
       />
+      
+      <KeyboardAvoidingView
+          style={{flex: 1}}
+          behavior={process.env.EXPO_OS !== 'ios' ? "padding" : "height"}
+          keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 10 : insets.top}>
       <BodyScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
@@ -495,7 +502,9 @@ export default function NewItemScreen() {
             )}
           </View>
         )}
+        
       </BodyScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -559,16 +568,15 @@ function StoreSelectionItem({
   onSelect: (price: ProductPrice) => void;
   isSelected: boolean;
 }) {
+  
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const styles = createStyles(colors);
+
   if (!price || typeof price.price !== 'number') {
     console.warn('⚠️ Invalid price data:', price);
     return null;
   }
-
-
-  // color scheme for styles
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const styles = createStyles(colors);
 
   return (
     <Pressable

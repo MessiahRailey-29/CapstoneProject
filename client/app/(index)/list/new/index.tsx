@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Href, useGlobalSearchParams, useRouter } from "expo-router";
-import { StyleSheet, View, useColorScheme, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, View, useColorScheme, ScrollView, Pressable, KeyboardAvoidingView } from 'react-native';
 import { StatusBar } from "expo-status-bar";
 // Components
 import { ThemedText } from "@/components/ThemedText";
@@ -15,6 +15,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Colors } from "@/constants/Colors";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 
 const isValidUUID = (id: string | null) => {
   if (!id) return false;
@@ -66,20 +68,29 @@ export default function NewListScreen() {
     }
   };
 
+  const insets = useSafeAreaInsets();
+
   //color scheme and styles
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, insets);
 
   return (
     <LinearGradient
-      colors={['#22c55e', '#16a34a', colors.background, colors.background]}
+      colors={['#16a34a','#22c55e', '#16a34a', colors.background, colors.background]}
       start={{ x: 1, y: 2 }}
       end={{ x: 3, y: 0 }}
       style={styles.container}
     >
-    <BodyScrollView contentContainerStyle={styles.scrollViewContent}>
-      <StatusBar style="light" animated />
+      <KeyboardAvoidingView
+    style={{flex: 1}}
+    behavior={process.env.EXPO_OS !== 'ios' ? "padding" : "height"}
+    keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 10 : insets.top}>
+    <ScrollView 
+    style={(styles.scrollViewContent)}
+    keyboardShouldPersistTaps="handled"
+    >
+      <StatusBar style='auto' animated />
       <View style={styles.container}>
         <View style={styles.heroSection}>
           <IconCircle
@@ -143,17 +154,18 @@ export default function NewListScreen() {
           </View>
         </View>
       </View>
-    </BodyScrollView>
+    </ScrollView>
+    </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
 
-function createStyles(colors: typeof Colors.light) {
+function createStyles(colors: typeof Colors.light, insets) {
   return StyleSheet.create({
   scrollViewContent: {
     marginTop: 45,
-    padding: 16,
-    marginBottom: 100,
+    paddingHorizontal: 16,
+    paddingBottom: insets.bottom
   },
   container: {
     flex: 1,
@@ -173,7 +185,7 @@ function createStyles(colors: typeof Colors.light) {
   },
   subtitle: {
     textAlign: "center",
-    color: "gray",
+    color: colors.exposedGhost,
     paddingHorizontal: 24,
     lineHeight: 24,
   },
@@ -191,10 +203,10 @@ function createStyles(colors: typeof Colors.light) {
   line: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(150, 150, 150, 0.69)",
+    backgroundColor: colors.exposedGhost,
   },
   orText: {
-    color: "rgba(255, 255, 255, 0.8)",
+    color: colors.exposedGhost,
   },
   joinSection: {
     gap: 16,
@@ -213,7 +225,6 @@ function createStyles(colors: typeof Colors.light) {
     marginBottom: 16,
     alignSelf: 'center',
     borderRadius: 12,
-
   },
   joinButton: {
     marginTop: 8,
