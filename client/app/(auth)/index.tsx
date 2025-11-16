@@ -2,17 +2,23 @@ import * as React from 'react';
 import { ThemedText } from "@/components/ThemedText";
 import { isClerkAPIResponseError, useSignIn } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { View, StyleSheet, Alert } from "react-native";
+import { View, StyleSheet, Alert, Pressable } from "react-native";
 import { Button } from '@/components/ui/button';
 import { BodyScrollView } from '@/components/ui/BodyScrollView';
 import TextInput from '@/components/ui/text-input';
 import { ClerkAPIError } from '@clerk/types';
 import { ErrorDisplay } from '@/components/ui/ErrorDisplay';
+import { IconSymbol } from "@/components/ui/IconSymbol";
 import { 
   checkLoginAttempts, 
   recordLoginAttempt, 
   updateLastActivity 
 } from '@/utils/securityUtils';
+import {
+  checkBiometricCapability,
+  biometricLogin,
+  getBiometricTypeName,
+} from "@/utils/biometricAuth";
 
 export default function SignInScreen() {
     const { signIn, setActive, isLoaded } = useSignIn();
@@ -25,6 +31,18 @@ export default function SignInScreen() {
     const [remainingAttempts, setRemainingAttempts] = React.useState<number | null>(null);
     const [isLockedOut, setIsLockedOut] = React.useState(false);
     const [lockoutEndTime, setLockoutEndTime] = React.useState<number | null>(null);
+    const [biometricAvailable, setBiometricAvailable] = React.useState(false);
+    const [biometricType, setBiometricType] = React.useState<string>("none");
+    const [isAuthenticating, setIsAuthenticating] = React.useState(false);
+
+    // Check biometric availability on mount
+    React.useEffect(() => {
+        (async () => {
+            const result = await checkBiometricCapability();
+            setBiometricAvailable(result.isAvailable);
+            setBiometricType(result.biometricType);
+        })();
+    }, []);
 
     // Check login attempts when email changes
     React.useEffect(() => {
@@ -47,6 +65,44 @@ export default function SignInScreen() {
         const now = Date.now();
         const remaining = Math.ceil((lockoutEndTime - now) / 1000 / 60);
         return `${remaining} minute${remaining !== 1 ? 's' : ''}`;
+    };
+
+    const handleBiometricSignIn = async () => {
+        if (!isLoaded) return;
+        
+        setIsAuthenticating(true);
+        try {
+            const result = await biometricLogin();
+            
+            if (!result.success) {
+                Alert.alert('Authentication Failed', result.error || 'Biometric authentication failed');
+                return;
+            }
+
+            // Use retrieved credentials to sign in with Clerk
+            const signInAttempt = await signIn.create({
+                identifier: result.email!,
+                password: result.password!,
+            });
+
+            if (signInAttempt.status === "complete") {
+                await recordLoginAttempt(result.email!, true);
+                await updateLastActivity();
+                await setActive({ session: signInAttempt.createdSessionId });
+                router.replace("/(index)/(tabs)");
+            } else {
+                Alert.alert('Sign In Failed', 'Please try signing in with your password.');
+            }
+        } catch (e) {
+            console.error("Biometric login error:", e);
+            if (isClerkAPIResponseError(e)) {
+                Alert.alert('Sign In Failed', 'Invalid credentials. Please try signing in with your password.');
+            } else {
+                Alert.alert('Error', 'Biometric authentication failed. Try again or log in manually.');
+            }
+        } finally {
+            setIsAuthenticating(false);
+        }
     };
 
     const onSignInPress = React.useCallback(async () => {
@@ -132,6 +188,34 @@ export default function SignInScreen() {
                     <ThemedText style={styles.warningText}>
                         ⚠️ {remainingAttempts} login attempt{remainingAttempts !== 1 ? 's' : ''} remaining
                     </ThemedText>
+                </View>
+            )}
+
+            {/* Biometric Authentication Button */}
+            {biometricAvailable && !isLockedOut && (
+                <View style={styles.biometricContainer}>
+                    <Pressable
+                        style={[styles.biometricIconButton, isAuthenticating && { opacity: 0.6 }]}
+                        onPress={handleBiometricSignIn}
+                        disabled={isAuthenticating}
+                    >
+                        <IconSymbol
+                            name={biometricType === "face" ? "person" : "hand.raised"}
+                            size={48}
+                            color="#3B82F6"
+                        />
+                    </Pressable>
+                    <ThemedText style={styles.biometricLabel}>
+                        Sign in with {getBiometricTypeName(biometricType)}
+                    </ThemedText>
+                </View>
+            )}
+
+            {biometricAvailable && !isLockedOut && (
+                <View style={styles.divider}>
+                    <View style={styles.dividerLine} />
+                    <ThemedText style={styles.dividerText}>or</ThemedText>
+                    <View style={styles.dividerLine} />
                 </View>
             )}
 
@@ -245,6 +329,18 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#92400E',
         fontWeight: '600',
+    },
+    biometricContainer: {
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    biometricIconButton: {
+        padding: 12,
+    },
+    biometricLabel: {
+        fontSize: 14,
+        color: "#3B82F6",
+        marginTop: 4,
     },
     linkContainer: {
         marginTop: 18,

@@ -163,7 +163,7 @@ export async function secureDelete(key: string): Promise<void> {
 
 // Verification code expiration management
 const VERIFICATION_CODE_KEY = 'verification_code';
-const VERIFICATION_CODE_EXPIRY = 2 * 60 * 1000; // 2 minutes
+const VERIFICATION_CODE_EXPIRY = 5 * 60 * 1000; // 5 minutes
 
 export interface VerificationCodeData {
   code: string;

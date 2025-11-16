@@ -88,7 +88,7 @@ export function RecipeDetailsModal({
     bestStore: string;
   } | null> => {
     try {
-      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.130.251.5:3000';
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.142:3000';
       
       // Search for product by name
       const searchResponse = await fetch(

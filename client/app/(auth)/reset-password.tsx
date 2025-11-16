@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useRouter } from "expo-router";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import Button from "@/components/ui/button";
@@ -23,9 +23,8 @@ export default function ResetPassword() {
   const [passwordError, setPasswordError] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [codeExpiryTime, setCodeExpiryTime] = React.useState<number | null>(null);
-  const [remainingTime, setRemainingTime] = React.useState<string>('');
+  const [remainingTime, setRemainingTime] = React.useState<string>("");
 
-  // Validate password match
   const validatePasswords = React.useCallback(() => {
     if (password && confirmPassword && password !== confirmPassword) {
       setPasswordError("Passwords do not match");
@@ -35,29 +34,25 @@ export default function ResetPassword() {
     return true;
   }, [password, confirmPassword]);
 
-  // Check password match on change
   React.useEffect(() => {
-    if (confirmPassword) {
-      validatePasswords();
-    }
+    if (confirmPassword) validatePasswords();
   }, [password, confirmPassword, validatePasswords]);
 
-  // Timer for verification code expiration
   React.useEffect(() => {
-    if (step !== 'verify' || !codeExpiryTime) return;
+    if (step !== "verify" || !codeExpiryTime) return;
 
     const interval = setInterval(() => {
       const now = Date.now();
       const timeLeft = codeExpiryTime - now;
 
       if (timeLeft <= 0) {
-        setRemainingTime('Code expired');
+        setRemainingTime("Code expired");
         clearInterval(interval);
-        alert('Your verification code has expired. Please request a new one.');
+        alert("Your verification code has expired. Please request a new one.");
       } else {
         const minutes = Math.floor(timeLeft / 60000);
         const seconds = Math.floor((timeLeft % 60000) / 1000);
-        setRemainingTime(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+        setRemainingTime(`${minutes}:${seconds.toString().padStart(2, "0")}`);
       }
     }, 1000);
 
@@ -75,10 +70,10 @@ export default function ResetPassword() {
         identifier: emailAddress,
       });
 
-      // Store verification code timestamp
-      const expiryTime = Date.now() + (2 * 60 * 1000); // 2 minutes from now
+      const expiryTime = Date.now() + 5 * 60 * 1000;
       setCodeExpiryTime(expiryTime);
-      await storeVerificationCode(emailAddress, '', 'reset_password');
+
+      await storeVerificationCode(emailAddress, "", "reset_password");
 
       setStep("verify");
     } catch (err) {
@@ -91,16 +86,15 @@ export default function ResetPassword() {
 
   const onVerifyCodePress = React.useCallback(async () => {
     if (!isLoaded || !code) return;
-    
-    // Check if verification code has expired
-    const expiryCheck = await checkVerificationCodeExpiry(emailAddress, 'reset_password');
+
+    const expiryCheck = await checkVerificationCodeExpiry(emailAddress, "reset_password");
+
     if (expiryCheck.expired) {
-      alert('Your verification code has expired. Please request a new one.');
-      setStep('email');
+      alert("Your verification code has expired. Please request a new one.");
+      setStep("email");
       return;
     }
 
-    // Just move to password step - we'll verify the code when resetting password
     setStep("password");
     setErrors([]);
   }, [isLoaded, code, emailAddress]);
@@ -108,16 +102,13 @@ export default function ResetPassword() {
   const onVerifyPress = React.useCallback(async () => {
     if (!isLoaded) return;
 
-    // Validate passwords match
-    if (!validatePasswords()) {
-      return;
-    }
+    if (!validatePasswords()) return;
 
-    // Check if verification code has expired
-    const expiryCheck = await checkVerificationCodeExpiry(emailAddress, 'reset_password');
+    const expiryCheck = await checkVerificationCodeExpiry(emailAddress, "reset_password");
+
     if (expiryCheck.expired) {
-      alert('Your verification code has expired. Please request a new one.');
-      setStep('email');
+      alert("Your verification code has expired. Please request a new one.");
+      setStep("email");
       return;
     }
 
@@ -132,7 +123,7 @@ export default function ResetPassword() {
       });
 
       if (signInAttempt.status === "complete") {
-        await clearVerificationCode(emailAddress, 'reset_password');
+        await clearVerificationCode(emailAddress, "reset_password");
         await setActive({ session: signInAttempt.createdSessionId });
         router.replace("/");
       } else {
@@ -144,151 +135,165 @@ export default function ResetPassword() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoaded, code, password, signIn, setActive, router, validatePasswords, emailAddress]);
+  }, [
+    isLoaded,
+    code,
+    password,
+    signIn,
+    setActive,
+    router,
+    validatePasswords,
+    emailAddress,
+  ]);
 
-  // Step 1: Enter email
+  // STEP 1: EMAIL
   if (step === "email") {
     return (
-      <BodyScrollView contentContainerStyle={{ padding: 16 }}>
-        <View style={styles.header}>
-          <ThemedText style={styles.headerTitle}>Reset your password</ThemedText>
-          <ThemedText style={styles.headerSubtitle}>
-            Enter your email address and we'll send you a verification code
-          </ThemedText>
-        </View>
-
-        <TextInput
-          autoCapitalize="none"
-          value={emailAddress}
-          label="Email"
-          placeholder="Enter your email"
-          keyboardType="email-address"
-          onChangeText={setEmailAddress}
-        />
-
-        <ErrorDisplay errors={errors} />
-
-        <Button
-          onPress={onResetPasswordPress}
-          disabled={!emailAddress || isLoading}
-          loading={isLoading}
-        >
-          Send verification code
-        </Button>
-
-        <View style={styles.backToLogin}>
-          <Button
-            variant="ghost"
-            onPress={() => router.back()}
-            disabled={isLoading}
-          >
-            Back to sign in
-          </Button>
-        </View>
-      </BodyScrollView>
-    );
-  }
-
-  // Step 2: Verify code
-  if (step === "verify") {
-    return (
-      <BodyScrollView contentContainerStyle={{ padding: 16 }}>
-        <View style={styles.header}>
-          <ThemedText style={styles.headerTitle}>Enter verification code</ThemedText>
-          <ThemedText style={styles.headerSubtitle}>
-            We sent a verification code to {emailAddress}
-          </ThemedText>
-          {remainingTime && (
-            <ThemedText style={[styles.headerSubtitle, { marginTop: 8, fontWeight: '600', color: '#D97706' }]}>
-              ⏱️ Code expires in: {remainingTime}
-            </ThemedText>
-          )}
-        </View>
-
-        <TextInput
-          value={code}
-          label="Verification Code"
-          placeholder="Enter your verification code"
-          keyboardType="number-pad"
-          autoCapitalize="none"
-          onChangeText={setCode}
-        />
-
-        <ErrorDisplay errors={errors} />
-
-        <Button
-          onPress={onVerifyCodePress}
-          disabled={!code || isLoading}
-          loading={isLoading}
-        >
-          Continue
-        </Button>
-
-        <View style={styles.resendContainer}>
-          <ThemedText style={styles.resendText}>
-            Didn't receive the code?
-          </ThemedText>
-          <Button
-            variant="ghost"
-            onPress={onResetPasswordPress}
-            disabled={isLoading}
-          >
-            Resend code
-          </Button>
-        </View>
-      </BodyScrollView>
-    );
-  }
-
-  // Step 3: Set new password
-  if (step === "password") {
-    return (
-      <BodyScrollView contentContainerStyle={{ padding: 16 }}>
-        <View style={styles.header}>
-          <ThemedText style={styles.headerTitle}>Create new password</ThemedText>
-          <ThemedText style={styles.headerSubtitle}>
-            Enter your new password below
-          </ThemedText>
-        </View>
-
-        <TextInput
-          value={password}
-          label="New Password"
-          placeholder="Enter your new password"
-          secureTextEntry={true}
-          onChangeText={setPassword}
-        />
-
-        <TextInput
-          value={confirmPassword}
-          label="Confirm New Password"
-          placeholder="Re-enter your new password"
-          secureTextEntry={true}
-          onChangeText={setConfirmPassword}
-          error={passwordError}
-        />
-
-        {password && (
-          <View style={styles.passwordRequirements}>
-            <ThemedText style={styles.requirementsTitle}>
-              Password requirements:
-            </ThemedText>
-            <ThemedText style={styles.requirementItem}>
-              {password.length >= 8 ? "✓" : "○"} At least 8 characters
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <BodyScrollView contentContainerStyle={{ padding: 16 }}>
+          <View style={styles.header}>
+            <ThemedText style={styles.headerTitle}>Reset your password</ThemedText>
+            <ThemedText style={styles.headerSubtitle}>
+              Enter your email address and we'll send you a verification code
             </ThemedText>
           </View>
-        )}
 
-        <ErrorDisplay errors={errors} />
+          <TextInput
+            autoCapitalize="none"
+            value={emailAddress}
+            label="Email"
+            placeholder="Enter your email"
+            keyboardType="email-address"
+            onChangeText={setEmailAddress}
+          />
 
-        <Button
-          onPress={onVerifyPress}
-          disabled={!password || !confirmPassword || !!passwordError || isLoading}
-          loading={isLoading}
-        >
-          Reset password
-        </Button>
-      </BodyScrollView>
+          <ErrorDisplay errors={errors} />
+
+          <Button
+            onPress={onResetPasswordPress}
+            disabled={!emailAddress || isLoading}
+            loading={isLoading}
+          >
+            Send verification code
+          </Button>
+
+          <View style={styles.backToLogin}>
+            <Button variant="ghost" onPress={() => router.back()} disabled={isLoading}>
+              Back to sign in
+            </Button>
+          </View>
+        </BodyScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  // STEP 2: VERIFY CODE
+  if (step === "verify") {
+    return (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <BodyScrollView contentContainerStyle={{ padding: 16 }}>
+          <View style={styles.header}>
+            <ThemedText style={styles.headerTitle}>Enter verification code</ThemedText>
+            <ThemedText style={styles.headerSubtitle}>
+              We sent a verification code to {emailAddress}
+            </ThemedText>
+
+            {remainingTime ? (
+              <ThemedText
+                style={[
+                  styles.headerSubtitle,
+                  { marginTop: 8, fontWeight: "600", color: "#D97706" },
+                ]}
+              >
+                ⏱️ Code expires in: {remainingTime}
+              </ThemedText>
+            ) : null}
+          </View>
+
+          <TextInput
+            value={code}
+            label="Verification Code"
+            placeholder="Enter your verification code"
+            keyboardType="number-pad"
+            autoCapitalize="none"
+            onChangeText={setCode}
+          />
+
+          <ErrorDisplay errors={errors} />
+
+          <Button onPress={onVerifyCodePress} disabled={!code || isLoading} loading={isLoading}>
+            Continue
+          </Button>
+
+          <View style={styles.resendContainer}>
+            <ThemedText style={styles.resendText}>Didn't receive the code?</ThemedText>
+            <Button variant="ghost" onPress={onResetPasswordPress} disabled={isLoading}>
+              Resend code
+            </Button>
+          </View>
+        </BodyScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  // STEP 3: NEW PASSWORD
+  if (step === "password") {
+    return (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <BodyScrollView contentContainerStyle={{ padding: 16 }}>
+          <View style={styles.header}>
+            <ThemedText style={styles.headerTitle}>Create new password</ThemedText>
+            <ThemedText style={styles.headerSubtitle}>
+              Enter your new password below
+            </ThemedText>
+          </View>
+
+          <TextInput
+            value={password}
+            label="New Password"
+            placeholder="Enter your new password"
+            secureTextEntry={true}
+            onChangeText={setPassword}
+          />
+
+          <TextInput
+            value={confirmPassword}
+            label="Confirm New Password"
+            placeholder="Re-enter your new password"
+            secureTextEntry={true}
+            onChangeText={setConfirmPassword}
+            error={passwordError}
+          />
+
+          {password ? (
+            <View style={styles.passwordRequirements}>
+              <ThemedText style={styles.requirementsTitle}>Password requirements:</ThemedText>
+              <ThemedText style={styles.requirementItem}>
+                {password.length >= 8 ? "✓" : "○"} At least 8 characters
+              </ThemedText>
+            </View>
+          ) : null}
+
+          <ErrorDisplay errors={errors} />
+
+          <Button
+            onPress={onVerifyPress}
+            disabled={!password || !confirmPassword || !!passwordError || isLoading}
+            loading={isLoading}
+          >
+            Reset password
+          </Button>
+        </BodyScrollView>
+      </KeyboardAvoidingView>
     );
   }
 

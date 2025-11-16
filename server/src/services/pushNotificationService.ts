@@ -1,7 +1,8 @@
 // server/src/services/pushNotificationService.ts
-import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
+// IMPROVED HYBRID VERSION: Better Expo token detection
+import * as admin from 'firebase-admin';
+import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 
-// Create a new Expo SDK client
 const expo = new Expo();
 
 interface PushNotificationData {
@@ -14,20 +15,30 @@ interface PushNotificationData {
 }
 
 /**
- * Send a push notification to a single device
+ * Detect if token is an Expo Push Token
  */
-export async function sendPushNotification(
-  pushToken: string,
-  notification: PushNotificationData
-): Promise<boolean> {
+function isExpoToken(pushToken: string): boolean {
+  // Check if it starts with ExponentPushToken
+  if (pushToken.startsWith('ExponentPushToken[')) {
+    return true;
+  }
+  
+  // Also check if it's a valid Expo token format
+  return Expo.isExpoPushToken(pushToken);
+}
+
+/**
+ * Send via Expo Push Service
+ */
+async function sendViaExpo(pushToken: string, notification: PushNotificationData): Promise<boolean> {
   try {
-    // Check that the token is a valid Expo push token
+    console.log('📲 Using Expo Push Service');
+    
     if (!Expo.isExpoPushToken(pushToken)) {
-      console.error(`❌ Push token ${pushToken} is not a valid Expo push token`);
+      console.error(`❌ Invalid Expo push token: ${pushToken}`);
       return false;
     }
 
-    // Construct the message
     const message: ExpoPushMessage = {
       to: pushToken,
       sound: notification.sound ?? 'default',
@@ -38,22 +49,115 @@ export async function sendPushNotification(
       priority: notification.priority ?? 'high',
     };
 
-    // Send the notification
+    console.log('📤 Sending via Expo Push Service...');
     const ticketChunk = await expo.sendPushNotificationsAsync([message]);
-    
-    // Check the ticket for errors
     const ticket = ticketChunk[0];
+
     if (ticket.status === 'error') {
-      console.error(`❌ Error sending push notification:`, ticket.message);
-      if (ticket.details?.error === 'DeviceNotRegistered') {
-        console.log('📱 Device token is no longer valid - should remove from database');
-        // TODO: Remove invalid token from NotificationSettings
+      console.error(`❌ Expo error:`, ticket.message);
+      if (ticket.details) {
+        console.error('Error details:', ticket.details);
       }
       return false;
     }
 
-    console.log(`✅ Push notification sent successfully:`, ticket.id);
+    console.log(`✅ Sent via Expo Push Service! Ticket ID:`, ticket.id);
     return true;
+  } catch (error) {
+    console.error('❌ Error in sendViaExpo:', error);
+    return false;
+  }
+}
+
+/**
+ * Send via Firebase Cloud Messaging (for native FCM tokens only)
+ */
+async function sendViaFCM(fcmToken: string, notification: PushNotificationData): Promise<boolean> {
+  try {
+    console.log('🔥 Using Firebase Cloud Messaging');
+    
+    if (!admin.apps.length) {
+      console.error('❌ Firebase Admin is not initialized');
+      return false;
+    }
+
+    const message: admin.messaging.Message = {
+      token: fcmToken,
+      notification: {
+        title: notification.title,
+        body: notification.body,
+      },
+      data: notification.data ? {
+        ...Object.keys(notification.data).reduce((acc, key) => {
+          acc[key] = String(notification.data[key]);
+          return acc;
+        }, {} as Record<string, string>)
+      } : {},
+      android: {
+        priority: notification.priority === 'high' ? 'high' : 'normal',
+        notification: {
+          sound: notification.sound ?? 'default',
+          channelId: 'default',
+          priority: notification.priority === 'high' ? 'high' : 'default',
+        },
+      },
+    };
+
+    console.log('📤 Sending via Firebase FCM...');
+    const response = await admin.messaging().send(message);
+    console.log('✅ Sent via Firebase FCM! Message ID:', response);
+    return true;
+  } catch (error: any) {
+    console.error('❌ Error in sendViaFCM:', error);
+    
+    if (error.code === 'messaging/invalid-registration-token' || 
+        error.code === 'messaging/registration-token-not-registered') {
+      console.log('📱 FCM token is invalid - should remove from database');
+    }
+    
+    return false;
+  }
+}
+
+/**
+ * Main function: Send push notification using the appropriate service
+ */
+export async function sendPushNotification(
+  pushToken: string,
+  notification: PushNotificationData
+): Promise<boolean> {
+  try {
+    console.log('');
+    console.log('📱 ========================================');
+    console.log('📱 SENDING PUSH NOTIFICATION');
+    console.log('📱 ========================================');
+    console.log('Token preview:', pushToken.substring(0, 40) + '...');
+    console.log('Title:', notification.title);
+    console.log('Body:', notification.body);
+    console.log('');
+
+    // Detect token type
+    const useExpo = isExpoToken(pushToken);
+    
+    if (useExpo) {
+      console.log('✅ Detected: EXPO PUSH TOKEN');
+      console.log('   Will use Expo Push Service');
+      console.log('');
+      return await sendViaExpo(pushToken, notification);
+    } else {
+      console.log('✅ Detected: FCM TOKEN');
+      console.log('   Will use Firebase Cloud Messaging');
+      console.log('');
+      
+      // Check if Firebase is available
+      if (!admin.apps.length) {
+        console.error('❌ Firebase not initialized but token is FCM format');
+        console.error('   Cannot send notification');
+        return false;
+      }
+      
+      return await sendViaFCM(pushToken, notification);
+    }
   } catch (error) {
     console.error('❌ Error in sendPushNotification:', error);
     return false;
@@ -67,70 +171,75 @@ export async function sendPushNotificationBatch(
   notifications: Array<{ pushToken: string; notification: PushNotificationData }>
 ): Promise<void> {
   try {
-    // Filter valid tokens and create messages
-    const messages: ExpoPushMessage[] = notifications
-      .filter(({ pushToken }) => Expo.isExpoPushToken(pushToken))
-      .map(({ pushToken, notification }) => ({
-        to: pushToken,
-        sound: notification.sound ?? 'default',
-        title: notification.title,
-        body: notification.body,
-        data: notification.data ?? {},
-        badge: notification.badge,
-        priority: notification.priority ?? 'high',
+    console.log(`📱 Sending batch of ${notifications.length} notifications...`);
+    
+    // Group by token type
+    const expoNotifications = notifications.filter(n => isExpoToken(n.pushToken));
+    const fcmNotifications = notifications.filter(n => !isExpoToken(n.pushToken));
+
+    console.log(`   Expo tokens: ${expoNotifications.length}`);
+    console.log(`   FCM tokens: ${fcmNotifications.length}`);
+
+    // Send via Expo for Expo tokens
+    if (expoNotifications.length > 0) {
+      console.log('📲 Sending Expo notifications...');
+      
+      const messages: ExpoPushMessage[] = expoNotifications
+        .filter(({ pushToken }) => Expo.isExpoPushToken(pushToken))
+        .map(({ pushToken, notification }) => ({
+          to: pushToken,
+          sound: notification.sound ?? 'default',
+          title: notification.title,
+          body: notification.body,
+          data: notification.data ?? {},
+          badge: notification.badge,
+          priority: notification.priority ?? 'high',
+        }));
+
+      const chunks = expo.chunkPushNotifications(messages);
+      for (const chunk of chunks) {
+        const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+        const successCount = ticketChunk.filter(t => t.status === 'ok').length;
+        const errorCount = ticketChunk.filter(t => t.status === 'error').length;
+        console.log(`   ✅ Expo Batch: Success ${successCount}, Errors ${errorCount}`);
+      }
+    }
+
+    // Send via FCM for native tokens
+    if (fcmNotifications.length > 0 && admin.apps.length > 0) {
+      console.log('🔥 Sending FCM notifications...');
+      
+      const messages: admin.messaging.Message[] = fcmNotifications.map(({ pushToken, notification }) => ({
+        token: pushToken,
+        notification: {
+          title: notification.title,
+          body: notification.body,
+        },
+        data: notification.data ? {
+          ...Object.keys(notification.data).reduce((acc, key) => {
+            acc[key] = String(notification.data[key]);
+            return acc;
+          }, {} as Record<string, string>)
+        } : {},
+        android: {
+          priority: notification.priority === 'high' ? 'high' : 'normal',
+          notification: {
+            sound: notification.sound ?? 'default',
+            channelId: 'default',
+          },
+        },
       }));
 
-    // Expo recommends sending notifications in chunks of 100
-    const chunks = expo.chunkPushNotifications(messages);
-    
-    for (const chunk of chunks) {
-      try {
-        const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-        
-        // Log any errors
-        ticketChunk.forEach((ticket, index) => {
-          if (ticket.status === 'error') {
-            console.error(`❌ Error sending notification ${index}:`, ticket.message);
-          }
-        });
-      } catch (error) {
-        console.error('❌ Error sending chunk:', error);
+      const batchSize = 500;
+      for (let i = 0; i < messages.length; i += batchSize) {
+        const batch = messages.slice(i, i + batchSize);
+        const response = await admin.messaging().sendEach(batch);
+        console.log(`   ✅ FCM Batch: Success ${response.successCount}, Failure ${response.failureCount}`);
       }
     }
+    
+    console.log('✅ Batch sending complete!');
   } catch (error) {
     console.error('❌ Error in sendPushNotificationBatch:', error);
-  }
-}
-
-/**
- * Check receipt status for sent notifications
- * Call this later to see if notifications were delivered
- */
-export async function checkNotificationReceipts(receiptIds: string[]): Promise<void> {
-  try {
-    const receiptIdChunks = expo.chunkPushNotificationReceiptIds(receiptIds);
-    
-    for (const chunk of receiptIdChunks) {
-      try {
-        const receipts = await expo.getPushNotificationReceiptsAsync(chunk);
-        
-        for (const receiptId in receipts) {
-          const receipt = receipts[receiptId];
-          
-          if (receipt.status === 'error') {
-            console.error(`❌ Receipt error for ${receiptId}:`, receipt.message);
-            
-            if (receipt.details?.error === 'DeviceNotRegistered') {
-              console.log('📱 Device token is no longer valid');
-              // TODO: Remove invalid token from database
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error fetching receipts:', error);
-      }
-    }
-  } catch (error) {
-    console.error('❌ Error in checkNotificationReceipts:', error);
   }
 }

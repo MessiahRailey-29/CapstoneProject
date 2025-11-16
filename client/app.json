@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "CapstoneProject",
+    "name": "WasteMeNot",
     "slug": "server",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,7 +20,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive_wmn_logo.png",
+        "foregroundImage": "./assets/images/waste_me_not_logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -31,10 +31,12 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
       ],
       "usesCleartextTraffic": true,
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "useNextNotificationsApi": true
     },
     "web": {
       "bundler": "metro",
@@ -62,11 +64,8 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification-icon.png",
-          "color": "#ffffff",
-          "sounds": ["./assets/sounds/notification.wav"],
-          "androidMode": "default",
-          "androidCollapsedTitle": "#{unread_notifications} new notifications"
+          "icon": "./assets/images/adaptive_wmn_logo.png",
+          "color": "#ffffff"
         }
       ],
       "expo-secure-store",
@@ -78,7 +77,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": "http://10.130.251.5:3000",
+      "apiUrl": "http://192.168.1.142:3000",
       "eas": {
         "projectId": "7bfe348f-3215-4eec-a3d7-2407d4ed839b"
       }

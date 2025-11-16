@@ -2,7 +2,7 @@
 import { useUser } from '@clerk/clerk-expo';
 import { useCallback } from 'react';
 
-const API_URL = 'http://10.130.251.5:3000'; // ⚠️ CHANGE THIS to your server URL
+const API_URL = 'http://192.168.1.142:3000'; // ⚠️ CHANGE THIS to your server URL
 
 interface ListCollaborator {
   userId: string;

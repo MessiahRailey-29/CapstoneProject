@@ -136,7 +136,7 @@ export default function SignUpScreen() {
             });
 
             // Store verification code timestamp
-            const expiryTime = Date.now() + (2 * 60 * 1000); // 2 minutes from now
+            const expiryTime = Date.now() + (5 * 60 * 1000); // 5 minutes from now
             setCodeExpiryTime(expiryTime);
             await storeVerificationCode(emailAddress, '', 'signup');
 
@@ -176,7 +176,7 @@ export default function SignUpScreen() {
             if (signUpAttempt.status === "complete") {
                 await clearVerificationCode(emailAddress, 'signup');
                 await setActive({ session: signUpAttempt.createdSessionId });
-                router.replace("/");
+                router.replace("/(auth)/terms-acceptance");
             } else {
                 console.log(signUpAttempt);
             }
@@ -221,14 +221,6 @@ export default function SignUpScreen() {
                     placeholder="Enter your last name"
                     autoCapitalize="words"
                     onChangeText={setLastName}
-                />
-
-                <TextInput
-                    label="Cellphone Number (Optional)"
-                    value={phoneNumber}
-                    placeholder="Enter your cellphone number"
-                    keyboardType="phone-pad"
-                    onChangeText={setPhoneNumber}
                 />
 
                 <Button

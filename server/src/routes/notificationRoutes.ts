@@ -448,6 +448,6 @@ router.post('/:userId/shared-list-update', async (req, res) => {
     console.error('❌ Error creating shared list update notification:', errorMessage);
     res.status(500).json({ success: false, error: errorMessage });
   }
-});
+  });
 
 export default router;

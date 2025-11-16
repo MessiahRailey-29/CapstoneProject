@@ -22,9 +22,26 @@ try {
   } else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
     // Development: Read from local file path
     console.log('📱 Initializing Firebase from file path...');
-    serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+    
+    // Import required modules
+    const path = require('path');
+    const fs = require('fs');
+    
+    // Resolve the path relative to the server root directory (parent of src)
+    const filePath = path.resolve(__dirname, '..', process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+    console.log('Resolved path:', filePath);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Firebase file not found at: ${filePath}`);
+    }
+    
+    // Read and parse the file
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    serviceAccount = JSON.parse(fileContent);
+    console.log('✅ Firebase credentials loaded successfully');
   } else {
-    throw new Error('No Firebase credentials found');
+    throw new Error('No Firebase credentials found in environment variables');
   }
 
   admin.initializeApp({
@@ -48,7 +65,7 @@ app.use(express.json());
 
 // Add request logging middleware
 app.use((req, res, next) => {
-  console.log(`📥 ${req.method} ${req.url}`);
+  console.log(`🔥 ${req.method} ${req.url}`);
   next();
 });
 
@@ -176,7 +193,7 @@ async function start() {
       console.log('💡 Test push notifications:');
       console.log('   curl -X POST http://192.168.254.104:' + port + '/api/notifications/YOUR_USER_ID/test-push');
       console.log('');
-      console.log('🐛 Debug info:');
+      console.log('🛠 Debug info:');
       console.log('   curl http://192.168.254.104:' + port + '/api/notifications/YOUR_USER_ID/debug');
       console.log('');
       console.log('🔄 Manually trigger reminders:');

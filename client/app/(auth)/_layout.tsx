@@ -1,13 +1,41 @@
 import { Redirect, Stack } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
+import * as React from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const TERMS_ACCEPTED_KEY = '@terms_accepted';
 
 export default function AuthRoutesLayout() {
   const { isLoaded, isSignedIn } = useAuth();
+  const [termsAccepted, setTermsAccepted] = React.useState<boolean | null>(null);
+  const [isCheckingTerms, setIsCheckingTerms] = React.useState(true);
 
-  if (!isLoaded) return null;
+  // Check if user has accepted terms
+  React.useEffect(() => {
+    const checkTermsAcceptance = async () => {
+      try {
+        const accepted = await AsyncStorage.getItem(TERMS_ACCEPTED_KEY);
+        setTermsAccepted(accepted === 'true');
+      } catch (error) {
+        console.error('Error checking terms acceptance:', error);
+        setTermsAccepted(false);
+      } finally {
+        setIsCheckingTerms(false);
+      }
+    };
 
-  // Redirect to main app if signed in
-  if (isSignedIn) { 
+    if (isLoaded && isSignedIn) {
+      checkTermsAcceptance();
+    } else {
+      setIsCheckingTerms(false);
+    }
+  }, [isLoaded, isSignedIn]);
+
+  // Show nothing while checking auth or terms
+  if (!isLoaded || isCheckingTerms) return null;
+
+  // If signed in and terms accepted, redirect to main app
+  if (isSignedIn && termsAccepted) { 
     return <Redirect href="/(index)/(tabs)" />; 
   }
 
@@ -46,6 +74,10 @@ export default function AuthRoutesLayout() {
       <Stack.Screen
         name="reset-password"
         options={{ headerTitle: "Reset password" }}
+      />
+      <Stack.Screen
+        name="terms-acceptance"
+        options={{ headerShown: false }}
       />
     </Stack>
   );
