@@ -20,6 +20,7 @@ import TextInput from '@/components/ui/text-input';
 import { Colors } from '@/constants/Colors'
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { Image } from "react-native";
 
 const STORAGE_LOCATIONS = getStorageDisplayInfo();
 
@@ -27,35 +28,31 @@ const STORAGE_LOCATIONS = getStorageDisplayInfo();
 const STORAGE_CONFIG = [
   { 
     name: 'Refrigerator' as StorageLocation, 
-    icon: '❄️', 
+    image: require('@/assets/images/refrigerator-icon.png'),
     color: '#4ECDC4',
     gradient: ['#4ECDC4', '#44A08D'],
     description: 'Fresh foods, dairy & beverages',
-    illustration: '🥛🥗🧃'
   },
   { 
     name: 'Freezer' as StorageLocation, 
-    icon: '🧊', 
+    image: require('@/assets/images/freezer-chest-icon.png'),
     color: '#4A90E2',
     gradient: ['#4A90E2', '#357ABD'],
     description: 'Frozen meals, ice cream & meats',
-    illustration: '🍦🥩🍕'
   },
   { 
     name: 'Pantry' as StorageLocation, 
-    icon: '📦', 
+    image: require('@/assets/images/pantry-drawer-icon.png'),
     color: '#F4A460',
     gradient: ['#F4A460', '#CD853F'],
     description: 'Dry goods, canned items & snacks',
-    illustration: '🍝🥫🍪'
   },
   { 
     name: 'Other' as StorageLocation, 
-    icon: '📁', 
+    image: require('@/assets/images/table-other-icon.png'),
     color: '#95A5A6',
     gradient: ['#95A5A6', '#7F8C8D'],
     description: 'Miscellaneous items',
-    illustration: '🧴🧻🧽'
   },
 ];
 
@@ -254,10 +251,9 @@ function StorageCategoryCard({
   onPress: () => void;
 }) {
   const percentage = totalItems > 0 ? (count / totalItems) * 100 : 0;
-    //color scheme and styles
-    const scheme = useColorScheme();
-    const colors = Colors[scheme ?? 'light'];
-    const styles = useMemo(() => createStyles(colors), [colors]);
+  const scheme = useColorScheme();
+  const colors = Colors[scheme ?? 'light'];
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <Pressable 
@@ -266,20 +262,20 @@ function StorageCategoryCard({
       android_ripple={{ color: storage.color + '20' }}
     >
       <View style={styles.categoryHeader}>
-        <View style={styles.categoryIconContainer}>
-          <Text style={styles.categoryIcon}>{storage.icon}</Text>
-          <Text style={styles.categoryIllustration}>{storage.illustration}</Text>
-        </View>
-        
-        <View style={[styles.categoryCountBadge, { backgroundColor: storage.color }]}>
-          <Text style={styles.categoryCountText}>{count}</Text>
+        <View style={styles.categoryIconNameContainer}>
+          <View style={styles.categoryIconWrapper}>
+            <Image source={storage.image} style={styles.categoryIconImage} resizeMode="contain" />
+            {count > 0 && (
+              <View style={[styles.categoryCountBadge, { backgroundColor: storage.color }]}>
+                <Text style={styles.categoryCountText}>{count}</Text>
+              </View>
+            )}
+          </View>
+          <ThemedText style={styles.categoryName}>{storage.name}</ThemedText>
         </View>
       </View>
 
-      <View style={styles.categoryInfo}>
-        <ThemedText style={styles.categoryName}>{storage.name}</ThemedText>
-        <ThemedText style={styles.categoryDescription}>{storage.description}</ThemedText>
-      </View>
+      <ThemedText style={styles.categoryDescription}>{storage.description}</ThemedText>
 
       {count > 0 && (
         <View style={styles.categoryProgressContainer}>
@@ -299,13 +295,12 @@ function StorageCategoryCard({
       )}
 
       <View style={styles.categoryFooter}>
-        <Text style={[styles.viewItemsText, { color: storage.color }]}>
-          {count > 0 ? `View ${count} item${count !== 1 ? 's' : ''}` : 'Empty'}
-        </Text>
+        <Text style={[styles.viewItemsText, { color: storage.color }]}>{count > 0 ? `View ${count} item${count !== 1 ? 's' : ''}` : 'Empty'}</Text>
       </View>
     </Pressable>
   );
 }
+
 
 export default function InventoryScreen() {
   const [selectedStorage, setSelectedStorage] = useState<StorageLocation | null>(null);
@@ -544,7 +539,7 @@ export default function InventoryScreen() {
           </Pressable>
 
           <View style={styles.itemsHeaderInfo}>
-            <Text style={styles.storageHeaderIcon}>{currentStorage?.icon}</Text>
+            <Image source={currentStorage?.image} style={{ width: 40, height: 40, borderRadius: 8 }} resizeMode="contain" />
             <View>
               <ThemedText style={styles.itemsHeaderTitle}>
                 {selectedStorage}
@@ -610,7 +605,11 @@ export default function InventoryScreen() {
             }
             return (
               <View style={styles.emptyStateInner}>
-                <Text style={styles.emptyIcon}>{currentStorage?.icon}</Text>
+                <Image 
+                source={currentStorage?.image} 
+                style={{ width: 80, height: 80, marginBottom: 16 }} 
+                resizeMode="contain" 
+                />
                 <ThemedText style={styles.emptyTitle}>
                   No items in {selectedStorage}
                 </ThemedText>
@@ -694,42 +693,48 @@ function createStyles(colors: typeof Colors.light) {
     alignItems: 'flex-start',
     marginBottom: 5,
   },
-  categoryIconContainer: {
+  categoryIconNameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
-  categoryIcon: {
-    fontSize: 48,
+  categoryIconWrapper: {
+    position: 'relative',
   },
-  categoryIllustration: {
-    fontSize: 20,
-    opacity: 0.6,
+  categoryIconImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8, // optional for nicer look
   },
   categoryCountBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    minWidth: 50,
-    alignItems: 'center',
-  },
-  categoryCountText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
+  position: 'absolute',
+  top: -6,
+  right: -6,
+  minWidth: 22,
+  height: 22,
+  borderRadius: 11,
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingHorizontal: 6,
+  zIndex: 10,
+},
+categoryCountText: {
+  color: '#fff',
+  fontWeight: '700',
+  fontSize: 12,
+},
+categoryName: {
+  fontSize: 24,
+  fontWeight: '700',
+  lineHeight: 40,
+},
+
   categoryInfo: {
     marginBottom: 16,
   },
-  categoryName: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
-    lineHeight: 40,
-  },
   categoryDescription: {
     fontSize: 14,
-    color: '#666',
+    color: colors.exposedGhost,
     lineHeight: 20,
   },
   categoryProgressContainer: {
@@ -752,7 +757,7 @@ function createStyles(colors: typeof Colors.light) {
   categoryPercentage: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.exposedGhost,
     minWidth: 40,
     textAlign: 'right',
   },
@@ -790,6 +795,7 @@ function createStyles(colors: typeof Colors.light) {
   itemsHeaderTitle: {
     fontSize: 28,
     fontWeight: '700',
+    lineHeight: 39
   },
   itemsHeaderSubtitle: {
     fontSize: 14,
@@ -805,13 +811,14 @@ function createStyles(colors: typeof Colors.light) {
     justifyContent: "center",
     gap: 16,
     paddingHorizontal: 32,
+    paddingBottom: 175
   },
   emptyStateInner: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 16,
+    gap: 8,
     paddingHorizontal: 32,
-    paddingVertical: 60,
+    paddingVertical: 20,
   },
   emptyIcon: {
     fontSize: 64,
@@ -820,6 +827,7 @@ function createStyles(colors: typeof Colors.light) {
     fontSize: 24,
     fontWeight: "600",
     textAlign: "center",
+    lineHeight: 39
   },
   emptySubtitle: {
     fontSize: 16,
