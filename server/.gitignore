@@ -169,3 +169,16 @@ dist
 node_modules/
 firebase-service-account.json
 .storage/
+
+# Environment variables
+.env
+.env.*
+
+# Firebase credentials
+firebase-service-account.json
+capstoneproject-*.json
+*firebase-adminsdk*.json
+
+# Dependencies
+node_modules/
+dist/

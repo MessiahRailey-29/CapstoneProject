@@ -120,6 +120,10 @@ function createStyles(colors: typeof Colors.light) {
       color: '#fff',
       fontWeight: '700',
       marginBottom: 16,
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 7,
     },
     emptyState: {
       paddingVertical: 40,
@@ -128,6 +132,10 @@ function createStyles(colors: typeof Colors.light) {
     emptyText: {
       color: '#fff',
       textAlign: 'center',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 7,
     },
     legendContainer: {
       marginBottom: 16,
@@ -145,7 +153,11 @@ function createStyles(colors: typeof Colors.light) {
     },
     legendText: {
       fontSize: 12,
-      color: colors.textSecondary,
+      color: '#fff',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 7,
     },
     chartContainer: {
       gap: 12,
@@ -165,17 +177,23 @@ function createStyles(colors: typeof Colors.light) {
     barLabel: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.textSecondary,
+      color: '#fff',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 4,
     },
     barCount: {
       fontSize: 10,
-      color: colors.textSecondary,
+      color: '#ffffffc0',
     },
     barContainer: {
       flex: 1,
       height: 32,
-      backgroundColor: '#f0f0f0',
+      backgroundColor: '#f0f0f0ce',
       borderRadius: 6,
+      borderColor: '#00000084',
+      borderWidth: 0.7,
       overflow: 'hidden',
     },
     bar: {
@@ -187,13 +205,21 @@ function createStyles(colors: typeof Colors.light) {
     barValue: {
       fontSize: 11,
       fontWeight: '600',
-      color: colors.text,
+      color: '#fff',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 7,
     },
     percentage: {
       fontSize: 12,
       fontWeight: '600',
-      color: colors.textSecondary,
+      color: '#ffffffc0',
       width: 50,
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 4,
       textAlign: 'right',
     },
   });

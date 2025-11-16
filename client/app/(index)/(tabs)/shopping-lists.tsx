@@ -799,12 +799,12 @@ function createStyles(colors: typeof Colors.light) {
     emptyStateContainer: {
       alignItems: "center",
       justifyContent: 'center',
-      paddingTop: 100,
-      paddingHorizontal: 32,
-      gap: 16,
+      paddingTop: 80,
+      gap: 10,
     },
     emptyIcon: {
       fontSize: 64,
+      lineHeight: 78,
     },
     emptyText: {
       fontSize: 16,

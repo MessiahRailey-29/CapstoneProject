@@ -7,6 +7,7 @@ import ComparisonSettings from '@/components/ComparisonSettings';
 import { ComparisonSettings as IComparisonSettings } from '@/services/DuplicateDetectionService';
 import { useUser } from '@clerk/clerk-expo';
 import { borderColor, Colors } from '@/constants/Colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function DuplicateSettingsScreen() {
 
@@ -14,6 +15,8 @@ export default function DuplicateSettingsScreen() {
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
+
+  const insets = useSafeAreaInsets();
 
   const { user } = useUser();
   const [settings, setSettings] = useState<IComparisonSettings>({
@@ -65,7 +68,7 @@ export default function DuplicateSettingsScreen() {
   }
 
   return (
-    <>
+    <ScrollView style={({paddingBottom: insets.bottom})}>
       <Stack.Screen
         options={{
           headerTitle: 'Duplicate Detection',
@@ -84,7 +87,7 @@ export default function DuplicateSettingsScreen() {
         }}
       />
 
-      <ScrollView style={styles.container}>
+      <ScrollView style={(styles.container,{paddingBottom: insets.bottom +70})}>
         <ComparisonSettings
           settings={settings}
           onSettingsChange={handleSettingsChange}
@@ -101,7 +104,7 @@ export default function DuplicateSettingsScreen() {
           </ThemedText>
         </View>
       </ScrollView>
-    </>
+    </ScrollView>
   );
 }
 
@@ -109,7 +112,7 @@ function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.mainBackground,
     },
     loadingContainer: {
       flex: 1,

@@ -182,6 +182,7 @@ function ListExpenseCard({
               <ThemedText style={[
                 styles.budgetRemaining,
                 list.overBudget && styles.budgetRemainingNegative,
+                {backgroundColor: list.overBudget ?'#FF3B30' : '#34C759'}
               ]}>
                 {list.overBudget ? '₱' : '₱'}
                 {Math.abs(list.budgetRemaining).toFixed(2)}
@@ -230,8 +231,12 @@ function createStyles(colors: typeof Colors.light) {
     },
     title: {
       fontSize: 18,
-      color: colors.textSecondary,
+      color: '#fff',
       fontWeight: '700',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 2,
     },
     viewAllText: {
       fontSize: 14,
@@ -243,7 +248,7 @@ function createStyles(colors: typeof Colors.light) {
       alignItems: 'center',
     },
     emptyText: {
-      color: 'ffffffa5',
+      color: '#ffffffa5',
       textAlign: 'center',
     },
     summaryRow: {
@@ -254,7 +259,6 @@ function createStyles(colors: typeof Colors.light) {
     summaryCard: {
       flex: 1,
       borderRadius: 8,
-      borderWidth: 0.5,
       shadowColor: colors.shadowColor,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -266,16 +270,19 @@ function createStyles(colors: typeof Colors.light) {
       fontSize: 12,
       color: '#fff',
       marginBottom: 4,
-      shadowColor: colors.shadowColor,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.2,
-      shadowRadius: 20,
-      elevation: 10,
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 2,
     },
     summaryValue: {
       fontSize: 20,
       color: '#fff',
       fontWeight: '700',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 2,
     },
     warningBanner: {
       flexDirection: 'row',
@@ -315,7 +322,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     listCardOverBudget: {
       opacity: 0.9,
-      borderColor: colors.borderColor,
+      borderColor: 'red',
     },
     listHeader: {
       color: '#fff',
@@ -326,12 +333,17 @@ function createStyles(colors: typeof Colors.light) {
     },
     listEmoji: {
       fontSize: 24,
+      paddingBottom: 7
     },
     listName: {
       color: '#fff',
       fontSize: 16,
       fontWeight: '600',
       flex: 1,
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 2,
     },
     listStats: {
       gap: 8,
@@ -344,11 +356,19 @@ function createStyles(colors: typeof Colors.light) {
     statLabel: {
       fontSize: 12,
       color: '#fff',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 2,
     },
     statValue: {
       fontSize: 14,
       fontWeight: '600',
       color: '#fff',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 2,
     },
     statValueOverBudget: {
       color: '#FF3B30',
@@ -368,15 +388,15 @@ function createStyles(colors: typeof Colors.light) {
       alignSelf: "flex-start",
       borderRadius: 8,
       padding: 4,
-      backgroundColor:"#00b62dff",
       fontSize: 12,
       color: '#fff',
       fontWeight: '600',
-      borderWidth: 1.2,
-      borderColor: "#34C759"
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 2,
     },
     budgetRemainingNegative: {
-      color: '#FF3B30',
     },
     itemCount: {
       fontSize: 12,
@@ -394,6 +414,10 @@ function createStyles(colors: typeof Colors.light) {
       fontSize: 11,
       fontWeight: '600',
       color: '#fff',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 2,
     },
     completedBadge: {
       marginTop: 8,
@@ -407,6 +431,10 @@ function createStyles(colors: typeof Colors.light) {
       fontSize: 11,
       fontWeight: '600',
       color: '#fff',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 2,
     },
   });
 }

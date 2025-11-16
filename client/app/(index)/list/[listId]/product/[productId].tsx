@@ -278,9 +278,9 @@ function ProductContent({
               style={styles.quantityButton}
             >
               <IconSymbol
-                name="minus.circle.fill"
-                size={32}
-                color={quantity <= 1 ? "#CCC" : "#007AFF"}
+                name="minus"
+                size={23}
+                color={quantity <= 1 ? colors.text : "#FFF"}
               />
             </Button>
             
@@ -310,7 +310,7 @@ function ProductContent({
               onPress={() => handleQuantityChange(quantity + 1)}
               style={styles.quantityButton}
             >
-              <IconSymbol name="plus.circle.fill" size={32} color="#007AFF" />
+              <IconSymbol name="plus" size={32} color='#fff' />
             </Button>
           </View>
         </View>
@@ -691,12 +691,14 @@ function createStyles(colors: typeof Colors.light) {
     },
     quantityButton: {
       padding: 0,
+      backgroundColor: '#007AFF'
     },
     quantityDisplay: {
       fontSize: 48,
       fontWeight: 'bold',
       minWidth: 80,
       textAlign: 'center',
+      lineHeight: 40
     },
     quantityInputContainer: {
       width: 100,
@@ -715,6 +717,7 @@ function createStyles(colors: typeof Colors.light) {
       backgroundColor: colors.background,
       borderWidth: 1,
       borderColor: colors.borderColor,
+      marginBottom: 10
     },
     metadataContainer: {
       gap: 12,
