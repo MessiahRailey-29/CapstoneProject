@@ -3,17 +3,20 @@ import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import TextInput from "@/components/ui/text-input";
 import { Button } from "@/components/ui/button";
-import { View, StyleSheet, Alert } from "react-native";
+import { View, StyleSheet, Alert, KeyboardAvoidingView } from "react-native";
 import { useRouter } from "expo-router";
 import { isClerkAPIResponseError, useSignUp } from '@clerk/clerk-expo';
 import { ClerkAPIError } from '@clerk/types';
 import { ErrorDisplay } from '@/components/ui/ErrorDisplay';
 import { PasswordStrengthMeter, calculatePasswordStrength } from '@/components/ui/PasswordStrengthMeter';
 import { storeVerificationCode, checkVerificationCodeExpiry, clearVerificationCode } from '@/utils/securityUtils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SignUpScreen() {
     const { signUp, setActive, isLoaded } = useSignUp();
     const router = useRouter();
+
+    const insets = useSafeAreaInsets();
 
     // Step management
     const [step, setStep] = React.useState<'name' | 'credentials' | 'verification'>('name');
@@ -320,7 +323,13 @@ export default function SignUpScreen() {
 
     // Step 3: Credentials (email and password)
     return (
-        <BodyScrollView contentContainerStyle={{ padding: 16 }}>
+        <KeyboardAvoidingView
+        style={{flex: 1}}
+                  behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null }
+                  keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 60 : 0}>
+        <BodyScrollView contentContainerStyle={{ padding: 16 }}
+        keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior="automatic">
             <View style={styles.header}>
                 <ThemedText style={styles.headerTitle}>
                     Hi {firstName}! 👋
@@ -399,6 +408,7 @@ export default function SignUpScreen() {
                 </ThemedText>
             </View>
         </BodyScrollView>
+        </KeyboardAvoidingView>
     );
 }
 
