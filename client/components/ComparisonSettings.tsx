@@ -190,7 +190,7 @@ function createStyles(colors: typeof Colors.light) {
       borderColor: colors.borderColor,
       borderRadius: 8,
       marginBottom: 8,
-      backgroundColor: colors.background,
+      backgroundColor: colors.mainBackground,
     },
     optionButtonSelected: {
       borderColor: colors.borderColor,
@@ -266,12 +266,12 @@ function createStyles(colors: typeof Colors.light) {
     switchLabel: {
       fontSize: 16,
       fontWeight: '500',
-      color: '#333',
+      color: colors.text,
       marginBottom: 2,
     },
     switchDescription: {
       fontSize: 14,
-      color: '#666',
+      color: colors.text,
     },
     thresholdSection: {
       marginTop: 8,

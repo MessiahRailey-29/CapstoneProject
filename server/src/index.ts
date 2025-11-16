@@ -4,9 +4,39 @@ import cors from 'cors';
 import { createServer } from 'http';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import * as admin from 'firebase-admin';
 
 // Load environment variables FIRST
 dotenv.config();
+
+// Initialize Firebase Admin for Push Notifications
+let firebaseInitialized = false;
+
+try {
+  let serviceAccount;
+
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    // Production: Read from Railway environment variable
+    console.log('📱 Initializing Firebase from environment variable...');
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+    // Development: Read from local file path
+    console.log('📱 Initializing Firebase from file path...');
+    serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+  } else {
+    throw new Error('No Firebase credentials found');
+  }
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+
+  firebaseInitialized = true;
+  console.log('✅ Firebase Admin initialized successfully');
+} catch (error) {
+  console.error('⚠️ Firebase initialization failed:', error);
+  console.warn('⚠️ Push notifications will NOT work without Firebase!');
+}
 
 const app = express();
 const httpServer = createServer(app);
@@ -29,6 +59,7 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     mongodb: mongoose.connection.readyState === 1,
     mongodbState: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState],
+    firebase: firebaseInitialized,
   });
 });
 

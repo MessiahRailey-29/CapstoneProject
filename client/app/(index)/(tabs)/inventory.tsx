@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import TextInput from '@/components/ui/text-input';
 import { Colors } from '@/constants/Colors'
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 
 const STORAGE_LOCATIONS = getStorageDisplayInfo();
 
@@ -691,7 +692,7 @@ function createStyles(colors: typeof Colors.light) {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 5,
   },
   categoryIconContainer: {
     flexDirection: 'row',
@@ -724,6 +725,7 @@ function createStyles(colors: typeof Colors.light) {
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 4,
+    lineHeight: 40,
   },
   categoryDescription: {
     fontSize: 14,
@@ -775,6 +777,7 @@ function createStyles(colors: typeof Colors.light) {
   backButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.text
   },
   itemsHeaderInfo: {
     flexDirection: 'row',

@@ -1,1 +1,41 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Firebase credentials
+firebase-service-account.json
+*firebase-adminsdk*.json
+capstoneproject-*.json
+
+# Build outputs
+dist/
+build/
+.expo/
+web-build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+coverage/
+
+# Temporary files
+*.tmp
+.cache/

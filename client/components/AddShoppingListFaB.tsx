@@ -65,10 +65,10 @@ function createStyles(colors: any) {
             position: 'absolute',
             alignItems: 'flex-end',
             justifyContent: 'flex-end',
-            zIndex: 999,
+            zIndex: 10,
         },
         fab: {
-            bottom: 130,
+            bottom: 90,
             shadowColor: '#000',
             shadowOpacity: 0.25,
             shadowRadius: 6,

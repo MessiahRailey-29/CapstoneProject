@@ -231,27 +231,18 @@ function ProductCard({ recommendation, accentColor, onPress }: ProductCardProps)
         <ThemedText style={styles.cardName} numberOfLines={2}>
           {recommendation.productName}
         </ThemedText>
-        <View
-          style={[
-            styles.badge,
-            {
-              backgroundColor:
-                confidencePercentage > 80 ? '#4CAF50' : confidencePercentage > 60 ? '#FF9800' : '#9E9E9E',
-            },
-          ]}
-        >
-          <ThemedText style={styles.badgeText}>{confidencePercentage}%</ThemedText>
-        </View>
+        
       </View>
 
       <ThemedText style={styles.category}>{recommendation.category}</ThemedText>
 
       <View style={styles.priceContainer}>
         <ThemedText style={styles.store} numberOfLines={1}>{recommendation.store}</ThemedText>
-        <ThemedText style={[styles.price, { color: accentColor }]}>
-          ₱{recommendation.price.toFixed(2)}
-        </ThemedText>
       </View>
+      
+      <ThemedText style={[styles.price, { color: accentColor }]}>
+          ₱{recommendation.price.toFixed(2)}
+      </ThemedText>
 
       <View style={styles.reasonsContainer}>
         {recommendation.reasons.slice(0, 2).map((reason, index) => (
@@ -379,20 +370,19 @@ function createStyles(colors: typeof Colors.light) {
   },
   category: {
     fontSize: 11,
-    color: '#666',
-    marginBottom: 8,
+    color: colors.text,
   },
   priceContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
   store: {
     fontSize: 11,
-    color: '#666',
+    color: colors.text,
   },
   price: {
+    marginLeft: 15,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -401,7 +391,7 @@ function createStyles(colors: typeof Colors.light) {
   },
   reason: {
     fontSize: 10,
-    color: '#555',
+    color: colors.text,
     marginBottom: 2,
   },
   addButton: {

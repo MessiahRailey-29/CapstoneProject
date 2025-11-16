@@ -709,6 +709,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         fontSize: 28,
         fontWeight: '700',
         color: colors.text,
+        lineHeight: 40,
     },
     editNameButton: {
         marginLeft: 8,

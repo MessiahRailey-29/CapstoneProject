@@ -16,11 +16,13 @@ import {
 } from '@/utils/biometricAuth';
 import { Colors } from '@/constants/Colors';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function BiometricSettingsScreen() {
   const { user } = useUser();
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
+  const insets = useSafeAreaInsets();
   
   const [biometricAvailable, setBiometricAvailable] = React.useState(false);
   const [biometricType, setBiometricType] = React.useState<'fingerprint' | 'face' | 'iris' | 'none'>('none');
@@ -212,7 +214,7 @@ export default function BiometricSettingsScreen() {
 
   return (
     <>
-      <BodyScrollView contentContainerStyle={styles.container}>
+      <BodyScrollView contentContainerStyle={(styles.container)}>
         {/* Header */}
         <View style={styles.header}>
           <ThemedText style={styles.headerTitle}>Biometric Settings</ThemedText>
@@ -386,6 +388,9 @@ function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
     container: {
       padding: 16,
+      backgroundColor: colors.mainBackground,
+      paddingBottom: 120
+
     },
     loadingText: {
       textAlign: 'center',

@@ -218,30 +218,6 @@ export default function Homepage() {
           loading={recsLoading}
         />
 
-        {/* 7. Quick Actions */}
-        <View style={styles.section}>
-          <View style={styles.actionsCard}>
-            <ThemedText style={styles.actionsTitle}>Quick Actions</ThemedText>
-
-            <View style={styles.quickActions}>
-              <Button onPress={navigateToShoppingLists} style={styles.actionButton}>
-                View Shopping Lists
-              </Button>
-
-              <Button onPress={navigateToNewList} variant="outline" style={styles.actionButton}>
-                Create New List
-              </Button>
-
-              <Button onPress={navigateToInventory} variant="outline" style={styles.actionButton}>
-                View Inventory
-              </Button>
-
-              <Button onPress={navigateToProductBrowser} variant="outline" style={styles.actionButton}>
-                Browse Products
-              </Button>
-            </View>
-          </View>
-        </View>
 
         {/* Empty State */}
         {analytics.totalItems === 0 && (

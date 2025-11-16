@@ -810,7 +810,8 @@ function createStyles(colors: typeof Colors.light) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: 16
+      padding: 16,
+      backgroundColor:colors.background
     },
     storeMain: {
       flex: 1

@@ -116,6 +116,10 @@ function createStyles(colors: typeof Colors.light) {
     trendText: {
       fontSize: 12,
       fontWeight: '600',
+      textShadowColor: colors.oppositeBackground,
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 3,
     },
   });
 }

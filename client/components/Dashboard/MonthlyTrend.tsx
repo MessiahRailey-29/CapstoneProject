@@ -172,10 +172,15 @@ function createStyles(colors: typeof Colors.light) {
       marginBottom: 20,
     },
     title: {
-      fontSize: 22,
+      fontSize: 20,
       fontWeight: '800',
       color: '#FFFFFF',
       letterSpacing: 0.5,
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 3,
+      lineHeight: 30
     },
     trendIndicator: {
       backgroundColor: 'rgba(255,255,255,0.3)',
@@ -189,6 +194,10 @@ function createStyles(colors: typeof Colors.light) {
     },
     trendText: {
       fontSize: 18,
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 3,
     },
     chartBackground: {
       backgroundColor: 'rgba(255,255,255,0.15)',
@@ -206,6 +215,10 @@ function createStyles(colors: typeof Colors.light) {
       color: 'rgba(255,255,255,0.7)',
       textAlign: 'center',
       fontSize: 16,
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 3,
     },
     chartContainer: {
       paddingVertical: 8,
@@ -274,10 +287,18 @@ function createStyles(colors: typeof Colors.light) {
       fontWeight: '700',
       color: '#FFFFFF',
       marginBottom: 2,
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 3,
     },
     itemCount: {
       fontSize: 10,
       color: 'rgba(255,255,255,0.8)',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 3,
     },
     summaryContainer: {
       marginTop: 8,
@@ -316,11 +337,19 @@ function createStyles(colors: typeof Colors.light) {
       color: 'rgba(255,255,255,0.8)',
       marginBottom: 4,
       fontWeight: '500',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 3,
     },
     summaryValue: {
       fontSize: 15,
       fontWeight: '800',
       color: '#FFFFFF',
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      textShadowRadius: 3,
     },
   });
 }

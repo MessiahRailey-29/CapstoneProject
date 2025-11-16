@@ -441,6 +441,7 @@ export default function NotificationSettingsScreen() {
 function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
     container: {
+      backgroundColor: colors.mainBackground,
       flex: 1,
     },
     loadingContainer: {
