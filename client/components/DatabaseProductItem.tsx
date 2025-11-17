@@ -8,11 +8,11 @@ import { DatabaseProduct } from '@/services/productsApi';
 const CATEGORY_CONFIG: Record<string, { icon: string; color: string }> = {
   'Beverages': { icon: '🥤', color: '#FF6B6B' },
   'Dairy': { icon: '🥛', color: '#4ECDC4' },
-  'Instant Noodles': { icon: '🍜', color: '#FFE66D' },
+  'Instant Noodles': { icon: '🍜', color: '#c7b24c' },
   'Canned Goods': { icon: '🥫', color: '#95E1D3' },
   'Coffee': { icon: '☕', color: '#A8763E' },
   'Fruits': { icon: '🍎', color: '#FFA07A' },
-  'Vegetables': { icon: '🥬', color: '#90EE90' },
+  'Vegetables': { icon: '🥬', color: '#75c075' },
   'Meat': { icon: '🥩', color: '#FF6347' },
   'Bread': { icon: '🍞', color: '#F4A460' },
   'Household': { icon: '🧼', color: '#87CEEB' },

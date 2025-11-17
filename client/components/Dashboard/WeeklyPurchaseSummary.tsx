@@ -3,7 +3,7 @@ import React from 'react';
 import { StyleSheet, View, ScrollView, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useWeeklyPurchaseAnalytics } from '@/hooks/useWeeklyPurchaseAnalytics';
-import { Colors } from '@/constants/Colors';
+import { Colors, exposedGhostText } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -190,8 +190,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     weekRange: {
       fontSize: 12,
-      color: '#fff',
-      opacity: 0.8,
+      color: '#ffffffe7',
       marginTop: 2,
       textShadowColor: '#000',
       textShadowOffset: { width: 0, height: 1 },
@@ -203,8 +202,11 @@ function createStyles(colors: typeof Colors.light) {
       alignItems: 'center',
     },
     emptyText: {
-      color: '#ffffffa5',
+      color: '#ffffff',
       textAlign: 'center',
+      textShadowColor:'#000',
+      textShadowOffset:{ width: 0, height: 1 },
+      textShadowRadius:2,
     },
     summaryRow: {
       flexDirection: 'row',

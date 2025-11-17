@@ -25,6 +25,9 @@ export const zincColors = {
 export const appleBlue = "#10b981";
 export const appleRed = "#f87171";
 
+export const exposedGhostText = '#ccccccdf';
+export const ghostText = '#777';
+
 export const borderColor = "#000";
 export const appleGreen = "#16a34a";
 export const Colors = {
@@ -54,6 +57,26 @@ export const Colors = {
     gradientCard1: 'rgba(150, 150, 150, 0.3)',
     gradientCard2: 'rgba(219, 219, 219, 0.3)',
 
+    //HeaderColor
+    headerBackgroundColorHome: '#22c55eff',
+    headerBackgroundColorSL: '#3b82f6ff',
+    headerBackgroundColorInv: '#f59e0bff',
+    headerBackgroundColorBrowse: '#ef4444ff',
+    headerBackgroundColorProfile: '#8b5cf6ff',
+
+    //HeaderTextColors  
+    headerTextColorHome: '#fff',
+    headerTextColorSL: '#fff',
+    headerTextColorInv: '#fff',
+    headerTextColorBrowse: '#fff',
+    headerTextColorProfile: '#fff',
+
+    //HeaderBottomBorder
+    headerBottomBorderColorHome: 'transparent',
+    headerBottomBorderColorSL: 'transparent',
+    headerBottomBorderColorInv: 'transparent',
+    headerBottomBorderColorBrowse: 'transparent',
+    headerBottomBorderColorProfile: 'transparent',
 
     //Focused Colors
     radioButtonSelectedBackground: '#16a34a',
@@ -104,6 +127,27 @@ export const Colors = {
     gradientEnd: '#22c55e',
     gradientCard1: 'rgba(255, 255, 255, 0.4)',
     gradientCard2: 'rgba(199,237,204,0.3)',
+
+    //HeaderColors
+    headerBackgroundColorHome: '#0f172a',
+    headerBackgroundColorSL: '#0f172a',
+    headerBackgroundColorInv: '#0f172a',
+    headerBackgroundColorBrowse: '#0f172a',
+    headerBackgroundColorProfile: '#0f172a',
+
+    //HeaderTextColors  
+    headerTextColorHome: '#22c55e',
+    headerTextColorSL: '#3b82f6',
+    headerTextColorInv: '#f59e0b',
+    headerTextColorBrowse: '#ef4444',
+    headerTextColorProfile: '#8b5cf6',
+
+    //HeaderBottomBorder
+    headerBottomBorderColorHome: '#22c55e',
+    headerBottomBorderColorSL: '#3b82f6',
+    headerBottomBorderColorInv: '#f59e0b',
+    headerBottomBorderColorBrowse: '#ef4444',
+    headerBottomBorderColorProfile: '#8b5cf6',
 
 
     //Focused Colors

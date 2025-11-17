@@ -3,7 +3,7 @@ import React from 'react';
 import { StyleSheet, View, ScrollView, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { MonthlyExpense } from '@/hooks/useExpenseAnalytics';
-import { Colors } from '@/constants/Colors';
+import { Colors, exposedGhostText, ghostText } from '@/constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface MonthlyTrendProps {
@@ -212,7 +212,7 @@ function createStyles(colors: typeof Colors.light) {
       alignItems: 'center',
     },
     emptyText: {
-      color: 'rgba(255,255,255,0.7)',
+      color: '#fff',
       textAlign: 'center',
       fontSize: 16,
       textShadowColor: '#000',

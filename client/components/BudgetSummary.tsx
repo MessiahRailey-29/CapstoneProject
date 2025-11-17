@@ -1,8 +1,10 @@
 import React from 'react';
-import { StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { useShoppingListProductIds, useShoppingListProductCell } from '@/stores/ShoppingListStore';
 import { Colors } from '@/constants/Colors';
 import {LinearGradient} from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { Button } from '@react-navigation/elements';
 interface BudgetSummaryProps {
   listId: string;
   budget: number;
@@ -14,6 +16,8 @@ function ProductCost({ listId, productId }: { listId: string; productId: string 
   const [selectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
   const [productQuantity] = useShoppingListProductCell(listId, productId, "quantity");
   const [name] = useShoppingListProductCell(listId, productId, "name");
+
+  
   
   // Return null if no cost data, otherwise return the cost info
   if (!selectedPrice || selectedPrice <= 0) return null;
@@ -46,6 +50,8 @@ export default function BudgetSummary({
     const [selectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
     const [productQuantity] = useShoppingListProductCell(listId, productId, "quantity");  
     const [name] = useShoppingListProductCell(listId, productId, "name");
+
+    
     
     console.log(`Product ${productId}:`, {
       name,
@@ -74,6 +80,9 @@ export default function BudgetSummary({
   const totalSpent = productCosts.reduce((sum, item) => sum + (item?.cost || 0), 0);
   const remainingBudget = budget - totalSpent;
   const budgetUsedPercentage = budget > 0 ? (totalSpent / budget) * 100 : 0;
+
+  
+  const router = useRouter();
   
   console.log('Budget calculations:', {
     totalSpent,
@@ -114,7 +123,13 @@ export default function BudgetSummary({
 
   return (
     <LinearGradient
-      colors={[colors.background, '#22c55e', '#16a34a']}
+      colors={[colors.background,
+        budgetUsedPercentage <= 80 ? '#22c55e' :
+        budgetUsedPercentage <= 100 ? '#FF9500' :
+        '#FF3B30',
+        budgetUsedPercentage <= 80 ? '#22c55e' :
+        budgetUsedPercentage <= 100 ? '#FF9500' :
+        '#FF3B30']}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 6 }}
     style={styles.container}>
@@ -133,12 +148,20 @@ export default function BudgetSummary({
           </Text>
         </View>
 
-        <View style={styles.budgetItem}>
-          <Text style={styles.label}>Budget{budget === 0 ? ' (Not Set)' : ''}</Text>
-          <Text style={styles.budgetAmount}>
-            {budget === 0 ? 'Not set' : `${currency}${formatCurrency(budget)}`}
-          </Text>
-        </View>
+        <View style={styles.remainingContainer}>
+            <Text style={[
+              styles.remainingLabel,
+              { color: remainingBudget >= 0 ? colors.text : '#FF3B30' }
+            ]}>
+              {remainingBudget >= 0 ? 'Remaining: ' : 'Over by: '}
+            </Text>
+            <Text style={[
+              styles.remainingBudget,
+              { color: remainingBudget >= 0 ? '#34C759' : '#FF3B30' }
+            ]}>
+              {currency}{formatCurrency(Math.abs(remainingBudget))}
+            </Text>
+          </View>
       </View>
 
       {budget > 0 && (
@@ -159,16 +182,19 @@ export default function BudgetSummary({
               {budgetUsedPercentage.toFixed(0)}% used
             </Text>
           </View>
+        <View style={styles.budgetItem}>
+          <Text style={[styles.label,
+              { color: remainingBudget >= 0 ? colors.text : '#FF3B30' 
+              }]}>
+                Budget {budget === 0 ? ' (Not Set)' : ''}
+                </Text>
+          <Text style={[styles.budgetAmount,{ color: remainingBudget >= 0 ? colors.text : '#FF3B30' 
+              }]}>
+            {budget === 0 ? 'Not set' : `${currency}${formatCurrency(budget)}`}
+          </Text>
+        </View>
 
-          <View style={styles.remainingContainer}>
-            <Text style={[
-              styles.remainingText,
-              { color: remainingBudget >= 0 ? '#34C759' : '#FF3B30' }
-            ]}>
-              {remainingBudget >= 0 ? 'Remaining: ' : 'Over by: '}
-              {currency}{formatCurrency(Math.abs(remainingBudget))}
-            </Text>
-          </View>
+          
         </>
       )}
 
@@ -242,6 +268,7 @@ function createStyles(colors: typeof Colors.light) {
   },
   budgetItem: {
     alignItems: 'center',
+    marginBottom: 16,
   },
   label: {
     fontSize: 12,
@@ -254,7 +281,7 @@ function createStyles(colors: typeof Colors.light) {
     color: colors.text,
   },
   budgetAmount: {
-    fontSize: 20,
+    fontSize: 30,
     fontWeight: '600',
     color: colors.text,
   },
@@ -280,11 +307,14 @@ function createStyles(colors: typeof Colors.light) {
     textAlign: 'center',
   },
   remainingContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
+    top: 5
   },
-  remainingText: {
-    fontSize: 16,
+  remainingLabel: {
+    alignSelf: 'center',
+    fontWeight: '200',
+  },
+  remainingBudget: {
+    fontSize: 25,
     fontWeight: '600',
   },
   breakdown: {
@@ -312,7 +342,12 @@ function createStyles(colors: typeof Colors.light) {
   productCost: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#007AFF',
+    color: '#22c55e',
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation:2
   },
   moreItems: {
     fontSize: 12,
@@ -330,5 +365,10 @@ function createStyles(colors: typeof Colors.light) {
     color: '#666',
     textAlign: 'center',
   },
+  editButtonContainer: {
+  marginTop: 16,
+  alignItems: 'flex-end',
+  
+},
 });
 }

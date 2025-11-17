@@ -91,12 +91,19 @@ const createGradientHeader = (gradientColors) => {
           headerTitle: 'Home',
           headerTitleStyle: {
             fontWeight: 'bold',
-            color: "#000",
+            color: colors.headerTextColorHome,
             zIndex: 1,
+            paddingLeft: 6,
+            textShadowColor:'#000',
+            textShadowOffset:{width: 0, height:2 },
+            textShadowRadius: 3
           },
-          headerBackground: createGradientHeader(['#22c55e', '#16a34a']),
-          headerStyle: {
-            backgroundColor: 'transparent',
+          headerBackground: () => (
+            <View style={{ flex: 1, backgroundColor: colors.headerBackgroundColorHome }} />
+          ),
+          headerBackgroundContainerStyle: {
+            borderBottomColor: colors.headerBottomBorderColorHome,
+            borderBottomWidth: 2,
           },
           tabBarLabel: ({ focused }) => renderTabLabel("Home", focused),
           tabBarIcon: ({ color, focused, size }) => (
@@ -129,12 +136,20 @@ const createGradientHeader = (gradientColors) => {
           headerTitle: 'Shopping Lists',
           headerTitleStyle: {
             fontWeight: 'bold',
-            color: "#000",
+            color: colors.headerTextColorSL,
             zIndex: 1,
+            paddingLeft: 6,
+            lineHeight: 40,
+            textShadowColor:'#000',
+            textShadowOffset:{width: 0, height:2 },
+            textShadowRadius: 1
           },
-          headerBackground: createGradientHeader(['#3b82f6', '#1d4ed8']),
-          headerStyle: {
-            backgroundColor: 'transparent',
+          headerBackground: () => (
+            <View style={{ flex: 1, backgroundColor: colors.headerBackgroundColorSL }} />
+          ),
+          headerBackgroundContainerStyle: {
+            borderBottomColor: colors.headerBottomBorderColorSL,
+            borderBottomWidth: 2,
           },
           tabBarLabel: ({ focused }) => renderTabLabel("Lists", focused),
           tabBarIcon: ({ color, focused, size }) => (
@@ -167,12 +182,20 @@ const createGradientHeader = (gradientColors) => {
           headerTitle: 'My Inventory',
           headerTitleStyle: {
             fontWeight: 'bold',
-            color: "#000",
+            color: colors.headerTextColorInv,
             zIndex: 1,
+            paddingLeft: 6,
+            textShadowColor:'#000',
+            textShadowOffset:{width: 0, height:2 },
+            textShadowRadius: 1,
+            lineHeight: 40
           },
-          headerBackground: createGradientHeader(['#facc15', '#eab308']),
-          headerStyle: {
-            backgroundColor: 'transparent',
+          headerBackground: () => (
+            <View style={{ flex: 1, backgroundColor: colors.headerBackgroundColorInv }} />
+          ),
+          headerBackgroundContainerStyle: {
+            borderBottomColor: colors.headerBottomBorderColorInv,
+            borderBottomWidth: 2,
           },
           tabBarLabel: ({ focused }) => renderTabLabel("Inventory", focused),
           tabBarIcon: ({ color, focused, size }) => (
@@ -205,12 +228,20 @@ const createGradientHeader = (gradientColors) => {
           headerTitle: 'Browse Products',
           headerTitleStyle: {
             fontWeight: 'bold',
-            color: "#000",
+            color: colors.headerTextColorBrowse,
             zIndex: 1,
+            paddingLeft: 6,
+            lineHeight: 40,
+            textShadowColor:'#000',
+            textShadowOffset:{width: 0, height:2 },
+            textShadowRadius: 1
           },
-          headerBackground: createGradientHeader(['#f87171', '#dc2626']),
-          headerStyle: {
-            backgroundColor: 'transparent',
+          headerBackground: () => (
+            <View style={{ flex: 1, backgroundColor: colors.headerBackgroundColorProfile }} />
+          ),
+          headerBackgroundContainerStyle: {
+            borderBottomColor: colors.headerBottomBorderColorBrowse,
+            borderBottomWidth: 2,
           },
           tabBarLabel: ({ focused }) => renderTabLabel("Browse", focused),
           tabBarIcon: ({ color, focused, size }) => (
@@ -243,12 +274,20 @@ const createGradientHeader = (gradientColors) => {
           headerTitle: 'Profile',
           headerTitleStyle: {
             fontWeight: 'bold',
-            color: "#000",
+            color: colors.headerTextColorProfile,
             zIndex: 1,
+            paddingLeft: 6,
+            lineHeight: 40,
+            textShadowColor:'#000',
+            textShadowOffset:{width: 0, height:2 },
+            textShadowRadius: 1
           },
-          headerBackground: createGradientHeader(['#8b5cf6ff', '#7c3aedff']),
-          headerStyle: {
-            backgroundColor: 'transparent',
+          headerBackground: () => (
+            <View style={{ flex: 1, backgroundColor: colors.headerBackgroundColorProfile }} />
+          ),
+          headerBackgroundContainerStyle: {
+            borderBottomColor: colors.headerBottomBorderColorProfile,
+            borderBottomWidth: 2,
           },
           tabBarLabel: ({ focused }) => renderTabLabel("Profile", focused),
           tabBarIcon: ({ color, focused, size }) => (
