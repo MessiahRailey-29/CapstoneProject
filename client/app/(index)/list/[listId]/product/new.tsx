@@ -11,11 +11,7 @@ import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotific
 import { useProducts, useProductPrices } from "@/hooks/useProducts";
 import { DatabaseProduct, ProductPrice } from "@/services/productsApi";
 import { Colors } from "@/constants/Colors";
-import { HeaderTitle } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-
-  // color scheme for styles
 
 interface SelectedStoreInfo {
   store: string;
@@ -23,10 +19,19 @@ interface SelectedStoreInfo {
   priceId: number;
 }
 
+interface QueuedProduct {
+  id: string;
+  name: string;
+  quantity: number;
+  notes: string;
+  store?: string;
+  price?: number;
+  databaseProductId?: number;
+  category?: string;
+}
+
 export default function NewItemScreen() {
-
   const insets = useSafeAreaInsets();
-
   const { listId } = useLocalSearchParams() as { listId: string };
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
@@ -36,85 +41,37 @@ export default function NewItemScreen() {
   const [selectedStoreInfo, setSelectedStoreInfo] = useState<SelectedStoreInfo | null>(null);
   const [showStoreSelection, setShowStoreSelection] = useState(false);
   const [addingAnother, setAddingAnother] = useState(false);
-  const [queuedProducts, setQueuedProducts] = useState<Array<{
-    name: string;
-    quantity: number;
-    notes: string;
-    store?: string;
-    price?: number;
-    databaseProductId?: number;
-    category?: string;
-  }>>([]);
-
+  const [queuedProducts, setQueuedProducts] = useState<QueuedProduct[]>([]);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [quantityInput, setQuantityInput] = useState("1");
   const router = useRouter();
-  // 🔔 UPDATED: Use helper hook with automatic notification support
   const addShoppingListProduct = useAddProductWithNotifications(listId);
   const { products, loading: productsLoading, searchProducts, hasProducts, isApiConfigured } = useProducts();
   const { prices, loading: pricesLoading } = useProductPrices(selectedProduct?.id || null);
 
-  // Filter products based on the current name input
   const suggestions = useMemo(() => {
     if (!name.trim() || name.length < 2 || !hasProducts) return [];
     return searchProducts(name).slice(0, 8);
   }, [name, searchProducts, hasProducts]);
 
-  // Show/hide suggestions based on input and results
   useEffect(() => {
     setShowSuggestions(suggestions.length > 0 && name.length >= 2 && hasProducts);
   }, [suggestions, name, hasProducts]);
 
-  // Reset store selection when product changes
   useEffect(() => {
     setSelectedStoreInfo(null);
     setShowStoreSelection(false);
   }, [selectedProduct]);
 
-  const handleAddAnother = useCallback(() => {
-    if (!name.trim()) return;
-
-    // Add current product to queue
-    const newProduct = {
-      name: name.trim(),
-      quantity,
-      notes,
-      store: selectedStoreInfo?.store,
-      price: selectedStoreInfo?.price,
-      databaseProductId: selectedProduct?.id,
-      category: selectedProduct?.category,
-    };
-
-    setQueuedProducts(prev => [...prev, newProduct]);
-
-    // Show success feedback
-    Alert.alert(
-      "Added to Queue",
-      `"${name.trim()}" will be added to your list.`,
-      [{ text: "OK" }]
-    );
-
-    // Reset form fields
-    setName("");
-    setQuantity(1);
-    setNotes("");
-    setSelectedProduct(null);
-    setSelectedStoreInfo(null);
-    setShowStoreSelection(false);
-    setShowSuggestions(false);
-  }, [name, quantity, notes, selectedStoreInfo, selectedProduct]);
-
-  const handleRemoveFromQueue = useCallback((index: number) => {
-    setQueuedProducts(prev => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const handleCreateProduct = useCallback(async () => {
+  const handleAddAllToList = useCallback(async () => {
     if (!name.trim() && queuedProducts.length === 0) return;
 
     setAddingAnother(true);
 
-    // Add current product to the list if form is filled
     const productsToAdd = [...queuedProducts];
     if (name.trim()) {
       productsToAdd.push({
+        id: Date.now().toString(),
         name: name.trim(),
         quantity,
         notes,
@@ -125,7 +82,6 @@ export default function NewItemScreen() {
       });
     }
 
-    // Add all products
     let addedCount = 0;
     let duplicateCount = 0;
 
@@ -133,7 +89,7 @@ export default function NewItemScreen() {
       const productId = await addShoppingListProduct(
         product.name,
         product.quantity,
-        "", // units - empty string since we removed this field
+        "",
         product.notes || "",
         product.store || "",
         product.price || 0,
@@ -148,7 +104,6 @@ export default function NewItemScreen() {
       }
     }
 
-    // Show result
     if (addedCount > 0 && duplicateCount > 0) {
       Alert.alert(
         "Products Added",
@@ -156,11 +111,6 @@ export default function NewItemScreen() {
         [{ text: "OK" }]
       );
     } else if (addedCount > 0) {
-      Alert.alert(
-        "Success!",
-        `${addedCount} product${addedCount !== 1 ? 's' : ''} added to your list.`,
-        [{ text: "OK" }]
-      );
     } else if (duplicateCount > 0) {
       Alert.alert(
         "Duplicates Detected",
@@ -172,6 +122,79 @@ export default function NewItemScreen() {
     setAddingAnother(false);
     router.back();
   }, [name, quantity, notes, selectedStoreInfo, selectedProduct, queuedProducts, addShoppingListProduct, router]);
+
+  const handleCancel = useCallback(() => {
+    const hasUnsavedData = name.trim() !== "" || queuedProducts.length > 0;
+    
+    if (hasUnsavedData) {
+      Alert.alert(
+        "Unsaved Changes",
+        queuedProducts.length > 0 
+          ? `You have ${queuedProducts.length} product${queuedProducts.length !== 1 ? 's' : ''} in queue. What would you like to do?`
+          : "You have unsaved product details. What would you like to do?",
+        [
+          {
+            text: "Discard All",
+            style: "destructive",
+            onPress: () => router.back()
+          },
+          {
+            text: "Save Anyway",
+            onPress: handleAddAllToList
+          },
+          {
+            text: "Continue Editing",
+            style: "cancel"
+          }
+        ]
+      );
+    } else {
+      router.back();
+    }
+  }, [name, queuedProducts, router, handleAddAllToList]);
+
+  const handleAddToQueue = useCallback(() => {
+    if (!name.trim()) return;
+
+    const newProduct: QueuedProduct = {
+      id: Date.now().toString(),
+      name: name.trim(),
+      quantity,
+      notes,
+      store: selectedStoreInfo?.store,
+      price: selectedStoreInfo?.price,
+      databaseProductId: selectedProduct?.id,
+      category: selectedProduct?.category,
+    };
+
+    setQueuedProducts(prev => [...prev, newProduct]);
+
+    setName("");
+    setQuantity(1);
+    setNotes("");
+    setSelectedProduct(null);
+    setSelectedStoreInfo(null);
+    setShowStoreSelection(false);
+    setShowSuggestions(false);
+  }, [name, quantity, notes, selectedStoreInfo, selectedProduct]);
+
+  const handleEditProduct = useCallback((productId: string) => {
+    setEditingProductId(productId);
+  }, []);
+
+  const handleUpdateProduct = useCallback((productId: string, updates: Partial<QueuedProduct>) => {
+    setQueuedProducts(prev => 
+      prev.map(p => p.id === productId ? { ...p, ...updates } : p)
+    );
+  }, []);
+
+  const handleSaveEdit = useCallback((productId: string) => {
+    setEditingProductId(null);
+  }, []);
+
+  const handleRemoveFromQueue = useCallback((productId: string) => {
+    setQueuedProducts(prev => prev.filter(p => p.id !== productId));
+  }, []);
 
   const handleProductSelect = useCallback((product: DatabaseProduct) => {
     setName(product.name);
@@ -206,7 +229,6 @@ export default function NewItemScreen() {
     Keyboard.dismiss();
   }, []);
 
-    // color scheme for styles
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
@@ -219,15 +241,15 @@ export default function NewItemScreen() {
           headerTitle: queuedProducts.length > 0 
             ? `Add product (${queuedProducts.length} queued)` 
             : "Add product",
-            headerTitleStyle:{
-              fontSize: queuedProducts.length > 0 ? 17 : 20,
-              fontWeight: "600",
-            },
+          headerTitleStyle: {
+            fontSize: queuedProducts.length > 0 ? 17 : 20,
+            fontWeight: "600",
+          },
           headerRight: () => (
             <View style={styles.headerButtons}>
               <Button
                 variant="ghost"
-                onPress={handleCreateProduct}
+                onPress={handleAddAllToList}
                 disabled={(!name.trim() && queuedProducts.length === 0) || addingAnother}
                 style={styles.headerButtonPrimary}
               >
@@ -236,7 +258,7 @@ export default function NewItemScreen() {
             </View>
           ),
           headerLeft: () => (
-            <Button variant="ghost" onPress={router.back}>
+            <Button variant="ghost" onPress={handleCancel}>
               Cancel
             </Button>
           ),
@@ -244,169 +266,434 @@ export default function NewItemScreen() {
       />
       
       <KeyboardAvoidingView
-          style={{flex: 1}}
-          behavior={process.env.EXPO_OS !== 'ios' ? "padding" : "height"}
-          keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 10 : insets.top}>
-      <BodyScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
+        style={{flex: 1}}
+        behavior={process.env.EXPO_OS !== 'ios' ? "padding" : "height"}
+        keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 10 : insets.top}
       >
-        {/* Queued Products Section */}
-        {queuedProducts.length > 0 && (
-          <View style={styles.queuedSection}>
-            <View style={styles.queuedHeader}>
-              <ThemedText type="defaultSemiBold" style={styles.queuedTitle}>
-                Products to Add ({queuedProducts.length})
-              </ThemedText>
-              <ThemedText style={styles.queuedSubtitle}>
-                These will be added to your list
-              </ThemedText>
-            </View>
-            <View style={styles.queuedProductsContainer}>
-              {queuedProducts.map((product, index) => (
-                <View key={index} style={styles.queuedProductCard}>
-                  <View style={styles.queuedProductContent}>
-                    <View style={styles.queuedProductMain}>
-                      <ThemedText type="defaultSemiBold" style={styles.queuedProductName}>
-                        {product.name}
-                      </ThemedText>
-                      <View style={styles.queuedProductDetails}>
-                        <ThemedText style={styles.queuedProductDetail}>
-                          Qty: {product.quantity}
-                        </ThemedText>
-                        {product.store && (
-                          <>
-                            <ThemedText style={styles.queuedProductSeparator}>•</ThemedText>
-                            <ThemedText style={styles.queuedProductDetail}>
-                              {product.store}
-                            </ThemedText>
-                          </>
-                        )}
-                        {product.price && (
-                          <>
-                            <ThemedText style={styles.queuedProductSeparator}>•</ThemedText>
-                            <ThemedText style={styles.queuedProductPrice}>
-                              ₱{(product.price * product.quantity).toFixed(2)}
-                            </ThemedText>
-                          </>
-                        )}
-                      </View>
-                      {product.notes && (
-                        <ThemedText style={styles.queuedProductNotes} numberOfLines={1}>
-                          📝 {product.notes}
-                        </ThemedText>
-                      )}
-                    </View>
-                    <Pressable
-                      onPress={() => handleRemoveFromQueue(index)}
-                      style={styles.queuedProductRemove}
-                    >
-                      <IconSymbol name="xmark.circle.fill" color="#FF3B30" size={24} />
-                    </Pressable>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Product Name Input with Suggestions */}
-        <View style={styles.nameSection}>
-          <View style={styles.nameInputContainer}>
-            <TextInput
-              label="Product Name"
-              placeholder="Start typing product name..."
-              value={name}
-              onChangeText={handleNameChange}
-              autoFocus={true}
-              returnKeyType="done"
-              containerStyle={styles.nameInput}
-              onSubmitEditing={handleCreateProduct}
-            />
-            {(showSuggestions || showStoreSelection) && (
-              <Pressable
-                style={styles.dismissButton}
-                onPress={handleDismissSuggestions}
-              >
-                <IconSymbol name="xmark.circle.fill" color="#999" size={20} />
-              </Pressable>
-            )}
-          </View>
-          
-          {/* Selected Store Indicator */}
-          {selectedStoreInfo && (
-            <View style={styles.selectedStoreBadge}>
-              <IconSymbol name="storefront" color="#007AFF" size={16} />
-              <ThemedText type="default" style={styles.selectedStoreText}>
-                {selectedStoreInfo.store} • ₱{selectedStoreInfo.price.toFixed(2)}
-              </ThemedText>
-              <Pressable
-                onPress={() => setShowStoreSelection(true)}
-                style={styles.changeStoreButton}
-              >
-                <ThemedText type="default" style={styles.changeStoreText}>
-                  Change
+        <BodyScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
+          {queuedProducts.length > 0 && (
+            <View style={styles.queuedSection}>
+              <View style={styles.queuedHeader}>
+                <ThemedText type="defaultSemiBold" style={styles.queuedTitle}>
+                  Products to Add ({queuedProducts.length})
                 </ThemedText>
-              </Pressable>
-            </View>
-          )}
-
-          {/* Product Suggestions */}
-          {showSuggestions && !productsLoading && hasProducts && (
-            <View style={styles.suggestionsContainer}>
-              <ThemedText type="defaultSemiBold" style={styles.suggestionsHeader}>
-                Product Suggestions
-              </ThemedText>
-              <FlatList
-                data={suggestions}
-                renderItem={({ item }) => (
-                  <ProductSuggestionItem
-                    product={item}
-                    onSelect={handleProductSelect}
-                    searchQuery={name}
+                <ThemedText style={styles.queuedSubtitle}>
+                  Tap any item to edit
+                </ThemedText>
+              </View>
+              <View style={styles.queuedProductsContainer}>
+                {queuedProducts.map((product) => (
+                  <QueuedProductCard
+                    key={product.id}
+                    product={product}
+                    isEditing={editingProductId === product.id}
+                    onEdit={() => handleEditProduct(product.id)}
+                    onUpdate={(updates) => handleUpdateProduct(product.id, updates)}
+                    onSave={() => handleSaveEdit(product.id)}
+                    onRemove={() => handleRemoveFromQueue(product.id)}
+                    colors={colors}
                   />
-                )}
-                keyExtractor={(item) => item.id.toString()}
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-              />
+                ))}
+              </View>
             </View>
           )}
 
-          {/* Store Selection */}
-          {showStoreSelection && selectedProduct && (
-            <View style={styles.suggestionsContainer}>
-              <ThemedText type="defaultSemiBold" style={styles.suggestionsHeader}>
-                Choose Store & Price
-              </ThemedText>
-              {pricesLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ThemedText>Loading prices...</ThemedText>
-                </View>
-              ) : prices.length > 0 ? (
+          <View style={styles.nameSection}>
+            <View style={styles.nameInputContainer}>
+              <TextInput
+                label="Product Name"
+                placeholder="Start typing product name..."
+                value={name}
+                onChangeText={handleNameChange}
+                autoFocus={queuedProducts.length === 0}
+                returnKeyType="done"
+                containerStyle={styles.nameInput}
+                onSubmitEditing={handleAddToQueue}
+              />
+              {(showSuggestions || showStoreSelection) && (
+                <Pressable
+                  style={styles.dismissButton}
+                  onPress={handleDismissSuggestions}
+                >
+                  <IconSymbol name="xmark.circle.fill" color="#999" size={20} />
+                </Pressable>
+              )}
+            </View>
+          
+            {selectedStoreInfo && (
+              <View style={styles.selectedStoreBadge}>
+                <IconSymbol name="storefront" color="#007AFF" size={16} />
+                <ThemedText type="default" style={styles.selectedStoreText}>
+                  {selectedStoreInfo.store} • ₱{selectedStoreInfo.price.toFixed(2)}
+                </ThemedText>
+                <Pressable
+                  onPress={() => setShowStoreSelection(true)}
+                  style={styles.changeStoreButton}
+                >
+                  <ThemedText type="default" style={styles.changeStoreText}>
+                    Change
+                  </ThemedText>
+                </Pressable>
+              </View>
+            )}
+
+            {showSuggestions && !productsLoading && hasProducts && (
+              <View style={styles.suggestionsContainer}>
+                <ThemedText type="defaultSemiBold" style={styles.suggestionsHeader}>
+                  Product Suggestions
+                </ThemedText>
                 <FlatList
-                  data={prices}
+                  data={suggestions}
                   renderItem={({ item }) => (
-                    <StoreSelectionItem
-                      price={item}
-                      onSelect={handleStoreSelect}
-                      isSelected={selectedStoreInfo?.priceId === item.id}
+                    <ProductSuggestionItem
+                      product={item}
+                      onSelect={handleProductSelect}
+                      searchQuery={name}
                     />
                   )}
                   keyExtractor={(item) => item.id.toString()}
                   scrollEnabled={false}
                   showsVerticalScrollIndicator={false}
                 />
+              </View>
+            )}
+
+            {showStoreSelection && selectedProduct && (
+              <View style={styles.suggestionsContainer}>
+                <ThemedText type="defaultSemiBold" style={styles.suggestionsHeader}>
+                  Choose Store & Price
+                </ThemedText>
+                {pricesLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ThemedText>Loading prices...</ThemedText>
+                  </View>
+                ) : prices.length > 0 ? (
+                  <FlatList
+                    data={prices}
+                    renderItem={({ item }) => (
+                      <StoreSelectionItem
+                        price={item}
+                        onSelect={handleStoreSelect}
+                        isSelected={selectedStoreInfo?.priceId === item.id}
+                      />
+                    )}
+                    keyExtractor={(item) => item.id.toString()}
+                    scrollEnabled={false}
+                    showsVerticalScrollIndicator={false}
+                  />
+                ) : (
+                  <View style={styles.noPricesContainer}>
+                    <ThemedText style={styles.noPricesText}>
+                      No prices available for this product
+                    </ThemedText>
+                    <Button
+                      variant="ghost"
+                      onPress={() => setShowStoreSelection(false)}
+                    >
+                      Continue without price
+                    </Button>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {!isApiConfigured && name.length >= 2 && (
+              <View style={styles.infoContainer}>
+                <ThemedText type="default" style={styles.infoText}>
+                  💡 Configure your API to see product suggestions
+                </ThemedText>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.quantitySection}>
+            <ThemedText type="defaultSemiBold" style={styles.quantityLabel}>
+              Quantity
+            </ThemedText>
+            <View style={styles.quantityControls}>
+              <View style={styles.quantityInputWrapper}>
+                <TextInput
+                  value={quantityInput}
+                  onChangeText={(text) => {
+                    // Allow empty string while typing
+                    setQuantityInput(text);
+                    
+                    // Update actual quantity if valid
+                    if (text === '') {
+                      return; // Don't update quantity yet
+                    }
+                    const num = parseInt(text);
+                    if (!isNaN(num) && num > 0) {
+                      setQuantity(num);
+                    }
+                  }}
+                  onBlur={() => {
+                    // When focus is lost, ensure we have a valid quantity
+                    if (quantityInput === '' || parseInt(quantityInput) < 1) {
+                      setQuantityInput('1');
+                      setQuantity(1);
+                    }
+                  }}
+                  keyboardType="numeric"
+                  containerStyle={styles.quantityInputContainer}
+                  inputStyle={styles.quantityInputText}
+                  placeholder="1"
+                  selectTextOnFocus={true}
+                />
+                {selectedStoreInfo && (
+                  <ThemedText type="default" style={styles.totalPriceText}>
+                    Total: ₱{(selectedStoreInfo.price * quantity).toFixed(2)}
+                  </ThemedText>
+                )}
+              </View>
+              <View style={styles.quantityButtons}>
+                <Button
+                  onPress={() => {
+                    const newQty = Math.max(1, quantity - 1);
+                    setQuantity(newQty);
+                    setQuantityInput(newQty.toString());
+                  }}
+                  variant="ghost"
+                  style={styles.quantityButton}
+                  disabled={quantity <= 1}
+                >
+                  <IconSymbol
+                    name="minus"
+                    color={quantity <= 1 ? "#ccc" : "#007AFF"}
+                    size={24}
+                  />
+                </Button>
+                <Button
+                  onPress={() => {
+                    const newQty = quantity + 1;
+                    setQuantity(newQty);
+                    setQuantityInput(newQty.toString());
+                  }}
+                  variant="ghost"
+                  style={styles.quantityButton}
+                >
+                  <IconSymbol name="plus" color="#007AFF" size={24} />
+                </Button>
+              </View>
+            </View>
+          </View>
+
+          <TextInput
+            label="Notes (Optional)"
+            placeholder="Add any additional notes..."
+            textAlignVertical="top"
+            value={notes}
+            multiline={true}
+            numberOfLines={3}
+            inputStyle={styles.notesInput}
+            onChangeText={setNotes}
+          />
+
+          <View style={styles.buttonContainer}>
+            <Button
+              onPress={handleAddToQueue}
+              disabled={!name.trim() || addingAnother}
+              variant="ghost"
+              style={styles.addToQueueButton}
+            >
+              + Add to Queue
+            </Button>
+          </View>
+        </BodyScrollView>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+function QueuedProductCard({
+  product,
+  isEditing,
+  onEdit,
+  onUpdate,
+  onSave,
+  onRemove,
+  colors
+}: {
+  product: QueuedProduct;
+  isEditing: boolean;
+  onEdit: () => void;
+  onUpdate: (updates: Partial<QueuedProduct>) => void;
+  onSave: () => void;
+  onRemove: () => void;
+  colors: typeof Colors.light;
+}) {
+  const styles = createStyles(colors);
+  const [editName, setEditName] = useState(product.name);
+  const [showEditSuggestions, setShowEditSuggestions] = useState(false);
+  const [showEditStoreSelection, setShowEditStoreSelection] = useState(false);
+  const [editSelectedProduct, setEditSelectedProduct] = useState<DatabaseProduct | null>(
+    product.databaseProductId ? { id: product.databaseProductId, name: product.name, category: product.category || '' } as DatabaseProduct : null
+  );
+  const [editSelectedStoreInfo, setEditSelectedStoreInfo] = useState<SelectedStoreInfo | null>(
+    product.store && product.price ? { store: product.store, price: product.price, priceId: 0 } : null
+  );
+
+  const { searchProducts, hasProducts } = useProducts();
+  const { prices: editPrices, loading: editPricesLoading } = useProductPrices(editSelectedProduct?.id || null);
+
+  const editSuggestions = useMemo(() => {
+    if (!editName.trim() || editName.length < 2 || !hasProducts) return [];
+    return searchProducts(editName).slice(0, 8);
+  }, [editName, searchProducts, hasProducts]);
+
+  useEffect(() => {
+    if (isEditing) {
+      setShowEditSuggestions(editSuggestions.length > 0 && editName.length >= 2 && hasProducts);
+    }
+  }, [editSuggestions, editName, hasProducts, isEditing]);
+
+  const handleEditProductSelect = (selectedProd: DatabaseProduct) => {
+    setEditName(selectedProd.name);
+    setEditSelectedProduct(selectedProd);
+    setShowEditSuggestions(false);
+    setShowEditStoreSelection(true);
+    onUpdate({ 
+      name: selectedProd.name, 
+      databaseProductId: selectedProd.id,
+      category: selectedProd.category 
+    });
+  };
+
+  const handleEditStoreSelect = (price: ProductPrice) => {
+    setEditSelectedStoreInfo({
+      store: price.store,
+      price: price.price,
+      priceId: price.id
+    });
+    setShowEditStoreSelection(false);
+    onUpdate({ 
+      store: price.store, 
+      price: price.price 
+    });
+  };
+
+  const handleEditNameChange = (text: string) => {
+    setEditName(text);
+    setEditSelectedProduct(null);
+    setEditSelectedStoreInfo(null);
+    onUpdate({ name: text, databaseProductId: undefined, store: undefined, price: undefined });
+  };
+
+  if (isEditing) {
+    return (
+      <View style={styles.queuedProductCard}>
+        <View style={styles.editingContainer}>
+          <View style={styles.editNameContainer}>
+            <TextInput
+              label="Product Name"
+              value={editName}
+              onChangeText={handleEditNameChange}
+              containerStyle={styles.editInput}
+            />
+            {(showEditSuggestions || showEditStoreSelection) && (
+              <Pressable
+                style={styles.editDismissButton}
+                onPress={() => {
+                  setShowEditSuggestions(false);
+                  setShowEditStoreSelection(false);
+                }}
+              >
+                <IconSymbol name="xmark.circle.fill" color="#999" size={18} />
+              </Pressable>
+            )}
+          </View>
+
+          {editSelectedStoreInfo && !showEditStoreSelection && (
+            <View style={styles.editStoreBadge}>
+              <IconSymbol name="storefront" color="#007AFF" size={14} />
+              <ThemedText type="default" style={styles.editStoreText}>
+                {editSelectedStoreInfo.store} • ₱{editSelectedStoreInfo.price.toFixed(2)}
+              </ThemedText>
+              <Pressable
+                onPress={() => setShowEditStoreSelection(true)}
+                style={styles.editChangeStoreButton}
+              >
+                <ThemedText type="default" style={styles.editChangeStoreText}>
+                  Change
+                </ThemedText>
+              </Pressable>
+            </View>
+          )}
+
+          {showEditSuggestions && hasProducts && (
+            <View style={styles.editSuggestionsContainer}>
+              <ThemedText type="defaultSemiBold" style={styles.editSuggestionsHeader}>
+                Product Suggestions
+              </ThemedText>
+              <View style={styles.editSuggestionsList}>
+                {editSuggestions.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    style={styles.editSuggestionItem}
+                    onPress={() => handleEditProductSelect(item)}
+                  >
+                    <View style={styles.editSuggestionContent}>
+                      <ThemedText type="defaultSemiBold" style={styles.editSuggestionName}>
+                        {item.name}
+                      </ThemedText>
+                      <ThemedText type="default" style={styles.editSuggestionCategory}>
+                        {item.category}
+                      </ThemedText>
+                    </View>
+                    <IconSymbol name="chevron.right" color="#007AFF" size={20} />
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {showEditStoreSelection && editSelectedProduct && (
+            <View style={styles.editSuggestionsContainer}>
+              <ThemedText type="defaultSemiBold" style={styles.editSuggestionsHeader}>
+                Choose Store & Price
+              </ThemedText>
+              {editPricesLoading ? (
+                <View style={styles.editLoadingContainer}>
+                  <ThemedText style={styles.editLoadingText}>Loading prices...</ThemedText>
+                </View>
+              ) : editPrices.length > 0 ? (
+                <View style={styles.editSuggestionsList}>
+                  {editPrices.map((price) => (
+                    <Pressable
+                      key={price.id}
+                      style={[
+                        styles.editStoreItem,
+                        editSelectedStoreInfo?.priceId === price.id && styles.editStoreItemSelected
+                      ]}
+                      onPress={() => handleEditStoreSelect(price)}
+                    >
+                      <View style={styles.editStoreContent}>
+                        <View style={styles.editStoreMain}>
+                          <ThemedText type="defaultSemiBold" style={styles.editStoreName}>
+                            {price.store}
+                          </ThemedText>
+                          <ThemedText type="title" style={styles.editStorePrice}>
+                            ₱{price.price.toFixed(2)}
+                          </ThemedText>
+                        </View>
+                        {editSelectedStoreInfo?.priceId === price.id && (
+                          <IconSymbol name="checkmark.circle.fill" color="#34C759" size={18} />
+                        )}
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
               ) : (
-                <View style={styles.noPricesContainer}>
-                  <ThemedText style={styles.noPricesText}>
-                    No prices available for this product
+                <View style={styles.editNoPricesContainer}>
+                  <ThemedText style={styles.editNoPricesText}>
+                    No prices available
                   </ThemedText>
                   <Button
                     variant="ghost"
-                    onPress={() => {
-                      setShowStoreSelection(false);
-                    }}
+                    onPress={() => setShowEditStoreSelection(false)}
                   >
                     Continue without price
                   </Button>
@@ -415,87 +702,105 @@ export default function NewItemScreen() {
             </View>
           )}
 
-          {/* Show info if API not configured */}
-          {!isApiConfigured && name.length >= 2 && (
-            <View style={styles.infoContainer}>
-              <ThemedText type="default" style={styles.infoText}>
-                💡 Configure your API to see product suggestions
-              </ThemedText>
-            </View>
-          )}
-        </View>
-
-        {/* Quantity Controls */}
-        <View style={styles.quantitySection}>
-          <ThemedText type="defaultSemiBold" style={styles.quantityLabel}>
-            Quantity
-          </ThemedText>
-          <View style={styles.quantityControls}>
-            <View style={styles.quantityDisplay}>
-              <ThemedText type="title" style={styles.quantityText}>
-                {quantity}
-              </ThemedText>
-              {selectedStoreInfo && (
-                <ThemedText type="default" style={styles.totalPriceText}>
-                  Total: ₱{(selectedStoreInfo.price * quantity).toFixed(2)}
-                </ThemedText>
-              )}
-            </View>
-            <View style={styles.quantityButtons}>
+          <View style={styles.editQuantityRow}>
+            <ThemedText type="defaultSemiBold" style={styles.editLabel}>
+              Quantity
+            </ThemedText>
+            <View style={styles.editQuantityControls}>
               <Button
-                onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                onPress={() => onUpdate({ quantity: Math.max(1, product.quantity - 1) })}
                 variant="ghost"
-                style={styles.quantityButton}
-                disabled={quantity <= 1}
+                style={styles.editQuantityButton}
+                disabled={product.quantity <= 1}
               >
                 <IconSymbol
                   name="minus"
-                  color={quantity <= 1 ? "#ccc" : "#007AFF"}
-                  size={24}
+                  color={product.quantity <= 1 ? "#ccc" : "#007AFF"}
+                  size={20}
                 />
               </Button>
+              <ThemedText type="defaultSemiBold" style={styles.editQuantityText}>
+                {product.quantity}
+              </ThemedText>
               <Button
-                onPress={() => setQuantity(quantity + 1)}
+                onPress={() => onUpdate({ quantity: product.quantity + 1 })}
                 variant="ghost"
-                style={styles.quantityButton}
+                style={styles.editQuantityButton}
               >
-                <IconSymbol name="plus" color="#007AFF" size={24} />
+                <IconSymbol name="plus" color="#007AFF" size={20} />
               </Button>
             </View>
           </View>
+          <TextInput
+            label="Notes"
+            value={product.notes}
+            onChangeText={(text) => onUpdate({ notes: text })}
+            multiline
+            numberOfLines={2}
+            containerStyle={styles.editInput}
+          />
+          <View style={styles.editActions}>
+            <Button
+              onPress={onSave}
+              variant="ghost"
+              style={styles.saveButton}
+            >
+              Save Changes
+            </Button>
+          </View>
         </View>
+      </View>
+    );
+  }
 
-        {/* Notes Input */}
-        <TextInput
-          label="Notes (Optional)"
-          placeholder="Add any additional notes..."
-          textAlignVertical="top"
-          value={notes}
-          multiline={true}
-          numberOfLines={3}
-          inputStyle={styles.notesInput}
-          onChangeText={setNotes}
-        />
-
-        {/* Android Add Buttons */}
-        {Platform.OS !== "ios" && (
-          <View style={styles.buttonContainer}>
-            {name.trim() && (
-              <Button
-                onPress={handleAddAnother}
-                disabled={addingAnother}
-                variant="ghost"
-                style={styles.addAnotherButton}
-              >
-                + Add to Queue
-              </Button>
+  return (
+    <Pressable
+      style={styles.queuedProductCard}
+      onPress={onEdit}
+    >
+      <View style={styles.queuedProductContent}>
+        <View style={styles.queuedProductMain}>
+          <ThemedText type="defaultSemiBold" style={styles.queuedProductName}>
+            {product.name}
+          </ThemedText>
+          <View style={styles.queuedProductDetails}>
+            <ThemedText style={styles.queuedProductDetail}>
+              Qty: {product.quantity}
+            </ThemedText>
+            {product.store && (
+              <>
+                <ThemedText style={styles.queuedProductSeparator}>•</ThemedText>
+                <ThemedText style={styles.queuedProductDetail}>
+                  {product.store}
+                </ThemedText>
+              </>
+            )}
+            {product.price && (
+              <>
+                <ThemedText style={styles.queuedProductSeparator}>•</ThemedText>
+                <ThemedText style={styles.queuedProductPrice}>
+                  ₱{(product.price * product.quantity).toFixed(2)}
+                </ThemedText>
+              </>
             )}
           </View>
-        )}
-        
-      </BodyScrollView>
-      </KeyboardAvoidingView>
-    </View>
+          {product.notes && (
+            <ThemedText style={styles.queuedProductNotes} numberOfLines={1}>
+              📝 {product.notes}
+            </ThemedText>
+          )}
+        </View>
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          style={styles.queuedProductRemove}
+        >
+          <IconSymbol name="xmark.circle.fill" color="#FF3B30" size={24} />
+        </Pressable>
+      </View>
+    </Pressable>
   );
 }
 
@@ -513,6 +818,10 @@ function ProductSuggestionItem({
     const index = text.toLowerCase().indexOf(query.toLowerCase());
     if (index === -1) return text;
 
+    const colorScheme = useColorScheme();
+    const colors = Colors[colorScheme ?? 'light'];
+    const styles = createStyles(colors);
+
     return (
       <>
         {text.substring(0, index)}
@@ -524,7 +833,6 @@ function ProductSuggestionItem({
     );
   };
 
-  // color scheme for styles
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const styles = createStyles(colors);
@@ -558,7 +866,6 @@ function StoreSelectionItem({
   onSelect: (price: ProductPrice) => void;
   isSelected: boolean;
 }) {
-  
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const styles = createStyles(colors);
@@ -606,7 +913,7 @@ function createStyles(colors: typeof Colors.light) {
       padding: 16,
     },
     queuedHeader: {
-      marginBottom: 1,
+      marginBottom: 12,
     },
     queuedTitle: {
       fontSize: 16,
@@ -667,6 +974,154 @@ function createStyles(colors: typeof Colors.light) {
     queuedProductRemove: {
       padding: 4,
     },
+    editingContainer: {
+      gap: 12,
+    },
+    editInput: {
+      marginBottom: 0,
+    },
+    editQuantityRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    editLabel: {
+      fontSize: 14,
+    },
+    editQuantityControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    editQuantityButton: {
+      padding: 4,
+      minWidth: 32,
+    },
+    editQuantityText: {
+      fontSize: 18,
+      minWidth: 30,
+      textAlign: 'center',
+    },
+    editActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: 8,
+    },
+    saveButton: {
+      paddingHorizontal: 16,
+    },
+    editNameContainer: {
+      position: 'relative',
+    },
+    editDismissButton: {
+      position: 'absolute',
+      right: 12,
+      bottom: 12,
+      zIndex: 1
+    },
+    editStoreBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#F0F8FF',
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      alignSelf: 'flex-start'
+    },
+    editStoreText: {
+      fontSize: 11,
+      color: '#007AFF',
+      marginLeft: 4,
+    },
+    editChangeStoreButton: {
+      marginLeft: 8,
+      paddingHorizontal: 6,
+      paddingVertical: 2
+    },
+    editChangeStoreText: {
+      fontSize: 10,
+      color: '#007AFF',
+      textDecorationLine: 'underline'
+    },
+    editSuggestionsContainer: {
+      backgroundColor: '#F9F9F9',
+      borderRadius: 8,
+      padding: 10,
+    },
+    editSuggestionsHeader: {
+      fontSize: 12,
+      marginBottom: 6,
+      color: '#666'
+    },
+    editSuggestionsList: {
+      gap: 6,
+    },
+    editSuggestionItem: {
+      backgroundColor: colors.background,
+      borderRadius: 6,
+      padding: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 0.5,
+      borderColor: colors.borderColor,
+    },
+    editSuggestionContent: {
+      flex: 1,
+    },
+    editSuggestionName: {
+      fontSize: 13,
+      marginBottom: 2,
+    },
+    editSuggestionCategory: {
+      fontSize: 11,
+      color: '#666',
+    },
+    editLoadingContainer: {
+      padding: 15,
+      alignItems: 'center'
+    },
+    editLoadingText: {
+      fontSize: 12,
+      color: '#666',
+    },
+    editStoreItem: {
+      backgroundColor: colors.background,
+      borderRadius: 6,
+      padding: 12,
+      borderWidth: 1.5,
+      borderColor: 'transparent'
+    },
+    editStoreItemSelected: {
+      borderColor: '#34C759',
+      backgroundColor: '#F0FFF0'
+    },
+    editStoreContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    editStoreMain: {
+      flex: 1,
+    },
+    editStoreName: {
+      fontSize: 13,
+      marginBottom: 2,
+    },
+    editStorePrice: {
+      fontSize: 15,
+      color: '#007AFF'
+    },
+    editNoPricesContainer: {
+      padding: 15,
+      alignItems: 'center'
+    },
+    editNoPricesText: {
+      fontSize: 11,
+      color: '#666',
+      marginBottom: 8,
+      textAlign: 'center'
+    },
     nameSection: {
       marginBottom: 24
     },
@@ -684,20 +1139,6 @@ function createStyles(colors: typeof Colors.light) {
       right: 12,
       bottom: 12,
       zIndex: 1
-    },
-    selectedProductBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderRadius: 12,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      marginTop: 8,
-      alignSelf: 'flex-start'
-    },
-    selectedText: {
-      fontSize: 12,
-      color: '#34C759',
-      marginLeft: 4
     },
     selectedStoreBadge: {
       flexDirection: 'row',
@@ -809,7 +1250,7 @@ function createStyles(colors: typeof Colors.light) {
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: 16,
-      backgroundColor:colors.background
+      backgroundColor: colors.background
     },
     storeMain: {
       flex: 1
@@ -825,9 +1266,6 @@ function createStyles(colors: typeof Colors.light) {
     highlightedText: {
       backgroundColor: '#FFE066',
       fontWeight: 'bold'
-    },
-    inputRow: {
-      marginBottom: 24
     },
     quantitySection: {
       marginBottom: 24
@@ -845,12 +1283,24 @@ function createStyles(colors: typeof Colors.light) {
       borderRadius: 12,
       padding: 16
     },
-    quantityDisplay: {
-      alignItems: 'center'
+    quantityInputWrapper: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    quantityInputContainer: {
+      width: 100,
+      marginBottom: 0,
+    },
+    quantityInputText: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      padding: 8,
     },
     quantityText: {
-      fontSize: 24,
-      fontWeight: 'bold'
+      fontSize: 32,
+      fontWeight: 'bold',
+      textAlign: 'center',
     },
     totalPriceText: {
       fontSize: 12,
@@ -869,7 +1319,6 @@ function createStyles(colors: typeof Colors.light) {
       borderWidth: 1,
       borderColor: '#007AFF',
       padding: 4
-
     },
     notesInput: {
       height: 80,
@@ -877,14 +1326,10 @@ function createStyles(colors: typeof Colors.light) {
       borderColor: colors.borderColor,
       borderWidth: 0.5,
       borderRadius: 15,
-
     },
-    addButton: {
-      marginTop: 24,
-    },
-    addAnotherButton: {
+    addToQueueButton: {
       marginTop: 0,
-      backgroundColor: 'black',
+      backgroundColor: colors.background,
       borderColor: '#34C759',
       borderWidth: 1
     },
@@ -896,9 +1341,6 @@ function createStyles(colors: typeof Colors.light) {
       flexDirection: 'row',
       gap: 8,
       alignItems: 'center',
-    },
-    headerButton: {
-      paddingHorizontal: 8,
     },
     headerButtonPrimary: {
       paddingHorizontal: 8,
