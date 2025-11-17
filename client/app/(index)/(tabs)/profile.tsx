@@ -571,19 +571,7 @@ export default function ProfileScreen() {
                                     autoCapitalize="words"
                                 />
                             </View>
-
-                            <View style={styles.inputContainer}>
-                                <ThemedText style={styles.inputLabel}>Cellphone Number (Optional)</ThemedText>
-                                <TextInput
-                                    style={styles.input}
-                                    value={editedPhoneNumber}
-                                    onChangeText={setEditedPhoneNumber}
-                                    placeholder="Enter cellphone number"
-                                    placeholderTextColor="#999"
-                                    keyboardType="phone-pad"
-                                />
-                            </View>
-
+                            
                             <View style={styles.modalButtonContainer}>
                                 <TouchableOpacity
                                     style={[styles.modalButton, styles.cancelButton, { flex: 1, marginRight: 8 }]}

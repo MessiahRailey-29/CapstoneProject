@@ -139,7 +139,7 @@ export default function SignUpScreen() {
             });
 
             // Store verification code timestamp
-            const expiryTime = Date.now() + (2 * 60 * 1000); // 2 minutes from now
+            const expiryTime = Date.now() + (5 * 60 * 1000); // 5 minutes from now
             setCodeExpiryTime(expiryTime);
             await storeVerificationCode(emailAddress, '', 'signup');
 
@@ -179,7 +179,7 @@ export default function SignUpScreen() {
             if (signUpAttempt.status === "complete") {
                 await clearVerificationCode(emailAddress, 'signup');
                 await setActive({ session: signUpAttempt.createdSessionId });
-                router.replace("/");
+                router.replace("/(auth)/terms-acceptance");
             } else {
                 console.log(signUpAttempt);
             }
@@ -224,14 +224,6 @@ export default function SignUpScreen() {
                     placeholder="Enter your last name"
                     autoCapitalize="words"
                     onChangeText={setLastName}
-                />
-
-                <TextInput
-                    label="Cellphone Number (Optional)"
-                    value={phoneNumber}
-                    placeholder="Enter your cellphone number"
-                    keyboardType="phone-pad"
-                    onChangeText={setPhoneNumber}
                 />
 
                 <Button
@@ -325,34 +317,35 @@ export default function SignUpScreen() {
     return (
         <KeyboardAvoidingView
         style={{flex: 1}}
-                  behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null }
-                  keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 60 : 0}>
-        <BodyScrollView contentContainerStyle={{ padding: 16 }}
-        keyboardShouldPersistTaps="handled"
-        contentInsetAdjustmentBehavior="automatic">
-            <View style={styles.header}>
-                <ThemedText style={styles.headerTitle}>
-                    Hi {firstName}! 👋
+        behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null }
+        keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 100 : 0}>
+            <BodyScrollView 
+            contentContainerStyle={{ padding: 16 }}
+            keyboardShouldPersistTaps="handled"
+            contentInsetAdjustmentBehavior="automatic">
+                <View style={styles.header}>
+                    <ThemedText style={styles.headerTitle}>
+                        Hi {firstName}! 👋
+                    </ThemedText>
+                    <ThemedText style={styles.headerSubtitle}>
+                        Now, let's set up your account credentials
                 </ThemedText>
-                <ThemedText style={styles.headerSubtitle}>
-                    Now, let's set up your account credentials
-                </ThemedText>
-            </View>
+                </View>
 
-            <View style={styles.stepIndicator}>
-                <View style={[styles.stepDot, styles.stepDotComplete]} />
-                <View style={[styles.stepDot, styles.stepDotActive]} />
-                <View style={styles.stepDot} />
-            </View>
+                <View style={styles.stepIndicator}>
+                    <View style={[styles.stepDot, styles.stepDotComplete]} />
+                    <View style={[styles.stepDot, styles.stepDotActive]} />
+                    <View style={styles.stepDot} />
+                </View>
 
-            <View style={styles.securityBanner}>
-                <ThemedText style={styles.securityBannerText}>
-                    🔒 We take your security seriously
-                </ThemedText>
-                <ThemedText style={styles.securityBannerSubtext}>
-                    Your data is encrypted and secure
-                </ThemedText>
-            </View>
+                <View style={styles.securityBanner}>
+                    <ThemedText style={styles.securityBannerText}>
+                        🔒 We take your security seriously
+                    </ThemedText>
+                    <ThemedText style={styles.securityBannerSubtext}>
+                        Your data is encrypted and secure
+                    </ThemedText>
+                </View>
 
             <TextInput
                 label="Email"
