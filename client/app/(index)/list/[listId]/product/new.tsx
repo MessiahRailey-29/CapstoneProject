@@ -1,9 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Platform, View, FlatList, Pressable, StyleSheet, Keyboard, Alert, KeyboardAvoidingView } from "react-native";
+import { Platform, View, FlatList, Pressable, StyleSheet, Keyboard, Alert, useColorScheme, KeyboardAvoidingView } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
-import { useColorScheme } from "react-native";
 import Button from "@/components/ui/button";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import TextInput from "@/components/ui/text-input";
@@ -245,11 +244,13 @@ export default function NewItemScreen() {
       
       <KeyboardAvoidingView
           style={{flex: 1}}
-          behavior={process.env.EXPO_OS !== 'ios' ? "padding" : "height"}
-          keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 10 : insets.top}>
+          behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null }
+          keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 60 : 0}>
       <BodyScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior="automatic"
       >
         {/* Queued Products Section */}
         {queuedProducts.length > 0 && (

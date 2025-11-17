@@ -283,7 +283,7 @@ function createStyles(colors: typeof Colors.light) {
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: colors.exposedGhost,
     marginBottom: 20,
   },
   loadingContainer: {
@@ -291,7 +291,7 @@ function createStyles(colors: typeof Colors.light) {
     alignItems: 'center',
   },
   loadingText: {
-    color: '#666',
+    color: colors.exposedGhost,
   },
   section: {
     marginBottom: 24,
@@ -318,7 +318,7 @@ function createStyles(colors: typeof Colors.light) {
   },
   sectionSubtitle: {
     fontSize: 13,
-    color: '#666',
+    color: colors.exposedGhost,
   },
   listContent: {
     paddingVertical: 4,

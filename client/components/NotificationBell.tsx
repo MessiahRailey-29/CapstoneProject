@@ -1,9 +1,10 @@
 // components/NotificationBell.tsx
 import React, { useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
+import { Colors } from '@/constants/Colors';
 
 import { ViewStyle } from 'react-native';
 
@@ -14,6 +15,12 @@ interface NotificationBellProps {
 export function NotificationBell({ style }: NotificationBellProps) {
   const router = useRouter();
   const { user } = useUser();
+
+  
+    //color scheme and styles
+    const scheme = useColorScheme();
+    const colors = Colors[scheme ?? 'light'];
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
   const userId = useMemo(() => user?.id || '', [user?.id]);
   const { unreadCount } = useNotifications(userId);
@@ -45,11 +52,13 @@ export function NotificationBell({ style }: NotificationBellProps) {
   );
 }
 
-const styles = StyleSheet.create({
+
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
     padding: 8,
     marginTop: 5,
-    marginRight: 12
+    marginRight: 16
   },
   iconContainer: {
     width: 28,
@@ -60,22 +69,24 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     position: 'relative',
+    
   },
   bellTop: {
-    width: 4,
+    width: 5,
     height: 4,
-    backgroundColor: '#000',
-    borderRadius: 2,
+    backgroundColor: colors.tabBarActiveBorderColorHome,
+    borderRadius: 8,
     position: 'absolute',
     top: 0,
+    bottom: 0,
     left: 10,
   },
   bellBody: {
     width: 20,
-    height: 18,
+    height: 19,
     backgroundColor: 'transparent',
     borderWidth: 2.5,
-    borderColor: '#000',
+    borderColor: colors.tabBarActiveBorderColorHome,
     borderRadius: 10,
     borderTopLeftRadius: 2,
     borderTopRightRadius: 2,
@@ -86,11 +97,11 @@ const styles = StyleSheet.create({
   bellClapper: {
     width: 6,
     height: 3,
-    backgroundColor: '#000',
+    backgroundColor: colors.tabBarActiveBorderColorHome,
     borderRadius: 3,
     position: 'absolute',
     bottom: 0,
-    left: 9,
+    left: 9.4,
   },
   badge: {
     position: 'absolute',
@@ -112,3 +123,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+}

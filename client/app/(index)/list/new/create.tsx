@@ -1,9 +1,15 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import React, { useEffect, useState } from "react";
 import { Link, Stack, useRouter, useLocalSearchParams } from "expo-router";
-import { StyleSheet, Text, View, Alert, useColorScheme } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  Alert,
+  useColorScheme,
+  TouchableOpacity,
+} from "react-native";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
-import Button from "@/components/ui/button";
 import TextInput from "@/components/ui/text-input";
 import { appleBlue, backgroundColors, emojies } from "@/constants/Colors";
 import { useListCreation } from "@/context/ListCreationContext";
@@ -18,42 +24,45 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function CreateListScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
-  // Check if there's a pending product to add after list creation
-  const pendingProductId = params.pendingProductId ? Number(params.pendingProductId) : null;
+
+  // Pending product params (when creating a list for a recommended product)
+  const pendingProductId = params.pendingProductId
+    ? Number(params.pendingProductId)
+    : null;
   const pendingProductName = params.pendingProductName as string | undefined;
-  const pendingProductPrice = params.pendingProductPrice ? Number(params.pendingProductPrice) : null;
+  const pendingProductPrice = params.pendingProductPrice
+    ? Number(params.pendingProductPrice)
+    : null;
   const pendingProductStore = params.pendingProductStore as string | undefined;
 
   const [listName, setListName] = useState("");
   const [listDescription, setListDescription] = useState("");
 
-  const  insets =  useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
 
-    //color scheme and styles
-    const scheme = useColorScheme();
-    const colors = Colors[scheme ?? 'light'];
-    const styles = createStyles(colors, insets);
-  
-  
-  const { 
-    selectedEmoji, 
-    setSelectedEmoji, 
-    selectedColor, 
+  // color scheme + styles
+  const scheme = useColorScheme();
+  const colors = Colors[scheme ?? "light"];
+  const styles = createStyles(colors, insets);
+
+  const {
+    selectedEmoji,
+    setSelectedEmoji,
+    selectedColor,
     setSelectedColor,
     selectedDate,
     setSelectedDate,
     budget,
-    setBudget 
+    setBudget,
   } = useListCreation();
 
-  const useAddShoppingList = useAddShoppingListCallback();
-  
-  // 🔔 Get notification functions
-  const { user } = useUser();
-  const { scheduleShoppingReminder } = useNotifications(user?.id || '');
+  // rename returned callback to a clear name
+  const addShoppingList = useAddShoppingListCallback();
 
-  // 🔔 Helper function to navigate to list with pending product params
+  // notifications
+  const { user } = useUser();
+  const { scheduleShoppingReminder } = useNotifications(user?.id || "");
+
   const navigateToListWithProduct = (
     listId: string,
     productName: string,
@@ -61,19 +70,10 @@ export default function CreateListScreen() {
     price: number,
     store: string
   ) => {
-    console.log('🔔 Navigating to list with pending product:', {
-      listId,
-      productName,
-      productId,
-      price,
-      store
-    });
-    
     router.replace({
       pathname: "/list/[listId]",
-      params: { 
+      params: {
         listId,
-        // Pass the pending product info to the list page to handle adding
         addProductId: productId.toString(),
         addProductName: productName,
         addProductPrice: price.toString(),
@@ -88,32 +88,19 @@ export default function CreateListScreen() {
       backgroundColors[Math.floor(Math.random() * backgroundColors.length)]
     );
 
-    // Cleanup function to reset context when unmounting
     return () => {
       setSelectedEmoji("");
       setSelectedColor("");
       setSelectedDate(null);
     };
+    // intentionally empty deps to run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreateList = async () => {
-    if (!listName) {
-      return;
-    }
-    
-      console.log('🔬 DEBUG - Budget from context:', budget);
-      console.log('🔬 DEBUG - Budget type:', typeof budget);
-      console.log('🔬 DEBUG - All params:', {
-      listName,
-      listDescription,
-      selectedEmoji,
-      selectedColor,
-      selectedDate,
-      budget,
-      budgetType: typeof budget
-    });
+    if (!listName) return;
 
-    const listId = useAddShoppingList(
+    const listId = addShoppingList(
       listName,
       listDescription,
       selectedEmoji,
@@ -123,26 +110,26 @@ export default function CreateListScreen() {
     );
 
     if (!listId) {
-      Alert.alert('Error', 'Failed to create list');
+      Alert.alert("Error", "Failed to create list");
       return;
     }
 
-    // 🔔 SCHEDULE SHOPPING REMINDER if date is set
     if (selectedDate) {
       try {
-        const reminderScheduled = await scheduleShoppingReminder(listId, selectedDate);
-        if (reminderScheduled) {
-          console.log('✅ Shopping reminder scheduled for', selectedDate);
-        }
+        await scheduleShoppingReminder(listId, selectedDate);
       } catch (error) {
-        console.error('❌ Failed to schedule reminder:', error);
+        console.error("Failed to schedule reminder:", error);
       }
     }
 
-    // 🔔 NEW: Check if there's a pending product to add
-    // Pass it to the list page to handle adding
+    // If there's a pending product, navigate to the list and pass product info so the list page can add it
     setTimeout(() => {
-      if (pendingProductId && pendingProductName && pendingProductPrice && pendingProductStore) {
+      if (
+        pendingProductId &&
+        pendingProductName &&
+        pendingProductPrice != null &&
+        pendingProductStore
+      ) {
         navigateToListWithProduct(
           listId,
           pendingProductName,
@@ -151,7 +138,6 @@ export default function CreateListScreen() {
           pendingProductStore
         );
       } else {
-        // No pending product, just navigate normally
         router.replace({
           pathname: "/list/[listId]",
           params: { listId },
@@ -188,7 +174,6 @@ export default function CreateListScreen() {
     ];
     const testColors = Object.values(backgroundColors).slice(0, 10);
 
-    // Create test dates (today + random days in the future)
     const getRandomDate = (index: number) => {
       const date = new Date();
       date.setDate(date.getDate() + Math.floor(Math.random() * 7) + index);
@@ -198,8 +183,8 @@ export default function CreateListScreen() {
     for (let index = 0; index < testListNames.length; index++) {
       const name = testListNames[index];
       const testDate = getRandomDate(index);
-      
-      const listId = useAddShoppingList(
+
+      const listId = addShoppingList(
         name,
         `This is a test list for ${name}`,
         testEmojis[index],
@@ -207,15 +192,11 @@ export default function CreateListScreen() {
         testDate
       );
 
-      // 🔔 Schedule reminder for each test list
       if (listId && testDate) {
         await scheduleShoppingReminder(listId, testDate);
       }
     }
 
-    console.log('✅ Created 10 test lists with reminders');
-
-    // Navigate back to the main list view
     router.replace("/");
   };
 
@@ -227,62 +208,65 @@ export default function CreateListScreen() {
           headerTitle: "New List",
         }}
       />
+
       <BodyScrollView contentContainerStyle={styles.scrollViewContent}>
-        {/* Show indicator if creating list for a recommended product */}
         {pendingProductName && (
           <View style={styles.pendingProductBanner}>
             <Text style={styles.pendingProductText}>
-              Creating list for: <Text style={styles.pendingProductName}>{pendingProductName}</Text>
+              Creating list for:{" "}
+              <Text style={styles.pendingProductName}>{pendingProductName}</Text>
             </Text>
           </View>
         )}
 
-        <View style={styles.inputContainer}>
+        <View style={styles.inputRow}>
           <TextInput
             placeholder="Grocery Essentials"
-            placeholderTextColor={colors.ghost}
+            placeholderTextColor={colors.exposedGhost}
             value={listName}
             onChangeText={setListName}
             onSubmitEditing={handleCreateList}
             returnKeyType="done"
             variant="ghost"
-            size='lg'
+            size="lg"
             autoFocus
             inputStyle={styles.titleInput}
-            containerStyle={(styles.titleInputContainer,{})}
+            containerStyle={styles.titleInputContainer}
           />
+
           <Link
             href={{ pathname: "/emoji-picker" }}
-            style={[styles.emojiButton, { borderColor: selectedColor }]}
+            style={[styles.circleButton, { borderColor: selectedColor }]}
           >
-            <View style={styles.emojiContainer}>
-              <Text>{selectedEmoji}</Text>
+            <View style={styles.circleInner}>
+              <Text style={styles.emoji}>{selectedEmoji}</Text>
             </View>
           </Link>
+
           <Link
             href={{ pathname: "/color-picker" }}
-            style={[styles.colorButton, { borderColor: selectedColor }]}
+            style={[styles.circleButton, { borderColor: selectedColor }]}
           >
-            <View style={styles.colorContainer}>
+            <View style={styles.circleInner}>
               <View
                 style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 999,
+                  width: 22,
+                  height: 22,
+                  borderRadius: 100,
                   backgroundColor: selectedColor,
                 }}
               />
             </View>
           </Link>
         </View>
-        
+
         <TextInput
           placeholder="Description (optional)"
-          placeholderTextColor={colors.ghost}
+          placeholderTextColor={colors.exposedGhost}
           containerStyle={{
             borderWidth: 1,
             borderRadius: 12,
-            justifyContent: 'flex-start'
+            justifyContent: "flex-start",
           }}
           value={listDescription}
           onChangeText={setListDescription}
@@ -310,111 +294,135 @@ export default function CreateListScreen() {
           />
         </View>
         
-        <Button
+        <TouchableOpacity
           onPress={handleCreateList}
           disabled={!listName}
-          variant="ghost"
-          textStyle={styles.createButtonText}
+          style={[
+            styles.createButton,
+            !listName && styles.createButtonDisabled,
+          ]}
         >
-          {pendingProductName ? 'Create list and add product' : 'Create list'}
-        </Button>
+          <Text style={styles.createButtonText}>
+            {pendingProductName ? "Create list and add product" : "Create list"}
+          </Text>
+        </TouchableOpacity>
       </BodyScrollView>
     </>
   );
 }
 
-function createStyles(colors: typeof Colors.light, insets) {
+function createStyles(colors: any, insets: any) {
   return StyleSheet.create({
-  scrollViewContent: {
-    padding: 16,
-    flex: 1,
-    backgroundColor: colors.mainBackground
-  },
-  pendingProductBanner: {
-    backgroundColor: '#E3F2FD',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
-  },
-  pendingProductText: {
-    fontSize: 14,
-    color: "#666",
-  },
-  pendingProductName: {
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems:  'baseline',
-    gap: 8,
-  },
-  titleInput: {
-    flexGrow: 1,
-    fontWeight: "600",
-    fontSize: 28,
-    paddingLeft: 16,
-    color: colors.text,
-  },
-  titleInputContainer: {
-    marginBottom: 0,
-    height: 'auto',
-    margin:80,
-    maxWidth:'80%',
-    width:'80%',
-  },
-  emojiButton: {
-    padding: 1,
-    borderWidth: 3,
-    borderRadius: 100,
-  },
-  emojiContainer: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  descriptionInput: {
-    paddingLeft: 16,
-  },
-  createButtonText: {
-    color: appleBlue,
-    fontWeight: "normal",
-    textShadowColor: '#666',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 2,
-  },
-  colorButton: {
-    padding: 1,
-    borderWidth: 3,
-    borderRadius: 100,
-  },
-  colorContainer: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dateSection: {
-    marginVertical: 16,
-    gap: 8,
-    color: colors.text,
-  },
-  dateLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: colors.text
-  },
-  budgetSection: {
-    marginVertical: 16,
-    gap: 8,
-  },
-  budgetLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: colors.text,
-  },
-});
+    scrollViewContent: {
+      padding: 16,
+      flex: 1,
+      backgroundColor: colors.mainBackground,
+    },
+    pendingProductBanner: {
+      backgroundColor: "#E3F2FD",
+      padding: 12,
+      borderRadius: 8,
+      marginBottom: 16,
+      borderLeftWidth: 4,
+      borderLeftColor: "#007AFF",
+    },
+    pendingProductText: {
+      fontSize: 14,
+      color: "#666",
+    },
+    pendingProductName: {
+      fontWeight: "600",
+      color: "#007AFF",
+    },
+    inputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 8,
+    },
+    titleInputContainer: {
+      flex: 1,
+      flexShrink: 1,
+      minWidth: 0,
+      height: "auto",
+      paddingBottom: 2,
+    },
+    titleInput: {
+      fontSize: 28,
+      fontWeight: "600",
+      height: "auto",
+      paddingLeft: 6,
+      paddingRight: 6,
+      color: colors.text,
+    },
+    circleButton: {
+      borderWidth: 3,
+      borderRadius: 100,
+      padding: 2,
+    },
+    circleInner: {
+      width: 30,
+      height: 30,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    emoji: {
+      fontSize: 20,
+    },
+    descriptionInput: {
+      paddingLeft: 16,
+    },
+    createButton: {
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      shadowColor: "#000",
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 5,
+      alignSelf: "center",
+      marginTop: 12,
+    },
+    createButtonDisabled: {
+      opacity: 0.5,
+    },
+    createButtonText: {
+      alignSelf: "center",
+      fontSize: 18,
+      fontWeight: "600",
+      color: colors.tint,
+    },
+    colorButton: {
+      padding: 1,
+      borderWidth: 3,
+      borderRadius: 999,
+    },
+    colorContainer: {
+      width: 28,
+      height: 28,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dateSection: {
+      marginVertical: 16,
+      gap: 8,
+      color: colors.text,
+    },
+    dateLabel: {
+      fontSize: 16,
+      fontWeight: "500",
+      color: colors.text,
+    },
+    budgetSection: {
+      marginVertical: 16,
+      gap: 8,
+    },
+    budgetLabel: {
+      fontSize: 16,
+      fontWeight: "500",
+      color: colors.text,
+    },
+  });
 }

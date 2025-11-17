@@ -28,8 +28,8 @@ const CATEGORY_CONFIG: Record<string, { icon: string; color: string; gradient: s
   },
   'Instant Noodles': {
     icon: '🍜',
-    color: '#FFE66D',
-    gradient: ['#FFE66D', '#FFF0A0'],
+    color: '#c7b24c',
+    gradient: ['#c7b24c', '#FFF0A0'],
     description: 'Quick meals & noodles'
   },
   'Canned Goods': {
@@ -52,8 +52,8 @@ const CATEGORY_CONFIG: Record<string, { icon: string; color: string; gradient: s
   },
   'Vegetables': {
     icon: '🥬',
-    color: '#90EE90',
-    gradient: ['#90EE90', '#A8F3A8'],
+    color: '#75c075',
+    gradient: ['#75c075', '#A8F3A8'],
     description: 'Fresh vegetables & greens'
   },
   'Meat': {
@@ -396,7 +396,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     catalogSubtitle: {
       fontSize: 15,
-      color: '#666',
+      color: colors.exposedGhost,
     },
     searchContainer: {
       paddingHorizontal: 16,
@@ -418,7 +418,7 @@ function createStyles(colors: typeof Colors.light) {
     resultsCount: {
       fontSize: 16,
       fontWeight: '600',
-      color: '#666',
+      color: colors.exposedGhost,
     },
     listContent: {
       paddingTop: 20,
@@ -470,9 +470,13 @@ function createStyles(colors: typeof Colors.light) {
       elevation: 3,
     },
     countText: {
+      lineHeight: 36,
       fontSize: 16,
       fontWeight: '800',
-      color: colors.text,
+      color: '#fff',
+      textShadowColor: '#000',
+      textShadowOffset: {width:0,height:1},
+      textShadowRadius: 4
     },
     categoryInfo: {
       padding: 16,
@@ -495,11 +499,16 @@ function createStyles(colors: typeof Colors.light) {
       paddingVertical: 12,
       paddingHorizontal: 12,
       borderRadius: 12,
+      borderColor: '#000000ab',
+      borderWidth: 0.7
     },
     viewButtonText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.text,
+      color: '#fff',
+      textShadowColor: '#000',
+      textShadowOffset: {width:0,height:1},
+      textShadowRadius: 1
     },
     productCard: {
       backgroundColor: colors.background,

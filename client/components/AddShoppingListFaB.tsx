@@ -73,7 +73,7 @@ export default function QuickAddFab({
                     onPress={handlePress}
                     style={[styles.fab]}
                 >
-                    <MaterialCommunityIcons name="playlist-plus" size={fabSize * 0.55} color={iconColor} />
+                    <MaterialCommunityIcons name="playlist-plus" size={fabSize * 0.55} color={iconColor} style={styles.iconFab}/>
                 </TouchableOpacity>
             </Animated.View>
         </View>
@@ -92,15 +92,19 @@ function createStyles(colors: any, fabSize) {
             height: fabSize,
             width: fabSize,
             borderRadius: fabSize /2,
-            backgroundColor: colors.tint,
+            backgroundColor: '#16a34a',
             alignItems: 'center',
             justifyContent: 'center',
-
             shadowColor: '#000',
             shadowOpacity: 0.22,
             shadowRadius: 5,
             shadowOffset: { width: 0, height: 3 },
             elevation: 6,
         },
+        iconFab:{
+            textShadowColor: '#000',
+            textShadowRadius: 5,
+            textShadowOffset: { width: 0, height: 1 },
+        }
     });
 }

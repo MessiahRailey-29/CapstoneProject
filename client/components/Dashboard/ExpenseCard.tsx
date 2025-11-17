@@ -95,7 +95,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     title: {
       fontSize: 14,
-      color: '#666',
+      color: colors.exposedGhost,
       fontWeight: '500',
     },
     amount: {
@@ -105,7 +105,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     subtitle: {
       fontSize: 12,
-      color: '#999',
+      color: colors.exposedGhost,
     },
     trendContainer: {
       flexDirection: 'row',

@@ -13,6 +13,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { Colors } from '@/constants/Colors';
+import { BlurView } from 'expo-blur';
 
 interface FloatingActionFabProps {
     onAction?: (actionKey: string) => void;
@@ -23,9 +24,10 @@ interface FloatingActionFabProps {
 }
 
 const ACTIONS = [
-    { key: 'duplicates', label: 'Check Duplicates', icon: 'check-square', offset: -65 },
-    { key: 'share', label: 'Share', icon: 'share-alt', offset: -130 },
-    { key: 'add', label: 'Add', icon: 'plus', offset: -195 },
+    { key: 'edit', label: 'Edit List', icon: 'pencil', offset: -65 },
+    { key: 'duplicates', label: 'Check Duplicates', icon: 'check-square', offset: -130 },
+    { key: 'share', label: 'Share', icon: 'share-alt', offset: -195 },
+    { key: 'add', label: 'Add', icon: 'plus', offset: -260 },
 ];
 
 export default function FloatingActionFab({
@@ -76,70 +78,74 @@ export default function FloatingActionFab({
     return (
         <View
             pointerEvents="box-none"
-            style={[styles.container, { bottom: position.bottom, right: position.right }]}
+            style={StyleSheet.absoluteFill}
         >
             {open && (
                 <Pressable
-                    accessibilityLabel="Close actions"
-                    style={StyleSheet.absoluteFill}
-                    onPress={toggle}
+                    style={StyleSheet.absoluteFillObject}
+                    pointerEvents="box-none"
+                    onPress={toggle}   // Close if touching outside FAB
                 >
                     <Animated.View
+                        pointerEvents="box-none"
                         style={[
-                            StyleSheet.absoluteFill,
-                            { backgroundColor: 'transparent', opacity: overlayOpacity },
+                            StyleSheet.absoluteFillObject,
+                            { ...StyleSheet.absoluteFillObject ,backgroundColor: '#000', opacity: overlayOpacity },
                         ]}
-                    />
+                />
                 </Pressable>
             )}
+            <View
+                pointerEvents="auto"
+                style={[styles.container, { bottom: position.bottom, right: position.right }]}>
 
-            <View style={styles.actionsWrap} pointerEvents="box-none">
-                {ACTIONS.map((action) => (
-                    <ActionItem
-                        key={action.key}
-                        action={action}
-                        animation={animation}
-                        onPress={handleAction}
-                        styles={styles}
-                        bgColor={bgColor}
-                    />
-                ))}
+                <View style={styles.actionsWrap} pointerEvents="box-none">
+                    {ACTIONS.map((action) => (
+                        <ActionItem
+                            key={action.key}
+                            action={action}
+                            animation={animation}
+                            onPress={handleAction}
+                            styles={styles}
+                            bgColor={bgColor}
+                        />
+                    ))}
 
-                {/* MAIN FAB BUTTON */}
-                <TouchableOpacity
-                    activeOpacity={0.9}
-                    accessibilityRole="button"
-                    accessibilityLabel={open ? 'Close menu' : 'Open menu'}
-                    onPress={toggle}
-                    style={[
-                        styles.fab,
-                        {
-                            width: fabSize,
-                            height: fabSize,
-                            borderRadius: fabSize / 2,
-                            backgroundColor: open ? '#dc2626' : bgColor,
-                        },
-                    ]}
-                >
-                    <Animated.View
-                        style={{
-                            transform: [
-                                {
-                                    rotate: animation.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: ['0deg', '90deg'],
-                                    }),
-                                },
-                            ],
-                        }}
+                    <TouchableOpacity
+                        activeOpacity={0.9}
+                        accessibilityRole="button"
+                        accessibilityLabel={open ? 'Close menu' : 'Open menu'}
+                        onPress={toggle}
+                        style={[
+                            styles.fab,
+                            {
+                                width: fabSize,
+                                height: fabSize,
+                                borderRadius: fabSize / 2,
+                                backgroundColor: open ? '#dc2626' : bgColor,
+                            },
+                        ]}
                     >
-                        {open ? (
-                            <FontAwesome name="close" size={28} color={iconColor} />
-                        ) : (
-                            <Entypo name="dots-three-vertical" size={28} color={iconColor} />
-                        )}
-                    </Animated.View>
-                </TouchableOpacity>
+                        <Animated.View
+                            style={{
+                                transform: [
+                                    {
+                                        rotate: animation.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: ['0deg', '90deg'],
+                                        }),
+                                    },
+                                ],
+                            }}
+                        >
+                            {open ? (
+                                <FontAwesome name="close" size={28} color={iconColor} />
+                            ) : (
+                                <Entypo name="dots-three-vertical" size={28} color={iconColor} />
+                            )}
+                        </Animated.View>
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
