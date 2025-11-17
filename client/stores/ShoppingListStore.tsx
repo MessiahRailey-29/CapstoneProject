@@ -22,7 +22,6 @@ const VALUES_SCHEMA = {
   completedAt: { type: "string", default: "" },
   createdAt: { type: "string" },
   updatedAt: { type: "string" },
-  // ⭐ NEW: Track recipe suggestion state
   recipeSuggestionsPrompted: { type: "boolean", default: false },
   recipeSuggestionsEnabled: { type: "boolean", default: false },
 } as const;
@@ -75,7 +74,6 @@ export const useShoppingListStore = (listId: string) => {
   return useStore(useStoreId(listId));
 };
 
-// 🔔 UPDATED: Now supports duplicate warning notifications
 export const useAddShoppingListProductCallback = (listId: string) => {
   const store = useStore(useStoreId(listId));
   const [userId] = useUserIdAndNickname();
@@ -119,7 +117,6 @@ export const useAddShoppingListProductCallback = (listId: string) => {
         if (isDuplicate) {
           console.warn('❌ DUPLICATE FOUND:', normalizedName);
           
-          // 🔔 CREATE DUPLICATE WARNING NOTIFICATION
           if (createDuplicateWarning) {
             try {
               await createDuplicateWarning(name.trim(), listId);
@@ -185,8 +182,6 @@ export const useShoppingListValue = <ValueId extends ShoppingListValueId>(
   ),
 ];
 
-// Update the useUpdateListStatus function in ShoppingListStore.tsx
-
 export const useUpdateListStatus = (listId: string) => {
   const storeId = useStoreId(listId);
   const store = useStore(storeId);
@@ -199,7 +194,6 @@ export const useUpdateListStatus = (listId: string) => {
 
     console.log('📝 Updating status in ShoppingListStore:', listId, 'to:', newStatus);
 
-    // CRITICAL: Check if we have products BEFORE updating status
     const currentProducts = store.getTable('products');
     const productCount = Object.keys(currentProducts).length;
 
@@ -207,14 +201,11 @@ export const useUpdateListStatus = (listId: string) => {
 
     if (productCount === 0) {
       console.error('🚨 WARNING: No products found before status update!');
-      console.error('🚨 This might indicate products were already lost');
     }
 
     try {
-      // ✅ Update status and timestamp in a single transaction
       store.transaction(() => {
         store.setValue('status', newStatus);
-        // ✅ Update timestamp when status actually changes
         store.setValue('updatedAt', new Date().toISOString());
 
         if (newStatus === 'completed') {
@@ -229,7 +220,6 @@ export const useUpdateListStatus = (listId: string) => {
         }
       });
 
-      // Verify products are still there AFTER update
       const productsAfter = store.getTable('products');
       const productCountAfter = Object.keys(productsAfter).length;
 
@@ -237,7 +227,6 @@ export const useUpdateListStatus = (listId: string) => {
 
       if (productCount !== productCountAfter) {
         console.error('🚨 PRODUCTS LOST DURING STATUS UPDATE!');
-        console.error('Before:', productCount, 'After:', productCountAfter);
       } else {
         console.log('✅ Products preserved during status update');
       }
@@ -294,7 +283,6 @@ export const useShoppingListCollaboratorNicknames = (listId: string) =>
     ([, { nickname }]) => nickname
   );
 
-// Get the nickname of the user who created a product
 export const useShoppingListProductCreatedByNickname = (
   listId: string,
   productId: string
@@ -307,7 +295,6 @@ export const useShoppingListProductCreatedByNickname = (
   return useCell("collaborators", userId, "nickname", useStoreId(listId));
 };
 
-// Get all user nicknames in the list
 export const useShoppingListUserNicknames = (listId: string) =>
   Object.entries(useTable("collaborators", useStoreId(listId))).map(
     ([, { nickname }]) => nickname
@@ -325,90 +312,131 @@ export default function ShoppingListStore({
   const [valuesCopy, setValuesCopy] = useValuesCopy(listId);
   const initialized = useRef(false);
   const hasReceivedSyncData = useRef(false);
-  const isSyncing = useRef(false); // ✅ NEW: Prevent recursive sync loops
-  const lastSyncedData = useRef<string>(''); // ✅ NEW: Track last synced data
+  const isSyncing = useRef(false);
+  const lastSyncedData = useRef<string>('');
+  const initializationAttempted = useRef(false);
 
   const store = useCreateMergeableStore(() =>
     createMergeableStore().setSchema(TABLES_SCHEMA, VALUES_SCHEMA)
   );
 
-  // FIRST: Initialize from existing valuesCopy (if we have it)
+  // CRITICAL FIX: Initialize from valuesCopy more reliably
   useEffect(() => {
-    if (!initialized.current && valuesCopy && valuesCopy !== '{}') {
-      try {
-        const parsedData = JSON.parse(valuesCopy);
-        
-        console.log('🔍 Initializing ShoppingListStore with valuesCopy:', parsedData);
-        
-        // ✅ FIXED: Better placeholder detection
-        // If values object exists but has no name, it's an empty placeholder
-        const hasNoValues = !parsedData.values || Object.keys(parsedData.values).length <= 1; // Only listId
-        const hasNoProducts = !parsedData.tables?.products || Object.keys(parsedData.tables.products).length === 0;
-        const isEmptyPlaceholder = hasNoValues && hasNoProducts;
-        
-        if (isEmptyPlaceholder) {
-          console.log('⏳ Empty placeholder detected - waiting for WebSocket sync...');
-          console.log('💡 This prevents CRDT conflicts - sync will provide all data');
-          // DON'T mark as initialized yet - wait for real data from sync
-          return;
-        }
-        
-        // Real data - initialize store
-        console.log('✅ Real data detected, initializing store...');
-        
-        if (parsedData.tables?.products) {
-          Object.entries(parsedData.tables.products).forEach(([productId, product]) => {
-            if (product && typeof product === 'object') {
-              store.setRow('products', productId, product);
-            }
-          });
-        }
-        
-        if (parsedData.tables?.collaborators) {
-          Object.entries(parsedData.tables.collaborators).forEach(([collaboratorId, collaborator]) => {
-            if (collaborator && typeof collaborator === 'object') {
-              store.setRow('collaborators', collaboratorId, collaborator);
-            }
-          });
-        }
-        
-        if (parsedData.values) {
-          const validValueKeys: (keyof typeof VALUES_SCHEMA)[] = [
-            'name', 'description', 'emoji', 'color', 'shoppingDate', 'budget', 
-            'status', 'completedAt', 'createdAt', 'updatedAt'
-          ];
-          
-          console.log('📝 About to set values from parsedData.values:', parsedData.values);
-          
-          validValueKeys.forEach(key => {
-            // Only set if the value exists in parsedData
-            if (key in parsedData.values && parsedData.values[key] !== undefined) {
-              const value = parsedData.values[key];
-              console.log(`  - Setting ${key}:`, value, typeof value);
-              store.setValue(key, value);
-              
-              // CRITICAL: Verify it was set
-              const verifyValue = store.getValue(key);
-              console.log(`  - Verified ${key} in store:`, verifyValue);
-            } else {
-              console.log(`  - Skipping ${key} (not in parsedData or undefined)`);
-            }
-          });
-        }
-        
-        console.log('✅ Initialized from existing valuesCopy');
-        console.log('💰 Final store budget after init:', store.getValue('budget'));
-        console.log('📊 All store values:', store.getValues());
-        hasReceivedSyncData.current = true;
-        initialized.current = true;
-        
-      } catch (error) {
-        console.error('❌ INITIALIZATION ERROR:', error);
-        // Even on error, mark as initialized to allow WebSocket sync
-        initialized.current = true;
-      }
+    // Only attempt initialization once
+    if (initializationAttempted.current) {
+      return;
     }
-  }, [valuesCopy, store]);
+
+    if (!valuesCopy || valuesCopy === '{}') {
+      console.log('⏳ No valuesCopy yet, waiting...');
+      return;
+    }
+
+    initializationAttempted.current = true;
+
+    try {
+      const parsedData = JSON.parse(valuesCopy);
+      
+      console.log('🔍 Initializing ShoppingListStore:', {
+        listId,
+        hasValues: !!parsedData.values,
+        hasTables: !!parsedData.tables,
+        name: parsedData.values?.name,
+        emoji: parsedData.values?.emoji,
+        color: parsedData.values?.color,
+        budget: parsedData.values?.budget,
+      });
+      
+      // Check if this is an empty placeholder (only has listId, no other values)
+      const valueKeys = parsedData.values ? Object.keys(parsedData.values) : [];
+      const hasOnlyListId = valueKeys.length === 1 && valueKeys[0] === 'listId';
+      const hasNoProducts = !parsedData.tables?.products || Object.keys(parsedData.tables.products).length === 0;
+      const isEmptyPlaceholder = hasOnlyListId && hasNoProducts;
+      
+      if (isEmptyPlaceholder) {
+        console.log('📝 Empty placeholder - waiting for sync to populate data');
+        // Reset initialization flag so we can try again when real data arrives
+        initializationAttempted.current = false;
+        return;
+      }
+      
+      // We have real data - initialize the store
+      console.log('✅ Real data found, initializing store...');
+      
+      // Initialize products
+      if (parsedData.tables?.products) {
+        Object.entries(parsedData.tables.products).forEach(([productId, product]) => {
+          if (product && typeof product === 'object') {
+            store.setRow('products', productId, product);
+          }
+        });
+        console.log(`  ✓ Loaded ${Object.keys(parsedData.tables.products).length} products`);
+      }
+      
+      // Initialize collaborators
+      if (parsedData.tables?.collaborators) {
+        Object.entries(parsedData.tables.collaborators).forEach(([collaboratorId, collaborator]) => {
+          if (collaborator && typeof collaborator === 'object') {
+            store.setRow('collaborators', collaboratorId, collaborator);
+          }
+        });
+        console.log(`  ✓ Loaded ${Object.keys(parsedData.tables.collaborators).length} collaborators`);
+      }
+      
+      // Initialize values - THIS IS THE KEY FIX
+      if (parsedData.values) {
+        const validValueKeys: (keyof typeof VALUES_SCHEMA)[] = [
+          'name', 'description', 'emoji', 'color', 'shoppingDate', 'budget', 
+          'status', 'completedAt', 'createdAt', 'updatedAt',
+          'recipeSuggestionsPrompted', 'recipeSuggestionsEnabled'
+        ];
+        
+        // Use transaction to set all values at once
+        store.transaction(() => {
+          validValueKeys.forEach(key => {
+            if (key in parsedData.values) {
+              const value = parsedData.values[key];
+              if (value !== undefined && value !== null) {
+                store.setValue(key, value);
+                console.log(`  ✓ Set ${key}:`, value);
+              }
+            }
+          });
+        });
+      }
+      
+      // Verify critical values were set
+      const verifyName = store.getValue('name');
+      const verifyEmoji = store.getValue('emoji');
+      const verifyColor = store.getValue('color');
+      const verifyBudget = store.getValue('budget');
+      
+      console.log('🔍 Verification after init:', {
+        name: verifyName,
+        emoji: verifyEmoji,
+        color: verifyColor,
+        budget: verifyBudget,
+      });
+      
+      if (!verifyName || !verifyEmoji || !verifyColor) {
+        console.error('🚨 CRITICAL: Values not properly initialized!');
+        console.error('  Expected:', parsedData.values);
+        console.error('  Got in store:', store.getValues());
+        // Reset flag to try again
+        initializationAttempted.current = false;
+        return;
+      }
+      
+      console.log('✅ Store initialized successfully');
+      hasReceivedSyncData.current = true;
+      initialized.current = true;
+      
+    } catch (error) {
+      console.error('❌ Initialization error:', error);
+      // Reset flag to allow retry
+      initializationAttempted.current = false;
+    }
+  }, [valuesCopy, store, listId]);
 
   // Debounced sync back to parent
   const debouncedSetValuesCopyRef = useRef(
@@ -430,36 +458,26 @@ export default function ShoppingListStore({
     listIdRef.current = listId;
   }, [listId]);
 
-  // ✅ FIXED: Prevent sync loops by checking if data actually changed
   const syncStoreData = useCallback(() => {
     if (!store) return;
 
-    // ✅ Prevent recursive sync calls
     if (isSyncing.current) {
-      console.log('⚠️ Already syncing, skipping to prevent loop');
       return;
     }
 
     const currentName = store.getValue('name');
 
-    // ✅ Only skip if we have no data at all (empty placeholder)
-    const hasNoData = !currentName && !hasReceivedSyncData.current && !initialized.current;
-
-    if (hasNoData) {
-      console.log('⏳ No data yet, waiting for WebSocket sync...');
+    if (!currentName && !hasReceivedSyncData.current && !initialized.current) {
       return;
     }
 
-    // ✅ Mark as initialized once we have ANY real data
     if (!initialized.current && currentName) {
-      console.log('✅ Received data from WebSocket, initializing');
+      console.log('✅ Data received, marking as initialized');
       initialized.current = true;
       hasReceivedSyncData.current = true;
     }
 
-    // ✅ Now sync is allowed!
     if (!initialized.current) {
-      console.log('⏳ Not yet initialized, skipping sync');
       return;
     }
 
@@ -474,49 +492,31 @@ export default function ShoppingListStore({
         values: {
           ...store.getValues(),
           listId: listIdRef.current,
-          // ✅ CRITICAL FIX: Don't create new timestamp - use existing one!
-          // This prevents the infinite loop caused by always-changing data
         },
       };
 
       const serializedData = JSON.stringify(storeData);
 
-      // ✅ CRITICAL: Only sync if data actually changed!
       if (serializedData === lastSyncedData.current) {
-        console.log('⏭️ Data unchanged, skipping sync to prevent loop');
         isSyncing.current = false;
         return;
       }
 
-      const budget = store.getValue('budget');
-      const name = store.getValue('name');
-      const status = store.getValue('status');
-
-      console.log('🔄 Syncing data (data changed):', { budget, name, status });
-
-      // Update last synced data
       lastSyncedData.current = serializedData;
 
-      // Use debounced version to avoid too frequent updates
       debouncedSetValuesCopyRef.current(serializedData, setValuesCopyRef.current);
 
-      // Reset syncing flag after a short delay
       setTimeout(() => {
         isSyncing.current = false;
       }, 100);
 
     } catch (error) {
-      console.error('❌ SYNC ERROR:', error);
+      console.error('❌ Sync error:', error);
       isSyncing.current = false;
     }
   }, [store]);
 
-  // Listen to ALL value changes
   useValuesListener((store) => {
-    const currentName = store?.getValue('name');
-    console.log('👂 Values changed, name is:', currentName);
-    
-    // Sync whenever values change (the syncStoreData function will handle filtering)
     syncStoreData();
   }, [], false, store);
   
@@ -526,20 +526,15 @@ export default function ShoppingListStore({
     const productsListenerId = store.addTableListener('products', syncStoreData);
     const collaboratorsListenerId = store.addTableListener('collaborators', syncStoreData);
     const statusListenerId = store.addValueListener('status', syncStoreData);
-    const budgetListenerId = store.addValueListener('budget', (store, valueId, newBudget) => {
-      console.log('💰 Budget changed in store:', newBudget);
-      syncStoreData();
-    });
+    const budgetListenerId = store.addValueListener('budget', syncStoreData);
     const nameListenerId = store.addValueListener('name', (store, valueId, newName) => {
-      console.log('📝 Name changed in store:', newName);
-      
-      // When name changes from "Loading..." to real name, mark as received
       if (newName && newName !== 'Loading...' && !hasReceivedSyncData.current) {
-        console.log('✅ Real data arrived from WebSocket sync!');
+        console.log('✅ Real name arrived from sync:', newName);
         hasReceivedSyncData.current = true;
         initialized.current = true;
+        // Reset initialization flag to allow re-initialization with new data
+        initializationAttempted.current = false;
       }
-      
       syncStoreData();
     });
     
@@ -559,7 +554,6 @@ export default function ShoppingListStore({
     }
   });
   
-  // THIS IS THE KEY: The sync will populate the store from other clients
   useCreateServerSynchronizerAndStart(storeId, store);
   useProvideStore(storeId, store);
 

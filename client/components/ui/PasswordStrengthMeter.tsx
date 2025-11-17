@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
+import { Colors } from '@/constants/Colors';
 
 export interface PasswordStrength {
   score: number; // 0-6
@@ -82,6 +83,13 @@ interface PasswordStrengthMeterProps {
 
 export function PasswordStrengthMeter({ password, showRequirements = true }: PasswordStrengthMeterProps) {
   const strength = calculatePasswordStrength(password);
+
+  
+  
+    //color scheme and styles
+    const scheme = useColorScheme();
+    const colors = Colors[scheme ?? 'light'];
+    const styles = createStyles(colors);
   
   const getStrengthColor = () => {
     if (strength.score === 0) return '#EF4444'; // red
@@ -153,6 +161,13 @@ export function PasswordStrengthMeter({ password, showRequirements = true }: Pas
 }
 
 function RequirementItem({ met, text }: { met: boolean; text: string }) {
+  
+  
+    //color scheme and styles
+    const scheme = useColorScheme();
+    const colors = Colors[scheme ?? 'light'];
+    const styles = createStyles(colors);
+
   return (
     <View style={styles.requirementItem}>
       <ThemedText style={[styles.requirementIcon, met && styles.requirementMet]}>
@@ -165,7 +180,8 @@ function RequirementItem({ met, text }: { met: boolean; text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
     marginTop: 8,
     marginBottom: 12,
@@ -190,7 +206,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   requirements: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.background,
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -232,3 +248,4 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
 });
+}

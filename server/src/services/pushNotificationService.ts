@@ -1,7 +1,7 @@
 // server/src/services/pushNotificationService.ts
-import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
+// FINAL VERSION - Explicit type assertions for TypeScript
+import { Expo, ExpoPushMessage, ExpoPushTicket, ExpoPushSuccessTicket, ExpoPushErrorTicket } from 'expo-server-sdk';
 
-// Create a new Expo SDK client
 const expo = new Expo();
 
 interface PushNotificationData {
@@ -14,20 +14,34 @@ interface PushNotificationData {
 }
 
 /**
- * Send a push notification to a single device
+ * Send push notification via Expo Push Service
  */
 export async function sendPushNotification(
   pushToken: string,
   notification: PushNotificationData
 ): Promise<boolean> {
   try {
-    // Check that the token is a valid Expo push token
+    console.log('');
+    console.log('📱 ========================================');
+    console.log('📱 SENDING PUSH NOTIFICATION');
+    console.log('📱 ========================================');
+    console.log('Token preview:', String(pushToken).substring(0, 40) + '...');
+    console.log('Title:', notification.title);
+    console.log('Body:', notification.body);
+    console.log('');
+
+    // Validate token
     if (!Expo.isExpoPushToken(pushToken)) {
-      console.error(`❌ Push token ${pushToken} is not a valid Expo push token`);
+      console.error('❌ Invalid Expo push token format!');
+      console.error('Token:', pushToken);
       return false;
     }
 
-    // Construct the message
+    console.log('✅ Token is valid Expo format');
+    console.log('📲 Using Expo Push Service');
+    console.log('');
+
+    // Construct message
     const message: ExpoPushMessage = {
       to: pushToken,
       sound: notification.sound ?? 'default',
@@ -36,26 +50,72 @@ export async function sendPushNotification(
       data: notification.data ?? {},
       badge: notification.badge,
       priority: notification.priority ?? 'high',
+      channelId: 'default',
     };
 
-    // Send the notification
+    console.log('📤 Sending to Expo Push Service...');
+    console.log('Message:', JSON.stringify(message, null, 2));
+    console.log('');
+
+    // Send notification
     const ticketChunk = await expo.sendPushNotificationsAsync([message]);
-    
-    // Check the ticket for errors
-    const ticket = ticketChunk[0];
-    if (ticket.status === 'error') {
-      console.error(`❌ Error sending push notification:`, ticket.message);
-      if (ticket.details?.error === 'DeviceNotRegistered') {
-        console.log('📱 Device token is no longer valid - should remove from database');
-        // TODO: Remove invalid token from NotificationSettings
+    const ticket = ticketChunk[0] as ExpoPushTicket;
+
+    console.log('📬 Received response from Expo:');
+    console.log(JSON.stringify(ticket, null, 2));
+    console.log('');
+
+    // Check result
+    if ((ticket as any).status === 'error') {
+      const errorTicket = ticket as ExpoPushErrorTicket;
+      console.error('❌ Expo returned an error!');
+      console.error('Error message:', errorTicket.message);
+      
+      if (errorTicket.details) {
+        console.error('Error details:', errorTicket.details);
       }
+      
+      if (errorTicket.details && (errorTicket.details as any).error === 'DeviceNotRegistered') {
+        console.log('📱 Device token is no longer valid');
+        console.log('   This usually means:');
+        console.log('   - App was uninstalled and reinstalled');
+        console.log('   - Token expired');
+        console.log('   - Need to register for notifications again');
+      }
+      
+      console.log('');
       return false;
     }
 
-    console.log(`✅ Push notification sent successfully:`, ticket.id);
-    return true;
-  } catch (error) {
-    console.error('❌ Error in sendPushNotification:', error);
+    if ((ticket as any).status === 'ok') {
+      const successTicket = ticket as ExpoPushSuccessTicket;
+      console.log('✅ SUCCESS! Push notification sent to Expo!');
+      console.log('Ticket ID:', successTicket.id);
+      console.log('');
+      console.log('📱 The notification should arrive on the device within a few seconds');
+      console.log('   If it doesn\'t arrive:');
+      console.log('   - Make sure the app is completely closed');
+      console.log('   - Check device notification settings');
+      console.log('   - Verify Do Not Disturb is OFF');
+      console.log('   - Check device internet connection');
+      console.log('');
+      return true;
+    }
+
+    console.warn('⚠️ Unknown ticket status:', (ticket as any).status);
+    return false;
+
+  } catch (error: any) {
+    console.error('');
+    console.error('❌ EXCEPTION in sendPushNotification:');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    if (error.code) {
+      console.error('Error code:', error.code);
+    }
+    
+    console.error('');
     return false;
   }
 }
@@ -67,9 +127,17 @@ export async function sendPushNotificationBatch(
   notifications: Array<{ pushToken: string; notification: PushNotificationData }>
 ): Promise<void> {
   try {
+    console.log(`📱 Sending batch of ${notifications.length} notifications...`);
+
     // Filter valid tokens and create messages
     const messages: ExpoPushMessage[] = notifications
-      .filter(({ pushToken }) => Expo.isExpoPushToken(pushToken))
+      .filter(({ pushToken }) => {
+        if (!Expo.isExpoPushToken(pushToken)) {
+          console.warn(`⚠️ Skipping invalid token: ${String(pushToken).substring(0, 20)}...`);
+          return false;
+        }
+        return true;
+      })
       .map(({ pushToken, notification }) => ({
         to: pushToken,
         sound: notification.sound ?? 'default',
@@ -78,59 +146,49 @@ export async function sendPushNotificationBatch(
         data: notification.data ?? {},
         badge: notification.badge,
         priority: notification.priority ?? 'high',
+        channelId: 'default',
       }));
+
+    if (messages.length === 0) {
+      console.warn('⚠️ No valid tokens to send to');
+      return;
+    }
 
     // Expo recommends sending notifications in chunks of 100
     const chunks = expo.chunkPushNotifications(messages);
-    
-    for (const chunk of chunks) {
+    console.log(`📦 Split into ${chunks.length} chunk(s)`);
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      console.log(`📤 Sending chunk ${i + 1}/${chunks.length} (${chunk.length} notifications)...`);
+
       try {
         const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-        
-        // Log any errors
-        ticketChunk.forEach((ticket, index) => {
-          if (ticket.status === 'error') {
-            console.error(`❌ Error sending notification ${index}:`, ticket.message);
-          }
-        });
-      } catch (error) {
-        console.error('❌ Error sending chunk:', error);
-      }
-    }
-  } catch (error) {
-    console.error('❌ Error in sendPushNotificationBatch:', error);
-  }
-}
 
-/**
- * Check receipt status for sent notifications
- * Call this later to see if notifications were delivered
- */
-export async function checkNotificationReceipts(receiptIds: string[]): Promise<void> {
-  try {
-    const receiptIdChunks = expo.chunkPushNotificationReceiptIds(receiptIds);
-    
-    for (const chunk of receiptIdChunks) {
-      try {
-        const receipts = await expo.getPushNotificationReceiptsAsync(chunk);
-        
-        for (const receiptId in receipts) {
-          const receipt = receipts[receiptId];
-          
-          if (receipt.status === 'error') {
-            console.error(`❌ Receipt error for ${receiptId}:`, receipt.message);
-            
-            if (receipt.details?.error === 'DeviceNotRegistered') {
-              console.log('📱 Device token is no longer valid');
-              // TODO: Remove invalid token from database
+        // Count results
+        const successCount = ticketChunk.filter((t: any) => t.status === 'ok').length;
+        const errorCount = ticketChunk.filter((t: any) => t.status === 'error').length;
+
+        console.log(`   ✅ Success: ${successCount}`);
+        console.log(`   ❌ Errors: ${errorCount}`);
+
+        // Log any errors
+        ticketChunk.forEach((ticket: any, index: number) => {
+          if (ticket.status === 'error') {
+            console.error(`   Error ${index + 1}: ${ticket.message}`);
+            if (ticket.details) {
+              console.error(`   Details:`, ticket.details);
             }
           }
-        }
-      } catch (error) {
-        console.error('❌ Error fetching receipts:', error);
+        });
+      } catch (error: any) {
+        console.error(`❌ Error sending chunk ${i + 1}:`, error.message);
       }
     }
-  } catch (error) {
-    console.error('❌ Error in checkNotificationReceipts:', error);
+
+    console.log('✅ Batch sending complete!');
+  } catch (error: any) {
+    console.error('❌ Error in sendPushNotificationBatch:', error.message);
+    console.error('Stack:', error.stack);
   }
 }

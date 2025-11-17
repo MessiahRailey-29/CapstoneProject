@@ -3,7 +3,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Platform, View, FlatList, Pressable, StyleSheet, Keyboard, Alert, KeyboardAvoidingView } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
-import useColorScheme from "@/hooks/useColorScheme";
+import { useColorScheme } from "react-native";
 import Button from "@/components/ui/button";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import TextInput from "@/components/ui/text-input";
@@ -332,17 +332,7 @@ export default function NewItemScreen() {
               </Pressable>
             )}
           </View>
-
-          {/* Selected Product Indicator */}
-          {selectedProduct && (
-            <View style={styles.selectedProductBadge}>
-              <IconSymbol name="checkmark.circle.fill" color="#34C759" size={16} />
-              <ThemedText type="default" style={styles.selectedText}>
-                From database • {selectedProduct.category}
-              </ThemedText>
-            </View>
-          )}
-
+          
           {/* Selected Store Indicator */}
           {selectedStoreInfo && (
             <View style={styles.selectedStoreBadge}>

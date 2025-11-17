@@ -6,8 +6,8 @@ import { Platform, AppState } from 'react-native';
 import Constants from 'expo-constants';
 
 // Get API URL from app.json extra config, with fallback
-const API_URL = Constants.expoConfig?.extra?.apiUrl || 
-  (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
+// Get API URL from environment variables
+const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.replace('/api', '') || 'http://192.168.1.142:3000';
 
 console.log('📡 API_URL configured as:', API_URL);
 

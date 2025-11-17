@@ -1,13 +1,48 @@
 import { Redirect, Stack } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
+import * as React from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const TERMS_ACCEPTED_PREFIX = '@terms_accepted_';
 
 export default function AuthRoutesLayout() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAuth();
+  const [termsAccepted, setTermsAccepted] = React.useState<boolean | null>(null);
+  const [isCheckingTerms, setIsCheckingTerms] = React.useState(true);
 
-  if (!isLoaded) return null;
+  // Check if user has accepted terms - now user-specific
+  React.useEffect(() => {
+    const checkTermsAcceptance = async () => {
+      try {
+        if (!userId) {
+          setTermsAccepted(false);
+          return;
+        }
+        
+        // Use userId to create a unique key for each user
+        const userTermsKey = `${TERMS_ACCEPTED_PREFIX}${userId}`;
+        const accepted = await AsyncStorage.getItem(userTermsKey);
+        setTermsAccepted(accepted === 'true');
+      } catch (error) {
+        console.error('Error checking terms acceptance:', error);
+        setTermsAccepted(false);
+      } finally {
+        setIsCheckingTerms(false);
+      }
+    };
 
-  // Redirect to main app if signed in
-  if (isSignedIn) { 
+    if (isLoaded && isSignedIn) {
+      checkTermsAcceptance();
+    } else {
+      setIsCheckingTerms(false);
+    }
+  }, [isLoaded, isSignedIn, userId]);
+
+  // Show nothing while checking auth or terms
+  if (!isLoaded || isCheckingTerms) return null;
+
+  // If signed in and terms accepted, redirect to main app
+  if (isSignedIn && termsAccepted) { 
     return <Redirect href="/(index)/(tabs)" />; 
   }
 
@@ -25,7 +60,6 @@ export default function AuthRoutesLayout() {
               headerLargeTitleShadowVisible: false,
               headerShadowVisible: true,
               headerLargeStyle: {
-                // Make the large title transparent to match the background
                 backgroundColor: "transparent",
               },
             }),
@@ -46,6 +80,10 @@ export default function AuthRoutesLayout() {
       <Stack.Screen
         name="reset-password"
         options={{ headerTitle: "Reset password" }}
+      />
+      <Stack.Screen
+        name="terms-acceptance"
+        options={{ headerShown: false }}
       />
     </Stack>
   );
