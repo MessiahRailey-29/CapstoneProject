@@ -317,34 +317,35 @@ export default function SignUpScreen() {
     return (
         <KeyboardAvoidingView
         style={{flex: 1}}
-                  behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null }
-                  keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 60 : 0}>
-        <BodyScrollView contentContainerStyle={{ padding: 16 }}
-        keyboardShouldPersistTaps="handled"
-        contentInsetAdjustmentBehavior="automatic">
-            <View style={styles.header}>
-                <ThemedText style={styles.headerTitle}>
-                    Hi {firstName}! 👋
+        behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null }
+        keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 100 : 0}>
+            <BodyScrollView 
+            contentContainerStyle={{ padding: 16 }}
+            keyboardShouldPersistTaps="handled"
+            contentInsetAdjustmentBehavior="automatic">
+                <View style={styles.header}>
+                    <ThemedText style={styles.headerTitle}>
+                        Hi {firstName}! 👋
+                    </ThemedText>
+                    <ThemedText style={styles.headerSubtitle}>
+                        Now, let's set up your account credentials
                 </ThemedText>
-                <ThemedText style={styles.headerSubtitle}>
-                    Now, let's set up your account credentials
-                </ThemedText>
-            </View>
+                </View>
 
-            <View style={styles.stepIndicator}>
-                <View style={[styles.stepDot, styles.stepDotComplete]} />
-                <View style={[styles.stepDot, styles.stepDotActive]} />
-                <View style={styles.stepDot} />
-            </View>
+                <View style={styles.stepIndicator}>
+                    <View style={[styles.stepDot, styles.stepDotComplete]} />
+                    <View style={[styles.stepDot, styles.stepDotActive]} />
+                    <View style={styles.stepDot} />
+                </View>
 
-            <View style={styles.securityBanner}>
-                <ThemedText style={styles.securityBannerText}>
-                    🔒 We take your security seriously
-                </ThemedText>
-                <ThemedText style={styles.securityBannerSubtext}>
-                    Your data is encrypted and secure
-                </ThemedText>
-            </View>
+                <View style={styles.securityBanner}>
+                    <ThemedText style={styles.securityBannerText}>
+                        🔒 We take your security seriously
+                    </ThemedText>
+                    <ThemedText style={styles.securityBannerSubtext}>
+                        Your data is encrypted and secure
+                    </ThemedText>
+                </View>
 
             <TextInput
                 label="Email"

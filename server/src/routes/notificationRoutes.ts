@@ -372,7 +372,7 @@ router.post('/:userId/track-purchase', async (req, res) => {
   }
 });
 
-// ✅ NEW ROUTE: Create shared list update notification with push notification
+// Create shared list update notification with push notification
 router.post('/:userId/shared-list-update', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -448,6 +448,162 @@ router.post('/:userId/shared-list-update', async (req, res) => {
     console.error('❌ Error creating shared list update notification:', errorMessage);
     res.status(500).json({ success: false, error: errorMessage });
   }
-  });
+});
+
+// 🧪 TEST PUSH: Send a test push notification
+router.post('/:userId/test-push', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    console.log('🧪 TEST: Sending test push notification to user:', userId);
+
+    // Get user's notification settings and push token
+    const settings = await NotificationSettings.findOne({ userId });
+
+    if (!settings) {
+      console.log('❌ No notification settings found for user');
+      return res.status(404).json({
+        success: false,
+        error: 'No notification settings found. Please enable notifications first.',
+      });
+    }
+
+    console.log('📋 Settings found:', {
+      enabled: settings.enabled,
+      hasPushToken: !!settings.pushToken,
+      pushToken: settings.pushToken ? settings.pushToken.substring(0, 20) + '...' : 'none',
+    });
+
+    if (!settings.pushToken) {
+      console.log('❌ No push token registered');
+      return res.status(400).json({
+        success: false,
+        error: 'No push token registered. Please open the app and allow notifications.',
+      });
+    }
+
+    if (!settings.enabled) {
+      console.log('⚠️ Notifications are disabled for this user');
+      return res.status(400).json({
+        success: false,
+        error: 'Notifications are disabled. Please enable them in settings.',
+      });
+    }
+
+    // Send the test push notification
+    console.log('📱 Attempting to send push notification...');
+    console.log('Push token:', settings.pushToken);
+
+    const sent = await sendPushNotification(settings.pushToken, {
+      title: '🧪 Test Notification',
+      body: 'If you see this, push notifications are working! 🎉',
+      data: {
+        type: 'test',
+        timestamp: new Date().toISOString(),
+      },
+      priority: 'high',
+    });
+
+    if (sent) {
+      console.log('✅ Test push notification sent successfully!');
+
+      // Also create a notification in the database
+      const notification = await Notification.create({
+        userId,
+        type: 'shopping_reminder',
+        title: '🧪 Test Notification',
+        message: 'This is a test notification to verify push notifications are working.',
+        data: { test: true },
+        isRead: false,
+        isSent: true,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      });
+
+      return res.json({
+        success: true,
+        message: 'Test push notification sent successfully!',
+        notification,
+        pushToken: settings.pushToken.substring(0, 20) + '...',
+      });
+    } else {
+      console.log('❌ Failed to send push notification');
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to send push notification. Check server logs for details.',
+      });
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('❌ Error in test-push endpoint:', errorMessage);
+    console.error('Stack:', error);
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+    });
+  }
+});
+
+// 🔍 DEBUG ENDPOINT: Check notification settings and push token
+router.get('/:userId/debug', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log('🔍 DEBUG: Checking notification setup for user:', userId);
+    const settings = await NotificationSettings.findOne({ userId });
+
+    if (!settings) {
+      return res.json({
+        success: false,
+        message: 'No notification settings found',
+        userId,
+        hasSettings: false,
+      });
+    }
+
+    return res.json({
+      success: true,
+      userId,
+      hasSettings: true,
+      settings: {
+        enabled: settings.enabled,
+        hasPushToken: !!settings.pushToken,
+        pushTokenPreview: settings.pushToken ? settings.pushToken.substring(0, 30) + '...' : null,
+        preferences: settings.preferences,
+        reminderTiming: settings.reminderTiming,
+        lastUpdated: settings.updatedAt,
+      },
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('❌ Error in debug endpoint:', errorMessage);
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+    });
+  }
+});
+
+// 🎯 MANUAL TRIGGER: Force check for reminders NOW (for testing)
+router.post('/admin/trigger-reminders', async (req, res) => {
+  try {
+    console.log('🔔 MANUAL TRIGGER: Forcing shopping reminder check...');
+    const { checkShoppingReminders } = await import('../jobs/notificationCronJobs.js');
+    await checkShoppingReminders();
+    console.log('✅ Manual reminder check completed');
+    
+    res.json({
+      success: true,
+      message: 'Reminder check triggered successfully',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('❌ Error in manual trigger:', errorMessage);
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+    });
+  }
+});
 
 export default router;

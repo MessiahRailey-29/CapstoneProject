@@ -35,8 +35,7 @@
         "POST_NOTIFICATIONS"
       ],
       "usesCleartextTraffic": true,
-      "googleServicesFile": "./google-services.json",
-      "useNextNotificationsApi": true
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",

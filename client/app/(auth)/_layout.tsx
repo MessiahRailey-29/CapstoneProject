@@ -3,18 +3,25 @@ import { useAuth } from "@clerk/clerk-expo";
 import * as React from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const TERMS_ACCEPTED_KEY = '@terms_accepted';
+const TERMS_ACCEPTED_PREFIX = '@terms_accepted_';
 
 export default function AuthRoutesLayout() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAuth();
   const [termsAccepted, setTermsAccepted] = React.useState<boolean | null>(null);
   const [isCheckingTerms, setIsCheckingTerms] = React.useState(true);
 
-  // Check if user has accepted terms
+  // Check if user has accepted terms - now user-specific
   React.useEffect(() => {
     const checkTermsAcceptance = async () => {
       try {
-        const accepted = await AsyncStorage.getItem(TERMS_ACCEPTED_KEY);
+        if (!userId) {
+          setTermsAccepted(false);
+          return;
+        }
+        
+        // Use userId to create a unique key for each user
+        const userTermsKey = `${TERMS_ACCEPTED_PREFIX}${userId}`;
+        const accepted = await AsyncStorage.getItem(userTermsKey);
         setTermsAccepted(accepted === 'true');
       } catch (error) {
         console.error('Error checking terms acceptance:', error);
@@ -29,7 +36,7 @@ export default function AuthRoutesLayout() {
     } else {
       setIsCheckingTerms(false);
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, userId]);
 
   // Show nothing while checking auth or terms
   if (!isLoaded || isCheckingTerms) return null;
@@ -53,7 +60,6 @@ export default function AuthRoutesLayout() {
               headerLargeTitleShadowVisible: false,
               headerShadowVisible: true,
               headerLargeStyle: {
-                // Make the large title transparent to match the background
                 backgroundColor: "transparent",
               },
             }),

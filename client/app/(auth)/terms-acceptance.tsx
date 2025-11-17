@@ -3,12 +3,15 @@ import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const TERMS_ACCEPTED_KEY = '@terms_accepted';
+const TERMS_ACCEPTED_PREFIX = '@terms_accepted_';
+const TERMS_DATE_PREFIX = '@terms_accepted_date_';
 
 export default function TermsAcceptanceScreen() {
   const router = useRouter();
+  const { userId } = useAuth();
   const [hasScrolledToBottom, setHasScrolledToBottom] = React.useState(false);
   const [isAccepting, setIsAccepting] = React.useState(false);
 
@@ -16,18 +19,25 @@ export default function TermsAcceptanceScreen() {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     const paddingToBottom = 20;
     
-    // Check if user has scrolled to the bottom
     if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
       setHasScrolledToBottom(true);
     }
   };
 
   const handleAccept = async () => {
+    if (!userId) {
+      Alert.alert('Error', 'User ID not found. Please try logging in again.');
+      return;
+    }
+
     setIsAccepting(true);
     try {
-      // Store acceptance in AsyncStorage
-      await AsyncStorage.setItem(TERMS_ACCEPTED_KEY, 'true');
-      await AsyncStorage.setItem('@terms_accepted_date', new Date().toISOString());
+      // Store acceptance in AsyncStorage with user-specific key
+      const userTermsKey = `${TERMS_ACCEPTED_PREFIX}${userId}`;
+      const userDateKey = `${TERMS_DATE_PREFIX}${userId}`;
+      
+      await AsyncStorage.setItem(userTermsKey, 'true');
+      await AsyncStorage.setItem(userDateKey, new Date().toISOString());
       
       // Navigate to the main app
       router.replace('/(index)/(tabs)');
@@ -49,7 +59,6 @@ export default function TermsAcceptanceScreen() {
           text: 'Exit',
           style: 'destructive',
           onPress: () => {
-            // User can't proceed without accepting
             router.replace('/(auth)');
           },
         },
@@ -266,7 +275,6 @@ export default function TermsAcceptanceScreen() {
           <ThemedText style={styles.listItem}>• Data synchronization across your devices</ThemedText>
           <ThemedText style={styles.listItem}>• Push notifications (which you can disable)</ThemedText>
 
-          {/* Scroll indicator */}
           {!hasScrolledToBottom && (
             <View style={styles.scrollIndicator}>
               <ThemedText style={styles.scrollIndicatorText}>
@@ -277,9 +285,7 @@ export default function TermsAcceptanceScreen() {
         </ScrollView>
       </View>
 
-      {/* Action buttons */}
       <View style={styles.footer}>
-
         <Button
           onPress={handleAccept}
           disabled={!hasScrolledToBottom || isAccepting}
@@ -390,33 +396,11 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  checkmarkContainer: {
-    backgroundColor: '#D1FAE5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  checkmarkText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#059669',
-  },
-  acceptButton: {
-    marginBottom: 12,
-    backgroundColor: '#22c55e',
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  declineButton: {
-    borderColor: '#DC2626',
-    marginBottom: 16,
-  },
   footerNote: {
     fontSize: 11,
     opacity: 0.6,
     textAlign: 'center',
     lineHeight: 16,
+    marginTop: 16,
   },
 });

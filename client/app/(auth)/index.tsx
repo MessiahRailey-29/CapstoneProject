@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { ThemedText } from "@/components/ThemedText";
-import { isClerkAPIResponseError, useSignIn } from "@clerk/clerk-expo";
+import { isClerkAPIResponseError, useSignIn, useAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { View, StyleSheet, Alert, Pressable } from "react-native";
+import { View, StyleSheet, Alert, Pressable, KeyboardAvoidingView } from "react-native";
 import { Button } from '@/components/ui/button';
 import { BodyScrollView } from '@/components/ui/BodyScrollView';
 import TextInput from '@/components/ui/text-input';
@@ -19,11 +19,15 @@ import {
   biometricLogin,
   getBiometricTypeName,
 } from "@/utils/biometricAuth";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SignInScreen() {
     const { signIn, setActive, isLoaded } = useSignIn();
+    const { isSignedIn } = useAuth(); // Add this to check if already signed in
     const [errors, setErrors] = React.useState<ClerkAPIError[]>([]);
     const router = useRouter();
+
+    const insets = useSafeAreaInsets();
 
     const [emailAddress, setEmailAddress] = React.useState("");
     const [password, setPassword] = React.useState("");
@@ -34,6 +38,15 @@ export default function SignInScreen() {
     const [biometricAvailable, setBiometricAvailable] = React.useState(false);
     const [biometricType, setBiometricType] = React.useState<string>("none");
     const [isAuthenticating, setIsAuthenticating] = React.useState(false);
+
+    // Check if user is already signed in
+    React.useEffect(() => {
+        if (isLoaded && isSignedIn) {
+            console.log('User already signed in, redirecting...');
+            // User is already signed in, redirect to main app
+            router.replace("/(index)/(tabs)");
+        }
+    }, [isLoaded, isSignedIn]);
 
     // Check biometric availability on mount
     React.useEffect(() => {
@@ -70,6 +83,13 @@ export default function SignInScreen() {
     const handleBiometricSignIn = async () => {
         if (!isLoaded) return;
         
+        // Check if already signed in
+        if (isSignedIn) {
+            console.log('Already signed in, redirecting...');
+            router.replace("/(index)/(tabs)");
+            return;
+        }
+        
         setIsAuthenticating(true);
         try {
             const result = await biometricLogin();
@@ -96,7 +116,14 @@ export default function SignInScreen() {
         } catch (e) {
             console.error("Biometric login error:", e);
             if (isClerkAPIResponseError(e)) {
-                Alert.alert('Sign In Failed', 'Invalid credentials. Please try signing in with your password.');
+                // Check if error is "already signed in"
+                const errorMessage = e.errors?.[0]?.message || '';
+                if (errorMessage.toLowerCase().includes('already signed in')) {
+                    console.log('Already signed in error detected, redirecting...');
+                    router.replace("/(index)/(tabs)");
+                } else {
+                    Alert.alert('Sign In Failed', 'Invalid credentials. Please try signing in with your password.');
+                }
             } else {
                 Alert.alert('Error', 'Biometric authentication failed. Try again or log in manually.');
             }
@@ -107,6 +134,13 @@ export default function SignInScreen() {
 
     const onSignInPress = React.useCallback(async () => {
         if (!isLoaded) return;
+
+        // Check if already signed in
+        if (isSignedIn) {
+            console.log('Already signed in, redirecting...');
+            router.replace("/(index)/(tabs)");
+            return;
+        }
 
         // Check if account is locked out
         const attemptCheck = await checkLoginAttempts(emailAddress);
@@ -140,13 +174,20 @@ export default function SignInScreen() {
         } catch (err) {
             console.error(JSON.stringify(err, null, 2));
             
+            if (isClerkAPIResponseError(err)) {
+                // Check if error is "already signed in"
+                const errorMessage = err.errors?.[0]?.message || '';
+                if (errorMessage.toLowerCase().includes('already signed in')) {
+                    console.log('Already signed in error detected, redirecting...');
+                    router.replace("/(index)/(tabs)");
+                    return;
+                }
+                setErrors(err.errors);
+            }
+
             // Record failed login attempt
             await recordLoginAttempt(emailAddress, false);
             await checkAttempts();
-
-            if (isClerkAPIResponseError(err)) {
-                setErrors(err.errors);
-            }
 
             // Show warning if getting close to lockout
             if (remainingAttempts !== null && remainingAttempts <= 2 && remainingAttempts > 0) {
@@ -159,14 +200,31 @@ export default function SignInScreen() {
         } finally {
             setIsSigningIn(false);
         }
-    }, [isLoaded, emailAddress, password, remainingAttempts]);
+    }, [isLoaded, isSignedIn, emailAddress, password, remainingAttempts]);
+
+    // Don't render anything while checking auth
+    if (!isLoaded) {
+        return null;
+    }
+
+    // If already signed in, show loading or redirect message
+    if (isSignedIn) {
+        return (
+            <View style={[styles.header, { flex: 1, justifyContent: 'center' }]}>
+                <ThemedText style={styles.welcomeText}>Redirecting...</ThemedText>
+            </View>
+        );
+    }
 
     return (
-        <BodyScrollView
-            contentContainerStyle={{
-                padding: 16,
-            }}
-        >
+        <KeyboardAvoidingView
+        style={{flex: 1}}
+        behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null }
+        keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.bottom + 60 : 0}>
+            <BodyScrollView 
+                contentContainerStyle={{ padding: 16 }}
+                keyboardShouldPersistTaps="handled"
+                contentInsetAdjustmentBehavior="automatic">
             <View style={styles.header}>
                 <ThemedText style={styles.welcomeText}>Hello!</ThemedText>
                 <ThemedText style={styles.subtitleText}>Sign in to your account</ThemedText>
@@ -280,6 +338,7 @@ export default function SignInScreen() {
                 </ThemedText>
             </View>
         </BodyScrollView>
+        </KeyboardAvoidingView>
     );
 }
 
