@@ -11,7 +11,7 @@ import { useShoppingListValue } from "@/stores/ShoppingListStore";
 import { StatusBar } from "expo-status-bar";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useUser } from "@clerk/clerk-expo";
-import { Colors } from "@/constants/Colors";
+import { useShoppingListData } from "@/stores/ShoppingListsStore";
 
 export default function EditScreen() {
   const router = useRouter();
@@ -28,6 +28,7 @@ export default function EditScreen() {
       const styles = createStyles(colors);
 
   // ✅ Use ShoppingListStore directly instead of valuesCopy
+  const listData = useShoppingListData(listId);
   const [storeName, setStoreName] = useShoppingListValue(listId, "name");
   const [storeDescription, setStoreDescription] = useShoppingListValue(listId, "description");
   const [storeEmoji, setStoreEmoji] = useShoppingListValue(listId, "emoji");
@@ -133,6 +134,17 @@ export default function EditScreen() {
       originalDate: originalDate?.toISOString() || null
     });
     
+    // 🔥 NEW: Track what changed for notification
+    const changes = [];
+    if (storeName !== name) changes.push('name');
+    if (storeDescription !== description) changes.push('description');
+    if (storeEmoji !== emoji) changes.push('emoji');
+    if (storeColor !== color) changes.push('color');
+    if (storeBudget !== budget) changes.push('budget');
+    if ((storeShoppingDate || '') !== (shoppingDate?.toISOString() || '')) changes.push('shopping date');
+    
+    const hasChanges = changes.length > 0;
+    
     // Save directly to ShoppingListStore
     setStoreName(name);
     setStoreDescription(description);
@@ -141,7 +153,7 @@ export default function EditScreen() {
     setStoreColor(color);
     setStoreShoppingDate(shoppingDate?.toISOString() || "");
     
-    // 🔔 Handle notification rescheduling if date changed
+    // Handle notification rescheduling if date changed
     const dateChanged = originalDate?.getTime() !== shoppingDate?.getTime();
     
     console.log('🔔 Date comparison:', {
@@ -154,10 +166,7 @@ export default function EditScreen() {
       try {
         console.log('🔔 Date has changed, updating reminders...');
         
-        // Schedule new reminder if new date exists
-        // The backend should handle replacing/updating existing reminders for the same listId
         if (shoppingDate) {
-          // Validate that the date is not in the past (compare dates only, not time)
           const now = new Date();
           const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           const selectedDay = new Date(shoppingDate.getFullYear(), shoppingDate.getMonth(), shoppingDate.getDate());
@@ -169,9 +178,7 @@ export default function EditScreen() {
               'Cannot set a reminder for a date in the past. Please choose today or a future date.',
               [{ text: 'OK' }]
             );
-            // Don't return - still save the list, just don't schedule reminder
           } else {
-            // Date is valid (today or future), schedule the reminder
             const reminderScheduled = await scheduleShoppingReminder(listId, shoppingDate);
             if (reminderScheduled) {
               console.log('🔔 Shopping reminder scheduled (not sent) for', shoppingDate);
@@ -192,7 +199,6 @@ export default function EditScreen() {
                   [{ text: 'OK' }]
                 );
               } else {
-                // Show generic confirmation for other dates
                 const dateStr = shoppingDate.toLocaleDateString('en-US', { 
                   month: 'short', 
                   day: 'numeric',
@@ -207,7 +213,6 @@ export default function EditScreen() {
             }
           }
         } else if (originalDate) {
-          // Date was removed - try to cancel the reminder
           try {
             await cancelShoppingReminder(listId);
             console.log('🔔 Shopping date removed, reminder cancelled');
@@ -231,6 +236,30 @@ export default function EditScreen() {
       }
     } else {
       console.log('🔔 Date unchanged, no reminder updates needed');
+    }
+    
+    // 🔥 NEW: Notify collaborators if this is a shared list and something changed
+    if (hasChanges && listData?.collaborators && listData.collaborators.length > 0) {
+      try {
+        // Dynamically import to avoid circular dependencies
+        const { notifyCollaborators } = await import('@/utils/notifyCollaborators');
+        
+        await notifyCollaborators({
+          listId,
+          listName: name,
+          emoji: emoji,
+          action: 'updated_list',
+          itemName: changes.join(', '), // e.g., "name, emoji, budget"
+          currentUserId: user?.id || '',
+          currentUserName: user?.firstName || user?.username || 'Someone',
+          collaborators: listData.collaborators,
+        });
+        
+        console.log('✅ Notified collaborators about list update:', changes);
+      } catch (error) {
+        console.error('❌ Failed to notify collaborators:', error);
+        // Don't show error to user - list was still saved successfully
+      }
     }
     
     // Small delay to ensure save completes

@@ -316,24 +316,23 @@ function ProductContent({
         </View>
 
         {/* Notes Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <IconSymbol name="note.text" size={20} color="#5856D6" />
-            <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
-              Notes
-            </ThemedText>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <IconSymbol name="note.text" size={20} color="#5856D6" />
+              <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
+                Notes
+              </ThemedText>
+            </View>
+            {notes ? (
+              <ThemedText style={styles.notesDisplay}>
+                {notes}
+              </ThemedText>
+            ) : (
+              <ThemedText style={styles.notesPlaceholder}>
+                No notes added for this product
+              </ThemedText>
+            )}
           </View>
-          <TextInput
-            value={notes || ""}
-            editable={true}
-            onChangeText={setNotes}
-            variant="ghost"
-            placeholder="Add notes about this product..."
-            multiline
-            numberOfLines={3}
-            inputStyle={styles.notesInput}
-          />
-        </View>
 
         {/* Metadata Card */}
         <View style={styles.card}>
@@ -718,6 +717,29 @@ function createStyles(colors: typeof Colors.light) {
       borderWidth: 1,
       borderColor: colors.borderColor,
       marginBottom: 10
+    },
+    notesDisplay: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.text,
+      padding: 12,
+      borderRadius: 8,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.borderColor,
+      minHeight: 80,
+    },
+    notesPlaceholder: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: '#8E8E93',
+      fontStyle: 'italic',
+      padding: 12,
+      borderRadius: 8,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.borderColor,
+      minHeight: 80,
     },
     metadataContainer: {
       gap: 12,

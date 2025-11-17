@@ -27,7 +27,6 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
   const updateStatusInListStore = useUpdateListStatus(listId);
   const addInventoryItems = useAddInventoryItemsCallback();
   
-  // 🔔 ADD: Get notification functions
   const { trackPurchase } = useNotifications(user?.id || '');
   
   const store = useShoppingListStore(listId);
@@ -79,21 +78,47 @@ const handleShopNow = () => {
           console.log("🛒 Starting shopping session...");
           console.log("📦 Products before status change:", productIds.length);
           
-          // CRITICAL: Verify products exist in store before changing status
-          if (store) {
-            const currentProducts = store.getTable("products");
-            console.log("📦 Products in store:", Object.keys(currentProducts).length);
-            console.log("📦 Product IDs:", Object.keys(currentProducts).join(', '));
+          // CRITICAL FIX: Verify products exist in store before changing status
+          if (!store) {
+            console.error("❌ Store not available!");
+            Alert.alert("Error", "Unable to start shopping. Please try again.");
+            return;
+          }
+
+          const currentProducts = store.getTable("products");
+          const productCount = Object.keys(currentProducts).length;
+          
+          console.log("📦 Products in store:", productCount);
+          console.log("📦 Product IDs:", Object.keys(currentProducts).join(', '));
+          
+          if (productCount === 0) {
+            console.error("❌ No products found in store!");
+            Alert.alert("Error", "No products found. Please refresh and try again.");
+            return;
           }
           
-          // Update status in the individual list store FIRST
-          // This ensures the products are preserved in the sync
-          updateStatusInListStore('ongoing');
+          // FIX: Update ONLY the parent store, let the sync handle the individual store
+          // This prevents the dual-update race condition
+          updateStatusInListsStore(listId, 'ongoing');
           
-          // Small delay to ensure sync completes
+          // Wait for sync to propagate
           setTimeout(() => {
-            // Then update in the parent store
-            updateStatusInListsStore(listId, 'ongoing');
+            // Verify products are still there after status change
+            const productsAfterUpdate = store.getTable("products");
+            const countAfter = Object.keys(productsAfterUpdate).length;
+            
+            console.log("📦 Products after status change:", countAfter);
+            
+            if (countAfter === 0) {
+              console.error("🚨 PRODUCTS WERE LOST DURING STATUS UPDATE!");
+              Alert.alert(
+                "Error", 
+                "Products were lost during status update. Please don't start shopping and contact support."
+              );
+              // Try to rollback
+              updateStatusInListsStore(listId, 'regular');
+              return;
+            }
             
             if (process.env.EXPO_OS === "ios") {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -101,12 +126,12 @@ const handleShopNow = () => {
 
             console.log("✅ Shopping started for list:", listId);
 
-            // Navigate after both updates
+            // Navigate after verification
             setTimeout(() => {
               console.log("🛒 Navigating to shopping guide for list:", listId);
               router.push(`/(index)/list/${listId}/shopping-guide`);
             }, 100);
-          }, 200);
+          }, 500); // Increased delay to ensure sync completes
         },
       },
     ]
@@ -143,7 +168,7 @@ const handleShopNow = () => {
               addInventoryItems(productsData, listId, user?.id || 'unknown');
               console.log("✅ Successfully added items to inventory");
 
-              // 🔔 TRACK EACH PURCHASE FOR LOW STOCK MONITORING
+              // Track purchases for low stock monitoring
               console.log("🔔 Tracking purchases for low stock alerts...");
               let trackedCount = 0;
               
@@ -162,8 +187,7 @@ const handleShopNow = () => {
               
               console.log(`✅ Tracked ${trackedCount}/${productsData.length} purchases for low stock monitoring`);
 
-              // Update status in BOTH stores for persistence
-              updateStatusInListStore('completed');
+              // FIX: Update ONLY parent store, let sync handle individual store
               updateStatusInListsStore(listId, 'completed');
 
               if (process.env.EXPO_OS === "ios") {
@@ -200,38 +224,43 @@ const handleShopNow = () => {
     );
   };
 
-  // ⭐ NEW: Reset all products to unchecked when restoring
   const handleRestoreList = () => {
-    Alert.alert(
-      "Restore List",
-      "Move this list back to active shopping lists? All items will be marked as unpurchased.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Restore",
-          style: "default",
-          onPress: () => {
-            console.log("♻️ Restoring list:", listId);
-            console.log("📦 Resetting all products to unchecked...");
+  Alert.alert(
+    "Restore List",
+    "Move this list back to active shopping lists? All items will be marked as unpurchased.",
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Restore",
+        style: "default",
+        onPress: async () => {
+          console.log("♻️ Restoring list:", listId);
+          console.log("📦 Resetting all products to unchecked...");
 
-            // ⭐ Reset all products to unchecked (isPurchased = false)
+          try {
+            // Reset all products to unchecked (isPurchased = false)
             if (store && productIds && productIds.length > 0) {
-              productIds.forEach(productId => {
-                try {
-                  store.setCell("products", productId, "isPurchased", false);
-                  console.log(`✅ Reset product ${productId} to unchecked`);
-                } catch (error) {
-                  console.error(`❌ Error resetting product ${productId}:`, error);
+              // Use transaction to ensure atomic update
+              store.transaction(() => {
+                for (const productId of productIds) {
+                  try {
+                    store.setCell("products", productId, "isPurchased", false);
+                    console.log(`✅ Reset product ${productId} to unchecked`);
+                  } catch (error) {
+                    console.error(`❌ Error resetting product ${productId}:`, error);
+                  }
                 }
               });
               console.log(`✅ Reset ${productIds.length} products to unchecked`);
             }
 
-            // Update status in both stores
-            updateStatusInListStore('regular');
+            // Wait for product updates to sync
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // FIX: Update ONLY parent store, let sync handle individual store
             updateStatusInListsStore(listId, 'regular');
 
             if (process.env.EXPO_OS === "ios") {
@@ -239,18 +268,22 @@ const handleShopNow = () => {
             }
 
             console.log("✅ List restored successfully");
-          },
+          } catch (error) {
+            console.error("❌ Error restoring list:", error);
+            Alert.alert('Error', 'Failed to restore list. Please try again.');
+          }
         },
-      ]
-    );
-  };
+      },
+    ]
+  );
+};
 
   if (productIds.length === 0) {
     return null;
   }
 
   if (currentStatus === 'completed') {
-    console.log("🔍 Rendering COMPLETED buttons");
+    console.log("📋 Rendering COMPLETED buttons");
     return (
       <View style={styles.container}>
         <Pressable onPress={handleRestoreList} style={styles.restoreButton}>
@@ -264,7 +297,7 @@ const handleShopNow = () => {
   }
 
   if (currentStatus === 'ongoing') {
-    console.log("🔍 Rendering ONGOING buttons");
+    console.log("📋 Rendering ONGOING buttons");
     return (
       <View style={styles.container}>
         <Pressable onPress={handleViewShoppingGuide} style={styles.guideButton}>

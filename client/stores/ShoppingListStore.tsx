@@ -198,13 +198,20 @@ export const useUpdateListStatus = (listId: string) => {
     const productCount = Object.keys(currentProducts).length;
 
     console.log('📦 Current products count BEFORE status change:', productCount);
+    console.log('📦 Product IDs:', Object.keys(currentProducts).join(', '));
 
     if (productCount === 0) {
       console.error('🚨 WARNING: No products found before status update!');
+      console.error('🚨 Aborting status update to prevent data loss');
+      return; // ⭐ CRITICAL: Don't update status if no products
     }
 
     try {
+      // ⭐ Use transaction to ensure atomic update
       store.transaction(() => {
+        // Store products in memory before status change
+        const productsSnapshot = { ...currentProducts };
+        
         store.setValue('status', newStatus);
         store.setValue('updatedAt', new Date().toISOString());
 
@@ -218,6 +225,18 @@ export const useUpdateListStatus = (listId: string) => {
         if (newStatus === 'regular') {
           store.setValue('completedAt', '');
         }
+        
+        // ⭐ Verify products are still there after status change
+        const productsAfterStatus = store.getTable('products');
+        if (Object.keys(productsAfterStatus).length === 0 && productCount > 0) {
+          console.error('🚨 PRODUCTS LOST IN TRANSACTION! Restoring...');
+          // Restore products
+          Object.entries(productsSnapshot).forEach(([productId, product]) => {
+            if (product && typeof product === 'object') {
+              store.setRow('products', productId, product);
+            }
+          });
+        }
       });
 
       const productsAfter = store.getTable('products');
@@ -227,6 +246,7 @@ export const useUpdateListStatus = (listId: string) => {
 
       if (productCount !== productCountAfter) {
         console.error('🚨 PRODUCTS LOST DURING STATUS UPDATE!');
+        console.error(`🚨 Lost ${productCount - productCountAfter} products`);
       } else {
         console.log('✅ Products preserved during status update');
       }
@@ -237,6 +257,7 @@ export const useUpdateListStatus = (listId: string) => {
     }
   }, [store, listId]);
 };
+
 
 export const useShoppingListProductCell = <
   CellId extends ShoppingListProductCellId
@@ -320,14 +341,25 @@ export default function ShoppingListStore({
     createMergeableStore().setSchema(TABLES_SCHEMA, VALUES_SCHEMA)
   );
 
-  // CRITICAL FIX: Initialize from valuesCopy more reliably
+  // CRITICAL FIX: Single merged initialization effect
   useEffect(() => {
-    // Only attempt initialization once
+    if (!store || !valuesCopy) return;
+
+    // ⭐ GUARD 1: If store already has products and is initialized, skip re-initialization
+    const existingProducts = store.getTable('products');
+    const hasProducts = Object.keys(existingProducts).length > 0;
+    
+    if (hasProducts && initialized.current) {
+      console.log('⚠️ Store already initialized with products, skipping re-initialization');
+      return;
+    }
+
+    // ⭐ GUARD 2: Only attempt initialization once per data change
     if (initializationAttempted.current) {
       return;
     }
 
-    if (!valuesCopy || valuesCopy === '{}') {
+    if (valuesCopy === '{}') {
       console.log('⏳ No valuesCopy yet, waiting...');
       return;
     }
@@ -383,7 +415,7 @@ export default function ShoppingListStore({
         console.log(`  ✓ Loaded ${Object.keys(parsedData.tables.collaborators).length} collaborators`);
       }
       
-      // Initialize values - THIS IS THE KEY FIX
+      // Initialize values
       if (parsedData.values) {
         const validValueKeys: (keyof typeof VALUES_SCHEMA)[] = [
           'name', 'description', 'emoji', 'color', 'shoppingDate', 'budget', 
@@ -462,6 +494,7 @@ export default function ShoppingListStore({
     if (!store) return;
 
     if (isSyncing.current) {
+      console.log('⚠️ Sync already in progress, skipping...');
       return;
     }
 
@@ -484,9 +517,15 @@ export default function ShoppingListStore({
     try {
       isSyncing.current = true;
 
+      // ⭐ Verify we have products before syncing
+      const products = store.getTable('products');
+      const productCount = Object.keys(products).length;
+      
+      console.log(`🔄 Syncing store data - ${productCount} products`);
+
       const storeData = {
         tables: {
-          products: store.getTable('products'),
+          products: products,
           collaborators: store.getTable('collaborators'),
         },
         values: {
@@ -496,6 +535,19 @@ export default function ShoppingListStore({
       };
 
       const serializedData = JSON.stringify(storeData);
+
+      // ⭐ Verify serialized data contains products
+      if (productCount > 0) {
+        const parsedCheck = JSON.parse(serializedData);
+        const serializedProductCount = Object.keys(parsedCheck.tables?.products || {}).length;
+        
+        if (serializedProductCount !== productCount) {
+          console.error('🚨 Product count mismatch in serialization!');
+          console.error(`Expected: ${productCount}, Got: ${serializedProductCount}`);
+          isSyncing.current = false;
+          return;
+        }
+      }
 
       if (serializedData === lastSyncedData.current) {
         isSyncing.current = false;
@@ -525,7 +577,20 @@ export default function ShoppingListStore({
     
     const productsListenerId = store.addTableListener('products', syncStoreData);
     const collaboratorsListenerId = store.addTableListener('collaborators', syncStoreData);
-    const statusListenerId = store.addValueListener('status', syncStoreData);
+    const statusListenerId = store.addValueListener('status', (store, valueId, newStatus) => {
+      // ⭐ Verify products are preserved during status change
+      const products = store.getTable('products');
+      const productCount = Object.keys(products).length;
+      
+      console.log(`📊 Status changed to: ${newStatus}, Products: ${productCount}`);
+      
+      if (productCount === 0 && initialized.current) {
+        console.error('🚨 WARNING: Products disappeared after status change!');
+        console.error('🚨 This indicates a sync/persistence issue');
+      }
+      
+      syncStoreData();
+    });
     const budgetListenerId = store.addValueListener('budget', syncStoreData);
     const nameListenerId = store.addValueListener('name', (store, valueId, newName) => {
       if (newName && newName !== 'Loading...' && !hasReceivedSyncData.current) {
