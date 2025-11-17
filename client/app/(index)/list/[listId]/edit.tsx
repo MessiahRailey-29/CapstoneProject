@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View, Alert } from "react-native";
+import { Pressable, StyleSheet, Text, View, Alert, useColorScheme } from "react-native";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import Button from "@/components/ui/button";
 import TextInput from "@/components/ui/text-input";
@@ -11,6 +11,7 @@ import { useShoppingListValue } from "@/stores/ShoppingListStore";
 import { StatusBar } from "expo-status-bar";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useUser } from "@clerk/clerk-expo";
+import { Colors } from "@/constants/Colors";
 
 export default function EditScreen() {
   const router = useRouter();
@@ -19,6 +20,12 @@ export default function EditScreen() {
   // 🔔 Get notification functions
   const { user } = useUser();
   const { scheduleShoppingReminder, cancelShoppingReminder } = useNotifications(user?.id || '');
+
+  
+      //color schemes and styles
+      const theme = useColorScheme();
+      const colors = Colors[theme ?? 'light'];
+      const styles = createStyles(colors);
 
   // ✅ Use ShoppingListStore directly instead of valuesCopy
   const [storeName, setStoreName] = useShoppingListValue(listId, "name");
@@ -343,7 +350,8 @@ export default function EditScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   scrollViewContent: { padding: 16 },
   inputContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
   titleInputContainer: { flexGrow: 1, flexShrink: 1 },
@@ -353,7 +361,8 @@ const styles = StyleSheet.create({
   colorContainer: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
   colorPreview: { width: 24, height: 24, borderRadius: 100 },
   dateSection: { marginVertical: 16, gap: 8 },
-  dateLabel: { fontSize: 16, fontWeight: "500", color: "#666" },
+  dateLabel: { fontSize: 16, fontWeight: "500", color: colors.exposedGhost },
   budgetSection: { marginVertical: 16, gap: 8 },
-  budgetLabel: { fontSize: 16, fontWeight: "500", color: "#666" },
+  budgetLabel: { fontSize: 16, fontWeight: "500", color: colors.exposedGhost },
 });
+}

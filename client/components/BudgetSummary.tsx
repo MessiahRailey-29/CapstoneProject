@@ -1,8 +1,10 @@
 import React from 'react';
-import { StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { useShoppingListProductIds, useShoppingListProductCell } from '@/stores/ShoppingListStore';
 import { Colors } from '@/constants/Colors';
 import {LinearGradient} from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { Button } from '@react-navigation/elements';
 interface BudgetSummaryProps {
   listId: string;
   budget: number;
@@ -14,6 +16,8 @@ function ProductCost({ listId, productId }: { listId: string; productId: string 
   const [selectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
   const [productQuantity] = useShoppingListProductCell(listId, productId, "quantity");
   const [name] = useShoppingListProductCell(listId, productId, "name");
+
+  
   
   // Return null if no cost data, otherwise return the cost info
   if (!selectedPrice || selectedPrice <= 0) return null;
@@ -46,6 +50,8 @@ export default function BudgetSummary({
     const [selectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
     const [productQuantity] = useShoppingListProductCell(listId, productId, "quantity");  
     const [name] = useShoppingListProductCell(listId, productId, "name");
+
+    
     
     console.log(`Product ${productId}:`, {
       name,
@@ -74,6 +80,9 @@ export default function BudgetSummary({
   const totalSpent = productCosts.reduce((sum, item) => sum + (item?.cost || 0), 0);
   const remainingBudget = budget - totalSpent;
   const budgetUsedPercentage = budget > 0 ? (totalSpent / budget) * 100 : 0;
+
+  
+  const router = useRouter();
   
   console.log('Budget calculations:', {
     totalSpent,
@@ -203,6 +212,14 @@ export default function BudgetSummary({
           </Text>
         </View>
       )}
+      <View style={styles.editButtonContainer}>
+        <TouchableOpacity
+          onPress={() => router.push (`/list/${listId}/edit`)}
+          style={styles.editButton}
+        >
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
+      </View>
     </LinearGradient>
   );
 }
@@ -329,6 +346,30 @@ function createStyles(colors: typeof Colors.light) {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  editButtonContainer: {
+  marginTop: 16,
+  alignItems: 'flex-end',
+  
+},
+  editButton: {
+    backgroundColor: "#16a34a",
+    elevation: 5,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+},
+ editButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    textShadowColor:'#000',
+    textShadowOffset:{ width: 0, height: 2 },
+    textShadowRadius:2,
   },
 });
 }

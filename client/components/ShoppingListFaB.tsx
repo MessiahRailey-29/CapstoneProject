@@ -23,10 +23,9 @@ interface FloatingActionFabProps {
 }
 
 const ACTIONS = [
-    { key: 'edit', label: 'Edit', icon: 'pencil', offset: -60 },
-    { key: 'duplicates', label: 'Check Duplicates', icon: 'check-square', offset: -120 },
-    { key: 'share', label: 'Share', icon: 'share-alt', offset: -180 },
-    { key: 'add', label: 'Add', icon: 'plus', offset: -240 },
+    { key: 'duplicates', label: 'Check Duplicates', icon: 'check-square', offset: -65 },
+    { key: 'share', label: 'Share', icon: 'share-alt', offset: -130 },
+    { key: 'add', label: 'Add', icon: 'plus', offset: -195 },
 ];
 
 export default function FloatingActionFab({

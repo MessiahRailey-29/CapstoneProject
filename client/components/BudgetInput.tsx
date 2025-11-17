@@ -68,6 +68,7 @@ export default function BudgetInput({
         </View>
         <TextInput
           placeholder="0"
+          placeholderTextColor= {colors.text}
           value={budget > 0 ? budget.toString() : ""}
           onChangeText={handleInputChange}
           keyboardType="numeric"
@@ -145,6 +146,7 @@ function createStyles(colors: typeof Colors.light) {
     fontWeight: "bold",
   },
   inputField: {
+    color: colors.text,
     flex: 1,
     borderWidth: 2,
     borderRadius: 8,
@@ -174,7 +176,7 @@ function createStyles(colors: typeof Colors.light) {
     textAlign: "center",
     marginTop: 8,
     fontSize: 14,
-    color: "#666",
+    color: colors.exposedGhost,
     fontWeight: "500",
   },
   suggestionsContainer: {
