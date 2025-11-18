@@ -278,12 +278,19 @@ function createStyles(colors: typeof Colors.light) {
   amount: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.text,
+    textShadowColor: colors.shadowColor,
+    textShadowRadius: 0.7,
+    textShadowOffset: { width: 0, height: 0.7 },
+    elevation:2
   },
   budgetAmount: {
     fontSize: 30,
     fontWeight: '600',
     color: colors.text,
+    textShadowColor: colors.shadowColor,
+    textShadowRadius: 0.7,
+    textShadowOffset: { width: 0, height: 0.7 },
+    elevation:2
   },
   progressContainer: {
     marginBottom: 12,
@@ -315,7 +322,11 @@ function createStyles(colors: typeof Colors.light) {
   },
   remainingBudget: {
     fontSize: 25,
-    fontWeight: '600',
+    fontWeight: '600',    
+    textShadowColor: colors.shadowColor,
+    textShadowRadius: 0.7,
+    textShadowOffset: { width: 0, height: 0.7 },
+    elevation:2
   },
   breakdown: {
     borderTopWidth: 1,
@@ -342,12 +353,10 @@ function createStyles(colors: typeof Colors.light) {
   productCost: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#22c55e',
-    shadowColor: '#000',
-    shadowOpacity: 1,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 2 },
-    elevation:2
+    color: '#00ff5e',
+    textShadowColor: colors.shadowColor,
+    textShadowRadius: 0.7,
+    textShadowOffset: { width: 0, height: 0.8 }
   },
   moreItems: {
     fontSize: 12,

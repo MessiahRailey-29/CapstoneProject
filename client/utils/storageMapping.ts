@@ -295,13 +295,13 @@ export function getStorageRule(category: string): StorageRule {
  * Get icon for storage location
  */
 export function getStorageIcon(storage: StorageLocation): string {
-  const image: Record<StorageLocation, string> = {
-    'Refrigerator': require('@/assets/images/refrigerator-icon.png'),
-    'Freezer': require('@/assets/images/freezer-chest-icon.png'),
-    'Pantry': require('@/assets/images/pantry-drawer-icon.png'),
-    'Other':  require('@/assets/images/table-other-icon.png'),
+  const images: Record<StorageLocation, string> = {
+    Refrigerator: require('@/assets/images/refrigerator-icon.png'),
+    Freezer: require('@/assets/images/freezer-chest-icon.png'),
+    Pantry: require('@/assets/images/pantry-drawer-icon.png'),
+    Other: require('@/assets/images/table-other-icon.png'),
   };
-  return image[storage];
+  return images[storage];
 }
 
 /**

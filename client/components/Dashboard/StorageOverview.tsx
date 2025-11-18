@@ -1,6 +1,6 @@
 // components/Dashboard/StorageOverview.tsx
 import React from 'react';
-import { StyleSheet, View, Pressable, Text, useColorScheme } from 'react-native';
+import { StyleSheet, View, Pressable, Text, useColorScheme, Image } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
@@ -17,10 +17,26 @@ interface StorageOverviewProps {
 }
 
 const STORAGE_CONFIG = [
-  { name: 'Refrigerator', icon: '❄️', color: '#4ECDC4', description: 'Fresh foods' },
-  { name: 'Freezer', icon: '🧊', color: '#4A90E2', description: 'Frozen items' },
-  { name: 'Pantry', icon: '📦', color: '#F4A460', description: 'Dry goods' },
-  { name: 'Other', icon: '📍', color: '#95A5A6', description: 'Miscellaneous' },
+  {
+    name: 'Refrigerator',
+    image: require('@/assets/images/refrigerator-icon.png'),
+    color: '#4ECDC4',
+    description: 'Fresh foods' },
+  { 
+    name: 'Freezer', 
+    image: require('@/assets/images/freezer-chest-icon.png'), 
+    color: '#4A90E2', 
+    description: 'Frozen items' },
+  { 
+    name: 'Pantry', 
+    image: require('@/assets/images/pantry-drawer-icon.png'),
+    color: '#F4A460', 
+    description: 'Dry goods' },
+  { 
+    name: 'Other', 
+    image: require('@/assets/images/table-other-icon.png'), 
+    color: '#95A5A6', 
+    description: 'Miscellaneous' },
 ];
 
 export function StorageOverview({ storageCounts }: StorageOverviewProps) {
@@ -66,7 +82,7 @@ export function StorageOverview({ storageCounts }: StorageOverviewProps) {
               style={[styles.storageCard, { borderLeftColor: storage.color }]}
             >
               <View style={styles.storageHeader}>
-                <Text style={styles.storageIcon}>{storage.icon}</Text>
+                <Image source={storage.image} style={styles.storageIcon} />
                 <View style={[styles.countBadge, { backgroundColor: storage.color }]}>
                   <ThemedText style={styles.countText}>{count}</ThemedText>
                 </View>
@@ -159,7 +175,9 @@ function createStyles(colors: typeof Colors.light) {
       textShadowRadius: 3,
     },
     storageIcon: {
-      fontSize: 28,
+      width: 42,
+      height: 42,
+      resizeMode: 'contain',
     },
     countBadge: {
       paddingHorizontal: 8,

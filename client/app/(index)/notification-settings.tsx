@@ -14,13 +14,17 @@ import { ThemedText } from '@/components/ThemedText';
 import { useUser } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Colors } from '@/constants/Colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 export default function NotificationSettingsScreen() {
+
+  const insets = useSafeAreaInsets();
+  
   // color scheme for styles
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, insets);
 
   const { user } = useUser();
   const { settings, updateSettings, expoPushToken, loading } = useNotifications(user?.id || '');
@@ -193,7 +197,7 @@ export default function NotificationSettingsScreen() {
         }}
       />
 
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, {}]}>
         {/* Master Toggle */}
         <View style={styles.section}>
           <View style={styles.masterToggle}>
@@ -438,11 +442,12 @@ export default function NotificationSettingsScreen() {
   );
 }
 
-function createStyles(colors: typeof Colors.light) {
+function createStyles(colors: typeof Colors.light, insets) {
   return StyleSheet.create({
     container: {
       backgroundColor: colors.mainBackground,
       flex: 1,
+      paddingBottom: insets.bottom + 130
     },
     loadingContainer: {
       flex: 1,
@@ -456,7 +461,7 @@ function createStyles(colors: typeof Colors.light) {
     loadingText: {
       marginTop: 12,
       fontSize: 16,
-      color: '#666',
+      color: colors.exposedGhost,
     },
     section: {
       backgroundColor: colors.background,
@@ -480,7 +485,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     masterSubtitle: {
       fontSize: 14,
-      color: '#666',
+      color: colors.exposedGhost,
     },
     infoBox: {
       backgroundColor: '#e8f5e9',
@@ -521,7 +526,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     settingDescription: {
       fontSize: 13,
-      color: '#666',
+      color: colors.exposedGhost,
       lineHeight: 18,
     },
     valueRow: {
@@ -611,7 +616,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     infoDescription: {
       fontSize: 14,
-      color: '#666',
+      color: colors.exposedGhost,
       lineHeight: 22,
     },
   });

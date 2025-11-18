@@ -405,6 +405,7 @@ function createStyles(colors: typeof Colors.light) {
       fontSize: 28,
       fontWeight: '700',
       marginBottom: 8,
+      lineHeight: 36
     },
     headerSubtitle: {
       fontSize: 14,
