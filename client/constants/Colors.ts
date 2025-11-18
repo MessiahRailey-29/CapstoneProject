@@ -105,7 +105,7 @@ export const Colors = {
     text: "#f8fafc",
     textSecondary: "#0f172a",
     oppositeText: "#0f172a",
-    ghost: '#777',
+    ghost: '#aaa',
     exposedGhost: '#ccccccdf',
 
     mainBackground: "#111a2e",

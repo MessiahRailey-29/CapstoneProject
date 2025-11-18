@@ -295,13 +295,13 @@ export function getStorageRule(category: string): StorageRule {
  * Get icon for storage location
  */
 export function getStorageIcon(storage: StorageLocation): string {
-  const icons: Record<StorageLocation, string> = {
-    'Refrigerator': '❄️',
-    'Freezer': '🧊',
-    'Pantry': '📦',
-    'Other': '📍',
+  const images: Record<StorageLocation, string> = {
+    Refrigerator: require('@/assets/images/refrigerator-icon.png'),
+    Freezer: require('@/assets/images/freezer-chest-icon.png'),
+    Pantry: require('@/assets/images/pantry-drawer-icon.png'),
+    Other: require('@/assets/images/table-other-icon.png'),
   };
-  return icons[storage];
+  return images[storage];
 }
 
 /**
@@ -332,7 +332,7 @@ export const ALL_STORAGE_LOCATIONS: StorageLocation[] = [
  */
 export interface StorageDisplayInfo {
   name: StorageLocation;
-  icon: string;
+  image: string;
   color: string;
   description: string;
 }
@@ -341,25 +341,25 @@ export function getStorageDisplayInfo(): StorageDisplayInfo[] {
   return [
     { 
       name: 'Refrigerator', 
-      icon: '❄️', 
+      image: require('@/assets/images/refrigerator-icon.png'),
       color: '#4ECDC4', 
       description: 'Fresh perishables' 
     },
     { 
       name: 'Freezer', 
-      icon: '🧊', 
+      image: require('@/assets/images/freezer-chest-icon.png'),
       color: '#4A90E2', 
       description: 'Frozen items' 
     },
     { 
       name: 'Pantry', 
-      icon: '📦', 
+      image: require('@/assets/images/pantry-drawer-icon.png'),
       color: '#F4A460', 
       description: 'Shelf-stable goods' 
     },
     { 
       name: 'Other', 
-      icon: '📍', 
+      image: require('@/assets/images/table-other-icon.png'), 
       color: '#95A5A6', 
       description: 'Non-food items' 
     },

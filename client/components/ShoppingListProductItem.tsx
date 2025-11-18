@@ -223,7 +223,7 @@ export default function ShoppingListProductItem({
                         isPurchased && styles.strikethrough
                       ]}
                     >
-                      ₱{selectedPrice.toFixed(2)}/{units}
+                      ₱{selectedPrice.toFixed(2)} / {units}
                     </ThemedText>
                     
                     {quantity > 1 && (
@@ -234,7 +234,7 @@ export default function ShoppingListProductItem({
                           isPurchased && styles.strikethrough
                         ]}
                       >
-                        (₱{totalPrice.toFixed(2)} total)
+                        ₱{totalPrice.toFixed(2)} total
                       </ThemedText>
                     )}
                   </View>
@@ -284,7 +284,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   quantityText: {
     fontSize: 14,
-    color: "#666",
+    color: colors.exposedGhost,
   },
   categoryDot: {
     marginHorizontal: 6,
@@ -292,7 +292,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   categoryText: {
     fontSize: 12,
-    color: "#999",
+    color: colors.exposedGhost,
     fontStyle: "italic",
   },
   storeInfo: {
@@ -310,7 +310,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   storeText: {
     fontSize: 12,
-    color: "#666",
+    color: colors.exposedGhost,
   },
   priceContainer: {
     flexDirection: "row",
@@ -324,9 +324,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: "#007AFF",
   },
   totalPriceText: {
-    fontSize: 12,
+    fontSize: 15,
     color: "#007AFF",
-    opacity: 0.8,
+    fontWeight: 900
   },
   strikethrough: {
     textDecorationLine: "line-through",

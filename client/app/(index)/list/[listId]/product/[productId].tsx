@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import { View, Pressable, StyleSheet, Alert, useColorScheme, Modal, FlatList, ActivityIndicator } from "react-native";
+import { View, Pressable, StyleSheet, Alert, useColorScheme, Modal, FlatList, ActivityIndicator, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
@@ -14,6 +14,8 @@ import {
 } from "@/stores/ShoppingListStore";
 import { Colors } from "@/constants/Colors";
 import { useProductPrices } from "@/hooks/useProducts";
+import { EvilIcons } from "@expo/vector-icons";
+import { exposedGhostText, borderColor } from '../../../../../constants/Colors';
 
 // Define ProductPrice type locally to match the API structure
 interface ProductPrice {
@@ -175,17 +177,33 @@ function ProductContent({
 
         {/* Price & Store Card - Always visible to allow editing */}
         <View style={styles.card}>
-          <View style={styles.cardHeader}>
+          <View style={styles.cardHeaderDetails}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              }}>
             <IconSymbol name="cart.fill" size={20} color="#007AFF" />
-            <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
+            <ThemedText type="defaultSemiBold" style={styles.cardTitleDetail}>
               Purchase Details
             </ThemedText>
-          </View>
-          <View style={styles.priceStoreContainer}>
-            {/* Store Display */}
+            </View>
             <Pressable 
               style={styles.infoRow} 
               onPress={() => setShowStorePicker(true)}
+            >
+              <View style={styles.editbutton}>
+              <Text style={[styles.edittext]}>
+                Edit
+                <EvilIcons name="pencil" size={19}  color={colors.ghost}/>
+              </Text>
+              </View>
+            </Pressable>
+          </View>
+          <View style={styles.priceStoreContainer}>
+            {/* Store Display */}
+            <View 
+              style={styles.infoRow} 
             >
               <ThemedText style={styles.infoLabel}>Store:</ThemedText>
               <View style={styles.storeValueContainer}>
@@ -195,9 +213,8 @@ function ProductContent({
                 >
                   {store || "Tap to select store"}
                 </ThemedText>
-                <IconSymbol name="chevron.right" size={16} color="#007AFF" />
               </View>
-            </Pressable>
+            </View>
 
             {/* Price Display */}
             {(price > 0 || isEditingPrice) ? (
@@ -222,15 +239,13 @@ function ProductContent({
                       />
                     </View>
                   ) : (
-                    <Pressable 
+                    <View 
                       style={styles.priceValueContainer}
-                      onPress={() => setShowStorePicker(true)}
                     >
                       <ThemedText type="defaultSemiBold" style={styles.priceText}>
                         ₱{price.toFixed(2)}
                       </ThemedText>
-                      <IconSymbol name="chevron.right" size={16} color="#34C759" />
-                    </Pressable>
+                    </View>
                   )}
                 </View>
                 {totalPrice && !isEditingPrice && (
@@ -612,14 +627,32 @@ function createStyles(colors: typeof Colors.light) {
       borderWidth: 1,
       borderColor: colors.borderColor,
     },
+    cardHeaderDetails: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      marginBottom: 16,
+    },
     cardHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
       marginBottom: 16,
     },
+    cardTitleDetail: {
+      fontSize: 16,
+      marginLeft: 8,
+    },
     cardTitle: {
       fontSize: 16,
+    },
+    editbutton:{
+      flexDirection: 'row',
+    },
+    edittext:{
+      fontSize: 18,
+      color: colors.exposedGhost
     },
     priceStoreContainer: {
       gap: 12,
@@ -632,7 +665,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     infoLabel: {
       fontSize: 14,
-      color: '#8E8E93',
+      color: colors.ghost,
     },
     storeValueContainer: {
       flexDirection: 'row',
@@ -732,7 +765,7 @@ function createStyles(colors: typeof Colors.light) {
     notesPlaceholder: {
       fontSize: 15,
       lineHeight: 22,
-      color: '#8E8E93',
+      color: colors.ghost,
       fontStyle: 'italic',
       padding: 12,
       borderRadius: 8,
@@ -752,7 +785,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     metadataLabel: {
       fontSize: 14,
-      color: '#8E8E93',
+      color: colors.exposedGhost,
     },
     metadataValue: {
       fontSize: 14,
@@ -831,7 +864,7 @@ function createStyles(colors: typeof Colors.light) {
     sectionTitle: {
       fontSize: 16,
       marginBottom: 12,
-      color: '#666',
+      color: colors.ghost,
     },
     loadingContainer: {
       padding: 40,
@@ -839,7 +872,7 @@ function createStyles(colors: typeof Colors.light) {
       gap: 12,
     },
     loadingText: {
-      color: '#999',
+      color: colors.exposedGhost,
     },
     storeList: {
       gap: 8,
@@ -876,7 +909,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     storeItemDate: {
       fontSize: 12,
-      color: '#999',
+      color: colors.ghost,
     },
     storeItemRight: {
       alignItems: 'flex-end',

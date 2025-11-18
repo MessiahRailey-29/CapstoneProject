@@ -80,12 +80,26 @@ export default function CategoryProductsScreen() {
     <>
       <Stack.Screen 
         options={{
-          headerTitle: categoryName,
+          title: categoryName,
+          headerTitle: () => (
+            <Text
+              style={{
+                color: "#fff",
+                fontSize: 20,
+                fontWeight: "600",
+                textShadowColor: "#000",
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 2,
+                lineHeight: 29
+                }}
+              >
+              {categoryName}
+            </Text>
+          ),
           headerLargeTitle: false,
           headerStyle: {
             backgroundColor: categoryColor,
           },
-          headerTintColor: '#fff',
         }} 
       />
       <View style={styles.container}>
@@ -147,13 +161,20 @@ function createStyles(colors: typeof Colors.light) {
   categoryHeaderTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.text,
+    color: '#fff',
+    lineHeight: 29,
     marginBottom: 4,
+    textShadowColor: '#000',
+    textShadowOffset:{width: 0, height:1},
+    textShadowRadius: 2
   },
   categoryHeaderCount: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '600',
+    textShadowColor: '#000',
+    textShadowOffset:{width: 0, height:1},
+    textShadowRadius: 2
   },
   listContent: {
     paddingTop: 8,

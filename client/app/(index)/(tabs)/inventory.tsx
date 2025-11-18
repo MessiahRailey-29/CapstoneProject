@@ -1,6 +1,6 @@
 // app/(home)/(tabs)/inventory.tsx - Fixed version with proper gesture handling
 import React, { useState, useRef, useMemo, useCallback } from "react";
-import { StyleSheet, View, FlatList, Text, Pressable, ScrollView, Animated, Alert, useColorScheme } from "react-native";
+import { StyleSheet, View, FlatList, Text, Pressable, ScrollView, Animated, Alert, useColorScheme, Image } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
 import { 
@@ -20,7 +20,6 @@ import TextInput from '@/components/ui/text-input';
 import { Colors } from '@/constants/Colors'
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Image } from "react-native";
 
 const STORAGE_LOCATIONS = getStorageDisplayInfo();
 
@@ -205,7 +204,9 @@ function InventoryItem({ itemId, storage, showStorage = false }: { itemId: strin
                         },
                       ]}
                     >
-                      <Text style={styles.storageBadgeIcon}>{loc.icon}</Text>
+                      <Image
+                      source={typeof loc.image === 'string' ? { uri: loc.image } : loc.image}
+                      style={styles.storageBadgeIcon}/>
                       {storageLocation === loc.name && (
                         <Text style={styles.storageBadgeText}>{loc.name}</Text>
                       )}
@@ -539,7 +540,7 @@ export default function InventoryScreen() {
           </Pressable>
 
           <View style={styles.itemsHeaderInfo}>
-            <Image source={currentStorage?.image} style={{ width: 40, height: 40, borderRadius: 8 }} resizeMode="contain" />
+            <Image source={currentStorage?.image} style={{ width: 70, height: 70, borderRadius: 8 }} resizeMode="contain" />
             <View>
               <ThemedText style={styles.itemsHeaderTitle}>
                 {selectedStorage}
@@ -704,20 +705,20 @@ function createStyles(colors: typeof Colors.light) {
   categoryIconImage: {
     width: 48,
     height: 48,
-    borderRadius: 8, // optional for nicer look
+    borderRadius: 8,
   },
   categoryCountBadge: {
-  position: 'absolute',
-  top: -6,
-  right: -6,
-  minWidth: 22,
-  height: 22,
-  borderRadius: 11,
-  justifyContent: 'center',
-  alignItems: 'center',
-  paddingHorizontal: 6,
-  zIndex: 10,
-},
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    zIndex: 10,
+  },
 categoryCountText: {
   color: '#fff',
   fontWeight: '700',
@@ -878,7 +879,9 @@ categoryName: {
     gap: 4,
   },
   storageBadgeIcon: {
-    fontSize: 14,
+    width: 24,
+    height: 24,
+    resizeMode: 'contain'
   },
   storageBadgeText: {
     fontSize: 11,
