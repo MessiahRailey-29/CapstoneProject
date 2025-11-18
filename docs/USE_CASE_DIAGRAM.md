@@ -5,10 +5,8 @@ This document provides comprehensive use case diagrams for the Shopping List App
 
 ## Actors
 
-### Primary Actors
-- **👤 Shopper**: Regular user of the application
-- **👥 Collaborator**: User invited to shared shopping lists
-- **🚶 Guest**: Unauthenticated user
+### Primary Actor
+- **👤 User**: Any person using the application (authenticated or guest)
 
 ### Secondary Actors (External Systems)
 - **🔐 Clerk Auth System**: Authentication service
@@ -22,10 +20,8 @@ This document provides comprehensive use case diagrams for the Shopping List App
 
 ```mermaid
 flowchart TB
-    %% Actors
-    Shopper([👤 Shopper])
-    Collaborator([👥 Collaborator])
-    Guest([🚶 Guest])
+    %% Actor
+    User([👤 User])
 
     %% External Systems
     Clerk[🔐 Clerk Auth System]
@@ -83,38 +79,30 @@ flowchart TB
         end
     end
 
-    %% Shopper connections
-    Shopper --> SignUp
-    Shopper --> SignIn
-    Shopper --> CreateList
-    Shopper --> EditList
-    Shopper --> ViewLists
-    Shopper --> ShareList
-    Shopper --> CompleteShopping
-    Shopper --> BrowseCatalog
-    Shopper --> AddProduct
-    Shopper --> UpdateQty
-    Shopper --> CheckDupes
-    Shopper --> ComparePrices
-    Shopper --> InviteUser
-    Shopper --> BrowseRecipes
-    Shopper --> ViewRecipe
-    Shopper --> AddIngredients
-    Shopper --> ViewNotif
-    Shopper --> Dashboard
-    Shopper --> Trends
-    Shopper --> Recommendations
-
-    %% Collaborator connections
-    Collaborator --> ViewLists
-    Collaborator --> AddProduct
-    Collaborator --> UpdateQty
-    Collaborator --> AcceptInvite
-    Collaborator --> RealtimeSync
-
-    %% Guest connections
-    Guest --> SignUp
-    Guest --> SignIn
+    %% User connections
+    User --> SignUp
+    User --> SignIn
+    User --> ResetPW
+    User --> CreateList
+    User --> EditList
+    User --> ViewLists
+    User --> ShareList
+    User --> CompleteShopping
+    User --> BrowseCatalog
+    User --> AddProduct
+    User --> UpdateQty
+    User --> CheckDupes
+    User --> ComparePrices
+    User --> InviteUser
+    User --> AcceptInvite
+    User --> RealtimeSync
+    User --> BrowseRecipes
+    User --> ViewRecipe
+    User --> AddIngredients
+    User --> ViewNotif
+    User --> Dashboard
+    User --> Trends
+    User --> Recommendations
 
     %% External system connections
     SignUp -.->|authenticates via| Clerk
@@ -144,7 +132,7 @@ flowchart TB
     classDef externalClass fill:#FF6B6B,stroke:#C92A2A,stroke-width:2px,color:#fff
     classDef useCaseClass fill:#7ED321,stroke:#5FA015,stroke-width:2px,color:#000
 
-    class Shopper,Collaborator,Guest actorClass
+    class User actorClass
     class Clerk,Spoonacular,ExpoPush,CronJobs externalClass
 ```
 
@@ -156,9 +144,8 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    %% Actors
-    Shopper([👤 Shopper])
-    Guest([🚶 Guest])
+    %% Actor
+    User([👤 User])
     Clerk[🔐 Clerk Auth System]
 
     subgraph AUTH["🔐 Authentication Module"]
@@ -174,12 +161,11 @@ flowchart LR
     end
 
     %% Connections
-    Shopper --> UC2
-    Shopper --> UC3
-    Shopper --> UC4
-    Shopper --> UC5
-    Guest --> UC1
-    Guest --> UC2
+    User --> UC1
+    User --> UC2
+    User --> UC3
+    User --> UC4
+    User --> UC5
 
     UC1 -.->|uses| Clerk
     UC2 -.->|uses| Clerk
@@ -188,7 +174,7 @@ flowchart LR
     %% Styling
     classDef actorStyle fill:#4A90E2,stroke:#2E5C8A,stroke-width:3px,color:#fff
     classDef systemStyle fill:#FF6B6B,stroke:#C92A2A,stroke-width:2px,color:#fff
-    class Shopper,Guest actorStyle
+    class User actorStyle
     class Clerk systemStyle
 ```
 
@@ -197,8 +183,7 @@ flowchart LR
 ```mermaid
 flowchart TB
     %% Actor
-    Shopper([👤 Shopper])
-    Collaborator([👥 Collaborator])
+    User([👤 User])
 
     subgraph LIFECYCLE["🛒 Shopping List Lifecycle"]
         direction TB
@@ -226,17 +211,14 @@ flowchart TB
     end
 
     %% Connections
-    Shopper --> UC10
-    Shopper --> UC16
-    Shopper --> UC22
-    Shopper --> UC14
-    Shopper --> UC25
-    Shopper --> UC15
-    Shopper --> UC60
-
-    Collaborator --> UC22
-    Collaborator --> UC33
-    Collaborator --> UC25
+    User --> UC10
+    User --> UC16
+    User --> UC22
+    User --> UC14
+    User --> UC33
+    User --> UC25
+    User --> UC15
+    User --> UC60
 
     %% Styling
     classDef actorStyle fill:#4A90E2,stroke:#2E5C8A,stroke-width:3px,color:#fff
@@ -244,7 +226,7 @@ flowchart TB
     classDef decisionStyle fill:#F5A623,stroke:#D68910,stroke-width:2px
     classDef warningStyle fill:#FF6B6B,stroke:#C92A2A,stroke-width:2px,color:#fff
 
-    class Shopper,Collaborator actorStyle
+    class User actorStyle
     class UC10,UC16,UC22,UC14,UC33,UC25,UC15,UC60 processStyle
     class UC26 decisionStyle
     class Warning warningStyle
@@ -255,7 +237,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     %% Actor and External System
-    Shopper([👤 Shopper])
+    User([👤 User])
     Spoonacular[🍳 Spoonacular API]
 
     subgraph RECIPES["🍽️ Recipe Integration"]
@@ -277,8 +259,8 @@ flowchart LR
     end
 
     %% Connections
-    Shopper --> UC40
-    Shopper --> UC41
+    User --> UC40
+    User --> UC41
 
     UC40 -.->|fetches| Spoonacular
     UC41 -.->|fetches| Spoonacular
@@ -290,7 +272,7 @@ flowchart LR
     classDef processStyle fill:#7ED321,stroke:#5FA015,stroke-width:2px
     classDef decisionStyle fill:#F5A623,stroke:#D68910,stroke-width:2px
 
-    class Shopper actorStyle
+    class User actorStyle
     class Spoonacular systemStyle
     class UC40,UC41,UC42,UC43,AddExisting,CreateCustom processStyle
     class Match decisionStyle
@@ -300,8 +282,8 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    %% Actors
-    Shopper([👤 Shopper])
+    %% Actor
+    User([👤 User])
     CronJobs[⏰ Cron Jobs]
     ExpoPush[📱 Expo Push]
 
@@ -345,8 +327,8 @@ flowchart TB
     end
 
     %% Connections
-    Shopper --> UC50
-    Shopper --> UC51
+    User --> UC50
+    User --> UC51
 
     CronJobs -.->|triggers| T1
     CronJobs -.->|triggers| T2
@@ -362,7 +344,7 @@ flowchart TB
     classDef userStyle fill:#7ED321,stroke:#5FA015,stroke-width:2px
     classDef dbStyle fill:#95A5A6,stroke:#7F8C8D,stroke-width:2px
 
-    class Shopper actorStyle
+    class User actorStyle
     class CronJobs,ExpoPush systemStyle
     class T1,T2,T3 triggerStyle
     class UC52,UC53,N1,N2 notifStyle
@@ -375,7 +357,7 @@ flowchart TB
 ```mermaid
 flowchart TB
     %% Actor
-    Shopper([👤 Shopper])
+    User([👤 User])
     CronJobs[⏰ Cron Jobs]
 
     subgraph RECOMMEND["💡 Recommendation Engine"]
@@ -418,7 +400,7 @@ flowchart TB
     end
 
     %% Connections
-    Shopper --> UC70
+    User --> UC70
     CronJobs -.->|updates weekly| D5
     CronJobs -.->|recalculates| D4
 
@@ -429,7 +411,7 @@ flowchart TB
     classDef dataStyle fill:#95A5A6,stroke:#7F8C8D,stroke-width:2px,color:#fff
     classDef processStyle fill:#7ED321,stroke:#5FA015,stroke-width:2px
 
-    class Shopper actorStyle
+    class User actorStyle
     class CronJobs systemStyle
     class S1,S2,S3,S4,S5 scoreStyle
     class D1,D2,D3,D4,D5 dataStyle
@@ -443,52 +425,52 @@ flowchart TB
 | ID | Use Case | Actor | Description | Priority | Files |
 |----|----------|-------|-------------|----------|-------|
 | **AUTHENTICATION** |
-| UC01 | Sign Up | Guest | Create new user account | High | `client/app/(auth)/sign-up.tsx` |
-| UC02 | Sign In | Guest, Shopper | Authenticate user | High | `client/app/(auth)/index.tsx` |
-| UC03 | Sign Out | Shopper | End user session | Medium | `client/app/(index)/(tabs)/profile.tsx` |
-| UC04 | Reset Password | Guest, Shopper | Recover account access | Medium | `client/app/(auth)/reset-password.tsx` |
-| UC05 | Enable Biometric Auth | Shopper | Setup fingerprint/face ID | Low | `client/utils/securityUtils.ts` |
+| UC01 | Sign Up | User | Create new user account | High | `client/app/(auth)/sign-up.tsx` |
+| UC02 | Sign In | User | Authenticate user | High | `client/app/(auth)/index.tsx` |
+| UC03 | Sign Out | User | End user session | Medium | `client/app/(index)/(tabs)/profile.tsx` |
+| UC04 | Reset Password | User | Recover account access | Medium | `client/app/(auth)/reset-password.tsx` |
+| UC05 | Enable Biometric Auth | User | Setup fingerprint/face ID | Low | `client/utils/securityUtils.ts` |
 | **SHOPPING LISTS** |
-| UC10 | Create Shopping List | Shopper | Create new shopping list | High | `client/app/(index)/(tabs)/shopping-lists.tsx` |
-| UC11 | Edit Shopping List | Shopper | Modify list details | High | `client/app/(index)/list/[listId]/edit.tsx` |
-| UC12 | Delete Shopping List | Shopper | Remove list permanently | Medium | `client/app/(index)/(tabs)/shopping-lists.tsx` |
-| UC13 | View Shopping Lists | Shopper, Collaborator | Browse all lists | High | `client/app/(index)/(tabs)/shopping-lists.tsx` |
-| UC14 | Share Shopping List | Shopper | Invite collaborators | Medium | `client/app/(index)/list/[listId]/share.tsx` |
-| UC15 | Complete Shopping | Shopper | Mark list as completed | High | `client/app/(index)/list/[listId]/index.tsx` |
-| UC16 | Set Budget | Shopper | Define spending limit | Medium | `client/stores/ShoppingListStore.tsx` |
-| UC17 | Schedule Shopping Date | Shopper | Set shopping date/time | Medium | `client/stores/ShoppingListStore.tsx` |
+| UC10 | Create Shopping List | User | Create new shopping list | High | `client/app/(index)/(tabs)/shopping-lists.tsx` |
+| UC11 | Edit Shopping List | User | Modify list details | High | `client/app/(index)/list/[listId]/edit.tsx` |
+| UC12 | Delete Shopping List | User | Remove list permanently | Medium | `client/app/(index)/(tabs)/shopping-lists.tsx` |
+| UC13 | View Shopping Lists | User | Browse all lists | High | `client/app/(index)/(tabs)/shopping-lists.tsx` |
+| UC14 | Share Shopping List | User | Invite collaborators | Medium | `client/app/(index)/list/[listId]/share.tsx` |
+| UC15 | Complete Shopping | User | Mark list as completed | High | `client/app/(index)/list/[listId]/index.tsx` |
+| UC16 | Set Budget | User | Define spending limit | Medium | `client/stores/ShoppingListStore.tsx` |
+| UC17 | Schedule Shopping Date | User | Set shopping date/time | Medium | `client/stores/ShoppingListStore.tsx` |
 | **PRODUCTS** |
-| UC20 | Browse Product Catalog | Shopper | Explore available products | High | `client/app/(index)/(tabs)/product-browser.tsx` |
-| UC21 | Search Products | Shopper | Find specific products | High | `client/app/(index)/(tabs)/product-browser.tsx` |
-| UC22 | Add Product to List | Shopper, Collaborator | Add item to shopping list | High | `client/app/(index)/list/[listId]/index.tsx` |
-| UC23 | Remove Product | Shopper, Collaborator | Delete item from list | High | `client/components/ShoppingListProductItem.tsx` |
-| UC24 | Update Quantity | Shopper, Collaborator | Change product amount | High | `client/stores/ShoppingListStore.tsx` |
-| UC25 | Mark as Purchased | Shopper, Collaborator | Check off bought items | High | `client/components/ShoppingListProductItem.tsx` |
+| UC20 | Browse Product Catalog | User | Explore available products | High | `client/app/(index)/(tabs)/product-browser.tsx` |
+| UC21 | Search Products | User | Find specific products | High | `client/app/(index)/(tabs)/product-browser.tsx` |
+| UC22 | Add Product to List | User | Add item to shopping list | High | `client/app/(index)/list/[listId]/index.tsx` |
+| UC23 | Remove Product | User | Delete item from list | High | `client/components/ShoppingListProductItem.tsx` |
+| UC24 | Update Quantity | User | Change product amount | High | `client/stores/ShoppingListStore.tsx` |
+| UC25 | Mark as Purchased | User | Check off bought items | High | `client/components/ShoppingListProductItem.tsx` |
 | UC26 | Check for Duplicates | System | Detect duplicate products | Medium | `client/services/DuplicateDetectionService.ts` |
-| UC27 | Compare Store Prices | Shopper | View price differences | Low | `server/src/routes/products.ts` |
+| UC27 | Compare Store Prices | User | View price differences | Low | `server/src/routes/products.ts` |
 | **COLLABORATION** |
-| UC30 | Invite Collaborator | Shopper | Add user to shared list | Medium | `client/app/(index)/list/[listId]/share.tsx` |
-| UC31 | Accept Invitation | Collaborator | Join shared list | Medium | `client/app/(index)/(tabs)/shopping-lists.tsx` |
-| UC32 | View Shared Lists | Collaborator | See lists shared with me | Medium | `client/app/(index)/(tabs)/shopping-lists.tsx` |
+| UC30 | Invite Collaborator | User | Add user to shared list | Medium | `client/app/(index)/list/[listId]/share.tsx` |
+| UC31 | Accept Invitation | User | Join shared list | Medium | `client/app/(index)/(tabs)/shopping-lists.tsx` |
+| UC32 | View Shared Lists | User | See lists shared with me | Medium | `client/app/(index)/(tabs)/shopping-lists.tsx` |
 | UC33 | Real-time Sync | System | Sync changes across devices | High | `server/src/syncServer.ts` |
 | **RECIPES** |
-| UC40 | Browse Recipe Suggestions | Shopper | View recommended recipes | Low | `client/components/RecipeSuggestionsModal.tsx` |
-| UC41 | Search Recipes | Shopper | Find specific recipes | Low | `server/src/services/recipeService.ts` |
-| UC42 | View Recipe Details | Shopper | See ingredients & instructions | Low | `client/components/RecipeSuggestionsModal.tsx` |
-| UC43 | Add Recipe Ingredients | Shopper | Add recipe items to list | Low | `client/components/RecipeSection.tsx` |
+| UC40 | Browse Recipe Suggestions | User | View recommended recipes | Low | `client/components/RecipeSuggestionsModal.tsx` |
+| UC41 | Search Recipes | User | Find specific recipes | Low | `server/src/services/recipeService.ts` |
+| UC42 | View Recipe Details | User | See ingredients & instructions | Low | `client/components/RecipeSuggestionsModal.tsx` |
+| UC43 | Add Recipe Ingredients | User | Add recipe items to list | Low | `client/components/RecipeSection.tsx` |
 | **NOTIFICATIONS** |
-| UC50 | View Notifications | Shopper | See all notifications | Medium | `client/components/NotificationBell.tsx` |
-| UC51 | Configure Notification Settings | Shopper | Manage preferences | Low | `client/app/(index)/notification-settings.tsx` |
+| UC50 | View Notifications | User | See all notifications | Medium | `client/components/NotificationBell.tsx` |
+| UC51 | Configure Notification Settings | User | Manage preferences | Low | `client/app/(index)/notification-settings.tsx` |
 | UC52 | Shopping Reminders | System | Alert before shopping date | Medium | `server/src/jobs/notificationCronJobs.ts` |
 | UC53 | Low Stock Alerts | System | Notify of depleted items | Medium | `server/src/jobs/notificationCronJobs.ts` |
 | **ANALYTICS** |
-| UC60 | View Expense Dashboard | Shopper | See spending overview | Low | `client/components/Dashboard/` |
-| UC61 | View Weekly Trends | Shopper | Analyze purchase patterns | Low | `client/components/Dashboard/` |
-| UC62 | View Budget Analysis | Shopper | Compare budget vs actual | Low | `client/components/BudgetSummary.tsx` |
+| UC60 | View Expense Dashboard | User | See spending overview | Low | `client/components/Dashboard/` |
+| UC61 | View Weekly Trends | User | Analyze purchase patterns | Low | `client/components/Dashboard/` |
+| UC62 | View Budget Analysis | User | Compare budget vs actual | Low | `client/components/BudgetSummary.tsx` |
 | **RECOMMENDATIONS** |
-| UC70 | Get Personalized Recommendations | Shopper | Receive product suggestions | Medium | `server/src/services/recommendationService.ts` |
-| UC71 | View Trending Products | Shopper | See popular items | Low | `server/src/models/ml.ts` |
-| UC72 | View Seasonal Products | Shopper | See seasonal items | Low | `server/src/models/ml.ts` |
+| UC70 | Get Personalized Recommendations | User | Receive product suggestions | Medium | `server/src/services/recommendationService.ts` |
+| UC71 | View Trending Products | User | See popular items | Low | `server/src/models/ml.ts` |
+| UC72 | View Seasonal Products | User | See seasonal items | Low | `server/src/models/ml.ts` |
 
 ---
 
