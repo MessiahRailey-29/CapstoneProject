@@ -22,6 +22,7 @@ import { Colors } from "@/constants/Colors";
 import { useRecipeSuggestions } from "@/hooks/useRecipeSuggestions";
 import { RecipeSection } from "@/components/RecipeSection";
 import FloatingActionFab from "@/components/ShoppingListFaB";
+import { registerStoreForList, unregisterStoreForList } from '@/stores/getStoreForList';
 
 interface ProductSection {
   title: string;
@@ -33,10 +34,9 @@ export default function ListScreen() {
   const params = useLocalSearchParams();
   const listId = params.listId as string;
 
-  // 🐛 DEBUG: Track render count
   const renderCount = useRef(0);
   renderCount.current++;
-  console.log(`🔄 RENDER #${renderCount.current} - ListScreen for ${listId}`);
+  console.log(`📄 RENDER #${renderCount.current} - ListScreen for ${listId}`);
 
   const handleFabAction = (key)=>{
     switch(key){
@@ -65,20 +65,17 @@ export default function ListScreen() {
         });
       break;
     }
-}
-  //colors and schemes
+  }
+
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
   
-
-  // 📍 NEW: Get pending product params from URL
   const addProductId = params.addProductId ? Number(params.addProductId) : null;
   const addProductName = params.addProductName as string | undefined;
   const addProductPrice = params.addProductPrice ? Number(params.addProductPrice) : null;
   const addProductStore = params.addProductStore as string | undefined;
   
-  // Track if we've already added the product (prevent double-adding)
   const hasAddedProduct = useRef(false);
 
   // Raw values from valuesCopy (always available)
@@ -92,7 +89,11 @@ export default function ListScreen() {
   const productIds = useShoppingListProductIds(listId);
   const store = useShoppingListStore(listId);
 
-  // 🐛 DEBUG: Log when productIds changes
+     useEffect(() => {
+     registerStoreForList(listId, store);
+     return () => unregisterStoreForList(listId);
+   }, [listId, store]);
+   
   const prevProductIdsRef = useRef(productIds);
   useEffect(() => {
     if (prevProductIdsRef.current.length !== productIds.length) {
@@ -101,7 +102,6 @@ export default function ListScreen() {
     }
   }, [productIds]);
 
-  // ⭐ NEW: Recipe suggestions state
   const { recipes, loading: recipesLoading, fetchSuggestions } = useRecipeSuggestions();
   const [recipeSuggestionsPrompted, setRecipeSuggestionsPrompted] = useShoppingListValue(
     listId, 
@@ -112,7 +112,6 @@ export default function ListScreen() {
     "recipeSuggestionsEnabled"
   );
 
-  // 🐛 DEBUG: Log when recipe state changes
   const prevRecipePrompedRef = useRef(recipeSuggestionsPrompted);
   const prevRecipeEnabledRef = useRef(recipeSuggestionsEnabled);
   useEffect(() => {
@@ -126,17 +125,10 @@ export default function ListScreen() {
     }
   }, [recipeSuggestionsPrompted, recipeSuggestionsEnabled]);
 
-  // ✅ CRITICAL FIX: Track if we've already shown the recipe prompt (prevents looping)
   const hasShownRecipePrompt = useRef(false);
-
-  // ✅ CRITICAL FIX: Check if data is still loading
-  // If BOTH listData and hydrated values are empty, we're still loading
   const isLoadingData = !listData.name && !name;
-  
-  // 📍 Get the add product function - safe to call here since we're in a component
   const addProduct = useAddProductWithNotifications(listId);
 
-  // ✅ Initialize notification system for this list
   const listNotifications = useListNotifications({
     listId: listId,
     listName: listData?.name || "",
@@ -144,15 +136,34 @@ export default function ListScreen() {
     collaborators: (listData as any)?.collaborators || [],
   });
 
-  // Safe fallbacks - prioritize hydrated values, then listData
   const displayName = name || listData.name || "";
   const displayEmoji = emoji || listData.emoji || "❓";
   const displayDescription = description || listData.description || "";
   const budget = hydratedBudget ?? listData.budget ?? 0;
-  const status = listData.status || 'regular';
+  
+  // Use listData.status as the source of truth
+  const status = (listData.status || 'regular') as 'regular' | 'ongoing' | 'completed';
   const isHistory = status === 'completed';
 
-  // ⭐ NEW: Group products by category
+  // 🔍 DEBUG: Track status changes
+  const prevStatusRef = useRef<string>('regular');
+  useEffect(() => {
+    if (prevStatusRef.current !== status) {
+      console.log('🚨 STATUS CHANGED IN LIST SCREEN:', {
+        from: prevStatusRef.current,
+        to: status,
+        timestamp: new Date().toISOString()
+      });
+      prevStatusRef.current = status;
+    }
+  }, [status]);
+
+  console.log("📊 Status Check:", {
+    listDataStatus: listData?.status,
+    finalStatus: status,
+    renderCount: renderCount.current
+  });
+
   const categorizedProducts = useMemo(() => {
     if (!store || !productIds || productIds.length === 0) {
       return [];
@@ -184,7 +195,6 @@ export default function ListScreen() {
     return sections;
   }, [store, productIds]);
 
-  // ⭐ NEW: Handle fetching recipe suggestions
   const handleFetchRecipes = async () => {
     console.log('🍳 handleFetchRecipes called');
     
@@ -192,13 +202,11 @@ export default function ListScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
-    // Enable recipe suggestions if not already enabled
     if (!recipeSuggestionsEnabled) {
       console.log('🍳 Enabling recipe suggestions');
       setRecipeSuggestionsEnabled(true);
     }
 
-    // Get product names for better suggestions
     const productNames = productIds.map(id => {
       const product = store?.getRow("products", id);
       return product?.name as string;
@@ -220,10 +228,8 @@ export default function ListScreen() {
     }
   };
 
-  // 🐛 DEBUG: Count effect runs
   const effectRunCount = useRef(0);
 
-  // ⭐ COMPLETELY DISABLED FOR DEBUGGING
   useEffect(() => {
     effectRunCount.current++;
     console.log(`🔥 RECIPE PROMPT EFFECT RUN #${effectRunCount.current}`);
@@ -236,7 +242,6 @@ export default function ListScreen() {
       isLoadingData,
     });
 
-    // ✅ COMPLETELY PREVENT ANY PROMPTING FOR NOW
     if (hasShownRecipePrompt.current) {
       console.log('⏭️ Already shown, skipping');
       return;
@@ -304,7 +309,6 @@ export default function ListScreen() {
     hasShownRecipePrompt: hasShownRecipePrompt.current,
   });
 
-  // 📍 Auto-add pending product when page loads
   useEffect(() => {
     if (
       !hasAddedProduct.current &&
@@ -316,7 +320,7 @@ export default function ListScreen() {
     ) {
       hasAddedProduct.current = true;
       
-      console.log('📍 Auto-adding pending product:', {
+      console.log('🔍 Auto-adding pending product:', {
         id: addProductId,
         name: addProductName,
         price: addProductPrice,
@@ -358,7 +362,6 @@ export default function ListScreen() {
     }
   }, [addProduct, addProductId, addProductName, addProductPrice, addProductStore]);
 
-  // ✅ FIX: Use correct route path
   const navigateToNewProduct = () => {
     router.push({
       pathname: "/list/[listId]/product/new",
@@ -366,7 +369,6 @@ export default function ListScreen() {
     });
   };
 
-  // ✅ SHOW LOADING STATE while data is syncing
   if (isLoadingData) {
     return (
       <>
@@ -400,10 +402,8 @@ export default function ListScreen() {
         </ThemedText>
       ) : null}
 
-      {/* Budget Summary */}
       <BudgetSummary listId={listId} budget={budget} />
 
-      {/* ⭐ NEW: Recipe Suggestions Section - Show if enabled OR if recipes exist */}
       {(recipeSuggestionsEnabled || recipes.length > 0) && (
         <RecipeSection 
           recipes={recipes}
@@ -413,12 +413,10 @@ export default function ListScreen() {
         />
       )}
 
-      {/* Shop Now Button with status */}
       <ShopNowButton listId={listId} currentStatus={status} />
     </View>
   );
 
-  // Render category header
   const renderSectionHeader = ({ section }: { section: ProductSection }) => (
     <View style={styles.categoryHeader}>
       <View style={styles.categoryHeaderContent}>
@@ -431,7 +429,6 @@ export default function ListScreen() {
     </View>
   );
 
-  // Render product item
   const renderItem = ({ item: productId }: { item: string }) => (
     <ShoppingListProductItem 
       listId={listId} 
@@ -441,9 +438,7 @@ export default function ListScreen() {
   );
 
   return (
-    <View style={{
-              backgroundColor: colors.mainBackground,
-              flex: 1}}>
+    <>
       <Stack.Screen
         options={{
           headerStyle: {backgroundColor: colors.mainBackground},
@@ -455,7 +450,6 @@ export default function ListScreen() {
                 alignItems: "center",
               }}
             >
-              {/* ⭐ Recipe book icon - always visible, click to fetch/refresh */}
               <Pressable
                 onPress={handleFetchRecipes}
                 style={{ padding: 8 }}
@@ -466,49 +460,54 @@ export default function ListScreen() {
           ),
         }}
       />
+      
+      <View style={{
+        backgroundColor: colors.mainBackground,
+        flex: 1
+      }}>
+        <SectionList
+          sections={categorizedProducts}
+          renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
+          keyExtractor={(item) => item}
+          contentContainerStyle={{
+            paddingTop: 12,
+            paddingBottom: 100,         
+            backgroundColor: colors.mainBackground,
+          }}
+          contentInsetAdjustmentBehavior="automatic"
+          ListHeaderComponent={ListHeaderComponent}
+          stickySectionHeadersEnabled={true}
+          ListEmptyComponent={() => (
+            <BodyScrollView
+              contentContainerStyle={{
+                alignItems: "center",
+                gap: 8,
+                paddingTop: 50,
+              }}
+            >
+              {!isHistory && (
+                <Button
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    navigateToNewProduct();
+                  }}
+                  variant="ghost"
+                >
+                  Add the first product to this list
+                </Button>
+              )}
+              {isHistory && (
+                <ThemedText style={{ color: 'gray', fontSize: 16 }}>
+                  This list has been completed
+                </ThemedText>
+              )}
+            </BodyScrollView>
+          )}
+        />
+      </View>
       <FloatingActionFab position={{ bottom: 70, right: 24 }} onAction={handleFabAction}/>
-
-      <SectionList
-        sections={categorizedProducts}
-        renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
-        keyExtractor={(item) => item}
-        contentContainerStyle={{
-          paddingTop: 12,
-          paddingBottom: 100,         
-          backgroundColor: colors.mainBackground,
-        }}
-        contentInsetAdjustmentBehavior="automatic"
-        ListHeaderComponent={ListHeaderComponent}
-        stickySectionHeadersEnabled={true}
-        ListEmptyComponent={() => (
-          <BodyScrollView
-            contentContainerStyle={{
-              alignItems: "center",
-              gap: 8,
-              paddingTop: 50,
-            }}
-          >
-            {!isHistory && (
-              <Button
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  navigateToNewProduct();
-                }}
-                variant="ghost"
-              >
-                Add the first product to this list
-              </Button>
-            )}
-            {isHistory && (
-              <ThemedText style={{ color: 'gray', fontSize: 16 }}>
-                This list has been completed
-              </ThemedText>
-            )}
-          </BodyScrollView>
-        )}
-      />
-    </View>
+    </>
   );
 }
 

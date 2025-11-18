@@ -1,4 +1,4 @@
-// Updated shopping-lists.tsx with swipe-to-delete functionality
+// REAL FIX: shopping-lists.tsx - Properly persist tab across navigation
 import IconCircle from "@/components/IconCircle";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/button";
@@ -11,29 +11,29 @@ import {
   useDelAllShoppingListsCallback
 } from "@/stores/ShoppingListsStore";
 import { useShoppingListProductIds } from "@/stores/ShoppingListStore";
-import { Stack, useRouter } from "expo-router";
-import { Pressable, StyleSheet, View, FlatList, Animated, Alert, useColorScheme, Modal, StyleProp } from 'react-native';
-import React, { useMemo, useState, useRef, memo, useCallback } from "react";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
+import { Pressable, StyleSheet, View, FlatList, Animated, Alert, useColorScheme, Modal } from 'react-native';
+import React, { useMemo, useState, useRef, useCallback } from "react";
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Colors, appleBlue} from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import * as Haptics from "expo-haptics";
-import { SwipeableTabWrapper } from "@/components/SwipeableTabWrapper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import QuickAddFab from "@/components/AddShoppingListFaB";
-import ColorPickerScreen from '../color-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type TabType = 'active' | 'ongoing' | 'history';
 type SortOption = 'name' | 'date' | 'items' | 'budget';
 type FilterOption = 'all' | 'scheduled' | 'unscheduled';
+
+const TAB_STORAGE_KEY = '@shopping_lists_active_tab';
 
 interface ShoppingListItemProps {
   listId: string;
   isHistory?: boolean;
 }
 
-// Inline ShoppingListItem component with swipe-to-delete
 const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId, isHistory = false }) => {
   const router = useRouter();
   const listData = useShoppingListData(listId);
@@ -56,7 +56,7 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId, isHistory =
 
   const handlePress = useCallback(() => {
     router.push(`/list/${listId}`);
-  }, []);
+  }, [listId, router]);
 
   const handleDelete = useCallback(() => {
     Alert.alert(
@@ -80,7 +80,6 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId, isHistory =
     );
   }, [name, deleteList, listId]);
 
-  // Render right actions (delete button)
   const renderRightActions = (
     progress: Animated.AnimatedInterpolation<number>,
     dragX: Animated.AnimatedInterpolation<number>
@@ -106,7 +105,6 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId, isHistory =
     );
   };
 
-  // Format date for display
   const formatDate = useCallback((dateString: string | null) => {
     if (!dateString) return null;
     const date = new Date(dateString);
@@ -117,7 +115,6 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId, isHistory =
     });
   }, []);
 
-  // Get status display info
   const getStatusInfo = () => {
     if (status === 'ongoing') {
       return {
@@ -237,9 +234,62 @@ export default function HomeScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const scrollX = useRef(new Animated.Value(0)).current;
 
+  const prevCounts = useRef({
+    regular: 0,
+    ongoing: 0,
+    history: 0
+  });
+
+  // 🔧 CRITICAL FIX: Save tab whenever it changes
+  const saveTab = useCallback(async (tab: TabType) => {
+    try {
+      await AsyncStorage.setItem(TAB_STORAGE_KEY, tab);
+      console.log('💾 Saved tab:', tab);
+    } catch (error) {
+      console.error('❌ Error saving tab:', error);
+    }
+  }, []);
+
+  // 🔧 CRITICAL FIX: Wrap setActiveTab to also save to storage
+  const handleSetActiveTab = useCallback((newTab: TabType) => {
+    console.log(`🔄 Changing tab: ${activeTab} → ${newTab}`);
+    setActiveTab(newTab);
+    saveTab(newTab);
+  }, [activeTab, saveTab]);
+
+  // 🔧 CRITICAL FIX: Load tab only ONCE on initial mount
+  const hasLoadedTab = useRef(false);
+  
+  useFocusEffect(
+    useCallback(() => {
+      // Only load from storage on the very first focus
+      if (!hasLoadedTab.current) {
+        console.log('👀 Initial screen focus - loading saved tab');
+        
+        AsyncStorage.getItem(TAB_STORAGE_KEY)
+          .then((savedTab) => {
+            if (savedTab && (savedTab === 'active' || savedTab === 'ongoing' || savedTab === 'history')) {
+              console.log('📱 Loaded saved tab:', savedTab);
+              setActiveTab(savedTab as TabType);
+            } else {
+              console.log('📱 No saved tab found, using default: active');
+            }
+            hasLoadedTab.current = true;
+          })
+          .catch((error) => {
+            console.error('❌ Error loading tab:', error);
+            hasLoadedTab.current = true;
+          });
+      } else {
+        // On subsequent focuses, DON'T reload from storage - keep current tab
+        console.log('👀 Screen re-focused - keeping current tab:', activeTab);
+      }
+    }, [activeTab]) // Include activeTab so we can log it
+  );
+
   const handleAddList = () => {
-        router.push('/list/new');
-    };
+    router.push('/list/new');
+  };
 
   // Categorize shopping lists
   const { regularLists, ongoingLists, historyLists } = useMemo(() => {
@@ -272,7 +322,6 @@ export default function HomeScreen() {
     };
   }, [shoppingListIds, shoppingListsValues]);
 
-  // Handle delete all for current tab
   const handleDeleteAll = useCallback(() => {
     const currentLists = activeTab === 'active' ? regularLists : 
                          activeTab === 'ongoing' ? ongoingLists : 
@@ -299,9 +348,6 @@ export default function HomeScreen() {
             if (process.env.EXPO_OS === "ios") {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
-            // Use the deleteAllLists callback if available
-            // Otherwise this requires each list to be deleted individually
-            // The store should implement batch delete functionality
             deleteAllLists(currentLists);
             console.log(`🗑️ Deleted all ${currentLists.length} lists from ${tabName}`);
           },
@@ -310,7 +356,6 @@ export default function HomeScreen() {
     );
   }, [activeTab, regularLists, ongoingLists, historyLists, deleteAllLists]);
 
-  // Filter lists based on filter option
   const filterLists = useCallback((lists: string[]) => {
     if (filterBy === 'all') return lists;
 
@@ -328,8 +373,7 @@ export default function HomeScreen() {
     });
   }, [filterBy, shoppingListIds, shoppingListsValues]);
 
-  // Sort lists based on sort option
-  const sortLists = (lists: string[]) => {
+  const sortLists = useCallback((lists: string[]) => {
     return [...lists].sort((a, b) => {
       const indexA = shoppingListIds.indexOf(a);
       const indexB = shoppingListIds.indexOf(b);
@@ -348,7 +392,6 @@ export default function HomeScreen() {
           return new Date(dateB).getTime() - new Date(dateA).getTime();
 
         case 'items':
-          // This would need actual product counts - simplified for now
           return 0;
 
         case 'budget':
@@ -360,9 +403,8 @@ export default function HomeScreen() {
           return 0;
       }
     });
-  };
+  }, [sortBy, shoppingListIds, shoppingListsValues]);
 
-  // Get current tab data with filters and sorting applied
   const getCurrentTabData = useMemo(() => {
     let lists: string[];
     switch (activeTab) {
@@ -414,24 +456,10 @@ export default function HomeScreen() {
     );
   };
 
-  const renderHeaderRight = () => {
-    const isDisabled = activeTab === 'history';
-    return (
-      <Pressable 
-        onPress={() => !isDisabled && router.push("/list/new")} 
-        style={{ paddingRight: 18, paddingTop: 5, opacity: isDisabled ? 0.3 : 1 }}
-        disabled={isDisabled}
-      >
-        <IconSymbol name="plus" color='#000' style={{marginRight: 3}}/>
-      </Pressable>
-    );
-  };
-
   const renderItem = ({ item: listId }: { item: string }) => (
     <ShoppingListItem listId={listId} isHistory={activeTab === 'history'} />
   );
 
-  // Tab button component
   const TabButton = ({
     type,
     label,
@@ -449,7 +477,7 @@ export default function HomeScreen() {
           styles.tabButton,
           isActive && styles.tabButtonActive
         ]}
-        onPress={() => setActiveTab(type)}
+        onPress={() => handleSetActiveTab(type)}
       >
         <ThemedText
           style={[
@@ -476,7 +504,6 @@ export default function HomeScreen() {
     );
   };
 
-  // Sort Modal Component
   const SortModal = () => (
     <Modal
       visible={showSortModal}
@@ -531,8 +558,6 @@ export default function HomeScreen() {
     </Modal>
   );
 
-
-  // Filter Modal Component
   const FilterModal = () => (
     <Modal
       visible={showFilterModal}
@@ -544,7 +569,8 @@ export default function HomeScreen() {
       <Pressable
         style={styles.modalOverlay}
         onPress={() => setShowFilterModal(false)}
-      ><View style={styles.modalContent}>
+      >
+        <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <ThemedText style={styles.modalTitle}>Filter By</ThemedText>
             <Pressable onPress={() => setShowFilterModal(false)}>
@@ -592,7 +618,6 @@ export default function HomeScreen() {
       <QuickAddFab onPress={handleAddList}/>
 
       <View style={styles.container}>
-        {/* Tab Bar */}
         <View style={styles.tabBar}>
           <TabButton
             type="active"
@@ -611,7 +636,6 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* Active Tab Indicator */}
         <View style={styles.tabIndicatorContainer}>
           <View
             style={[
@@ -624,7 +648,6 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* Filter and Sort Bar */}
         {activeTab === 'active' && (
           <View style={styles.filterSortBar}>
             <Pressable
@@ -661,7 +684,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Delete All Button */}
         {((activeTab === 'active' && regularLists.length > 0) ||
           (activeTab === 'ongoing' && ongoingLists.length > 0) ||
           (activeTab === 'history' && historyLists.length > 0)) && (
@@ -680,7 +702,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Content */}
         {currentTabData.length === 0 ? (
           renderEmptyList()
         ) : (
@@ -694,12 +715,12 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Modals */}
       <SortModal />
       <FilterModal />
     </GestureHandlerRootView>
   );
 }
+
 function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
     container: {
@@ -723,9 +744,7 @@ function createStyles(colors: typeof Colors.light) {
       paddingVertical: 12,
       gap: 6,
     },
-    tabButtonActive: {
-      // Active state handled by indicator
-    },
+    tabButtonActive: {},
     tabLabel: {
       fontSize: 15,
       fontWeight: '500',
@@ -766,7 +785,6 @@ function createStyles(colors: typeof Colors.light) {
       backgroundColor: '#50C878',
       borderRadius: 2,
     },
-    // Filter and Sort Bar
     filterSortBar: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -796,8 +814,7 @@ function createStyles(colors: typeof Colors.light) {
     filterSortDivider: {
       width: 12,
     },
-    listContainer: {
-    },
+    listContainer: {},
     emptyStateContainer: {
       alignItems: "center",
       justifyContent: 'center',
@@ -901,7 +918,6 @@ function createStyles(colors: typeof Colors.light) {
       color: '#C7C7CC',
       fontWeight: '300',
     },
-    // Swipe action styles
     swipeActionsContainer: {
       flexDirection: 'row',
       alignItems: 'stretch',
@@ -924,26 +940,15 @@ function createStyles(colors: typeof Colors.light) {
       fontWeight: '600',
       marginTop: 4,
     },
-    // Modal styles
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0, 0, 0, 0.3)',
-      justifyContent: 'flex-end',
-    },
-    modalContainer: {
-      flex: 1,
       justifyContent: 'flex-end',
     },
     modalContent: {
       backgroundColor: colors.background,
       borderTopLeftRadius: 12,
       borderTopRightRadius: 12,
-    },
-    modalCloseButton: {
-      position: 'absolute',
-      top: 10,
-      right: 10,
-      zIndex: 10,
     },
     modalHeader: {
       flexDirection: 'row',
@@ -975,9 +980,6 @@ function createStyles(colors: typeof Colors.light) {
       paddingVertical: 16,
       paddingHorizontal: 20,
     },
-    optionItemDisabled: {
-      opacity: 0.5,
-    },
     optionIcon: {
       fontSize: 24,
     },
@@ -985,7 +987,6 @@ function createStyles(colors: typeof Colors.light) {
       fontSize: 16,
       flex: 1,
     },
-    // Delete All Button styles
     deleteAllContainer: {
       paddingHorizontal: 16,
       paddingVertical: 8,

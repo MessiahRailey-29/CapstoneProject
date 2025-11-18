@@ -1,5 +1,4 @@
-// Services for detecting duplicate products across shopping lists
-
+// services/DuplicateDetectionService.ts - Enhanced version
 export interface ProductSummary {
   name: string;
   quantity: number;
@@ -8,13 +7,15 @@ export interface ProductSummary {
   listId: string;
   isPurchased: boolean;
   createdAt: string;
-  productId?: string; // Add this to help identify unique product instances
+  productId?: string;
+  selectedStore?: string; // Added for store comparison
 }
 
 export interface DuplicateMatch {
   productName: string;
   currentQuantity: number;
   currentUnits: string;
+  currentStore?: string;
   matches: Array<{
     listName: string;
     listId: string;
@@ -23,9 +24,11 @@ export interface DuplicateMatch {
     isPurchased: boolean;
     daysAgo: number;
     productId?: string;
+    selectedStore?: string;
   }>;
-  suggestedAction: 'reduce' | 'skip' | 'warning';
+  suggestedAction: 'reduce' | 'skip' | 'warning' | 'merge' | 'different-store';
   confidence: 'high' | 'medium' | 'low';
+  isDifferentStore?: boolean; // New flag
 }
 
 export type ComparisonOption = 'last-1' | 'last-3' | 'last-5' | 'all' | 'custom';
@@ -35,6 +38,7 @@ export interface ComparisonSettings {
   customDays?: number;
   includeCompleted: boolean;
   similarityThreshold: number;
+  checkDifferentStores?: boolean; // New setting
 }
 
 class DuplicateDetectionService {
@@ -89,7 +93,6 @@ class DuplicateDetectionService {
   ): Array<{ listData: any; products: ProductSummary[] }> {
     const allListsIncludingCurrent = allLists;
     
-    // Sort by creation date (newest first)
     const sortedLists = allListsIncludingCurrent.sort((a, b) => 
       new Date(b.listData.createdAt).getTime() - new Date(a.listData.createdAt).getTime()
     );
@@ -145,7 +148,37 @@ class DuplicateDetectionService {
     return filteredLists;
   }
 
-  // 🔥 FIXED: Main duplicate detection method
+  // 🔥 NEW: Check for same product with different store in current list
+  public checkSameListDifferentStore(
+    productName: string,
+    selectedStore: string | undefined,
+    currentListProducts: ProductSummary[],
+    similarityThreshold: number = 0.8
+  ): { found: boolean; existingProduct?: ProductSummary } {
+    const normalizedName = this.normalizeProductName(productName);
+    
+    for (const product of currentListProducts) {
+      const normalizedExisting = this.normalizeProductName(product.name);
+      const similarity = this.calculateSimilarity(normalizedName, normalizedExisting);
+      
+      if (similarity >= similarityThreshold) {
+        // Check if stores are different
+        const existingStore = product.selectedStore || '';
+        const newStore = selectedStore || '';
+        
+        if (existingStore && newStore && existingStore !== newStore) {
+          return {
+            found: true,
+            existingProduct: product
+          };
+        }
+      }
+    }
+    
+    return { found: false };
+  }
+
+  // Enhanced duplicate detection with store awareness
   public detectDuplicates(
     currentProducts: ProductSummary[],
     allLists: Array<{ listData: any; products: ProductSummary[] }>,
@@ -153,27 +186,26 @@ class DuplicateDetectionService {
     settings: ComparisonSettings = {
       option: 'last-3',
       includeCompleted: false,
-      similarityThreshold: 0.8
+      similarityThreshold: 0.8,
+      checkDifferentStores: true
     }
   ): DuplicateMatch[] {
     console.log('🔍 Running duplicate detection with', currentProducts.length, 'current products');
     console.log('🔍 Checking against', allLists.length, 'total lists');
     
     const filteredLists = this.filterListsBySettings(allLists, currentListId, settings);
-    console.log('🔍 After filtering, checking against', filteredLists.length, 'lists:', 
-      filteredLists.map(l => `${l.listData.name} (${l.products.length} products)`));
+    console.log('🔍 After filtering, checking against', filteredLists.length, 'lists');
     
     const duplicates: DuplicateMatch[] = [];
 
     currentProducts.forEach(currentProduct => {
-      console.log('🔍 Checking product:', currentProduct.name);
       const normalizedCurrentName = this.normalizeProductName(currentProduct.name);
       const matches: DuplicateMatch['matches'] = [];
+      let isDifferentStore = false;
 
       filteredLists.forEach(list => {
         list.products.forEach(existingProduct => {
-          // 🔥 FIXED: Better self-comparison logic
-          // Skip if it's the exact same product instance (same ID if available, or same everything)
+          // Skip if it's the exact same product instance
           const isSameInstance = (
             list.listData.listId === currentListId && 
             currentProduct.productId && 
@@ -187,7 +219,6 @@ class DuplicateDetectionService {
           );
 
           if (isSameInstance) {
-            console.log('⏭️ Skipping same product instance');
             return;
           }
 
@@ -199,15 +230,20 @@ class DuplicateDetectionService {
           const normalizedExistingName = this.normalizeProductName(existingProduct.name);
           const similarity = this.calculateSimilarity(normalizedCurrentName, normalizedExistingName);
 
-          console.log(`🔍 Comparing "${currentProduct.name}" vs "${existingProduct.name}" in ${list.listData.name}: ${similarity.toFixed(2)} similarity`);
-
           if (similarity >= settings.similarityThreshold) {
             const daysAgo = Math.floor(
               (new Date().getTime() - new Date(list.listData.createdAt).getTime()) / 
               (1000 * 60 * 60 * 24)
             );
 
-            console.log(`✅ Found duplicate: "${existingProduct.name}" in ${list.listData.name}`);
+            // Check if it's same list but different store
+            if (list.listData.listId === currentListId && 
+                settings.checkDifferentStores &&
+                currentProduct.selectedStore && 
+                existingProduct.selectedStore &&
+                currentProduct.selectedStore !== existingProduct.selectedStore) {
+              isDifferentStore = true;
+            }
 
             matches.push({
               listName: list.listData.name,
@@ -216,16 +252,14 @@ class DuplicateDetectionService {
               units: existingProduct.units,
               isPurchased: existingProduct.isPurchased,
               daysAgo,
-              productId: existingProduct.productId
+              productId: existingProduct.productId,
+              selectedStore: existingProduct.selectedStore
             });
           }
         });
       });
 
       if (matches.length > 0) {
-        console.log(`🎯 Product "${currentProduct.name}" has ${matches.length} matches`);
-        
-        // Determine suggestion and confidence
         let suggestedAction: DuplicateMatch['suggestedAction'] = 'warning';
         let confidence: DuplicateMatch['confidence'] = 'low';
 
@@ -233,10 +267,13 @@ class DuplicateDetectionService {
         const unpurchasedMatches = matches.filter(m => !m.isPurchased);
         const sameListMatches = matches.filter(m => m.listId === currentListId);
 
-        // Higher confidence for same-list duplicates or recent duplicates
-        if (sameListMatches.length > 0) {
+        // Special handling for different store scenario
+        if (isDifferentStore) {
+          suggestedAction = 'different-store';
           confidence = 'high';
-          suggestedAction = 'skip'; // Definitely skip if it's in the same list
+        } else if (sameListMatches.length > 0) {
+          confidence = 'high';
+          suggestedAction = 'skip';
         } else if (recentMatches.length > 0) {
           confidence = 'high';
           if (unpurchasedMatches.length > 0) {
@@ -253,17 +290,16 @@ class DuplicateDetectionService {
           productName: currentProduct.name,
           currentQuantity: currentProduct.quantity,
           currentUnits: currentProduct.units,
+          currentStore: currentProduct.selectedStore,
           matches,
           suggestedAction,
-          confidence
+          confidence,
+          isDifferentStore
         });
       }
     });
 
-    console.log(`🎯 Final result: ${duplicates.length} duplicates found`);
-    
     return duplicates.sort((a, b) => {
-      // Sort by confidence (high first) then by number of matches
       const confidenceOrder = { high: 3, medium: 2, low: 1 };
       if (confidenceOrder[a.confidence] !== confidenceOrder[b.confidence]) {
         return confidenceOrder[b.confidence] - confidenceOrder[a.confidence];
@@ -272,12 +308,12 @@ class DuplicateDetectionService {
     });
   }
 
-  // Get summary statistics
   public getDuplicateStats(duplicates: DuplicateMatch[]): {
     totalDuplicates: number;
     highConfidence: number;
     suggestedSkips: number;
     suggestedReductions: number;
+    differentStores: number;
     potentialSavings: string;
   } {
     return {
@@ -285,6 +321,7 @@ class DuplicateDetectionService {
       highConfidence: duplicates.filter(d => d.confidence === 'high').length,
       suggestedSkips: duplicates.filter(d => d.suggestedAction === 'skip').length,
       suggestedReductions: duplicates.filter(d => d.suggestedAction === 'reduce').length,
+      differentStores: duplicates.filter(d => d.isDifferentStore).length,
       potentialSavings: duplicates.length > 0 ? 'Avoid overbuying' : 'No duplicates found'
     };
   }

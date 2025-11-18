@@ -13,7 +13,6 @@ import { FontAwesome } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { Colors } from '@/constants/Colors';
-import { BlurView } from 'expo-blur';
 
 interface FloatingActionFabProps {
     onAction?: (actionKey: string) => void;
@@ -83,23 +82,21 @@ export default function FloatingActionFab({
             {open && (
                 <Pressable
                     style={StyleSheet.absoluteFillObject}
-                    pointerEvents="box-none"
-                    onPress={toggle}   // Close if touching outside FAB
+                    onPress={toggle}
                 >
                     <Animated.View
-                        pointerEvents="box-none"
                         style={[
                             StyleSheet.absoluteFillObject,
-                            { ...StyleSheet.absoluteFillObject ,backgroundColor: '#000', opacity: overlayOpacity },
+                            { backgroundColor: '#000', opacity: overlayOpacity },
                         ]}
-                />
+                    />
                 </Pressable>
             )}
             <View
-                pointerEvents="auto"
+                pointerEvents="box-none"
                 style={[styles.container, { bottom: position.bottom, right: position.right }]}>
 
-                <View style={styles.actionsWrap} pointerEvents="box-none">
+                <View style={styles.actionsWrap}>
                     {ACTIONS.map((action) => (
                         <ActionItem
                             key={action.key}

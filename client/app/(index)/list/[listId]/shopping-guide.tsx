@@ -278,29 +278,6 @@ export default function ShoppingGuideScreen() {
                 console.log("📍 Tapped on store:", store.name);
               }}
             />
-            
-            {/* Map Overlay Info */}
-            <View style={styles.mapOverlay}>
-              <View style={styles.mapOverlayCard}>
-                <View style={styles.mapOverlayHeader}>
-                  <IconSymbol name="location.fill" size={16} color="#007AFF" />
-                  <Text style={styles.mapOverlayTitle}>
-                    Stop {selectedStoreIndex + 1} of {totalStores}
-                  </Text>
-                </View>
-                <Text style={styles.mapOverlayStoreName} numberOfLines={1}>
-                  {selectedStore?.store.name}
-                </Text>
-                {selectedStore?.store.distance !== undefined && (
-                  <View style={styles.mapOverlayDistance}>
-                    <IconSymbol name="map.fill" size={12} color="#34C759" />
-                    <Text style={styles.mapOverlayDistanceText}>
-                      {selectedStore.store.distance.toFixed(1)} km away
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
           </View>
         )}
 

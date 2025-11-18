@@ -113,23 +113,7 @@ function ProductContent({
     setShowStorePicker(false);
   };
 
-  const handleDeleteProduct = () => {
-    Alert.alert(
-      "Delete Product",
-      `Are you sure you want to remove "${name}" from this list?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            // Add delete logic here if available
-            router.back();
-          },
-        },
-      ]
-    );
-  };
+
 
   return (
     <>
@@ -387,19 +371,7 @@ function ProductContent({
             </View>
           </View>
         )}
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <Button
-            variant="outline"
-            onPress={handleDeleteProduct}
-            style={styles.deleteButton}
-          >
-            <IconSymbol name="trash" size={18} color="#FF3B30" />
-            <ThemedText style={styles.deleteButtonText}>Remove from List</ThemedText>
-          </Button>
-        </View>
-
+        
         {/* Bottom padding */}
         <View style={{ height: 40 }} />
       </BodyScrollView>
@@ -796,17 +768,6 @@ function createStyles(colors: typeof Colors.light) {
     actionButtons: {
       marginTop: 8,
       gap: 12,
-    },
-    deleteButton: {
-      borderColor: '#FF3B30',
-      flexDirection: 'row',
-      gap: 8,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    deleteButtonText: {
-      color: '#FF3B30',
-      fontWeight: '600',
     },
     // Modal Styles
     modalContainer: {

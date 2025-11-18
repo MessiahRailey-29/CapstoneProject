@@ -1,3 +1,4 @@
+// FIXED: ShoppingListProductItem.tsx - Never touch status when toggling isPurchased
 import React from "react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -12,6 +13,7 @@ import {
   useDelShoppingListProductCallback,
   useShoppingListProductCell,
   useShoppingListValue,
+  useShoppingListStore,
 } from "@/stores/ShoppingListStore";
 import { useShoppingListData } from "@/stores/ShoppingListsStore";
 import { useListNotifications } from "@/utils/notifyCollaborators";
@@ -29,6 +31,7 @@ export default function ShoppingListProductItem({
   status?: 'regular' | 'ongoing' | 'completed';
 }) {
   const router = useRouter();
+  const store = useShoppingListStore(listId);
   const [name] = useShoppingListProductCell(listId, productId, "name");
   const [quantity] = useShoppingListProductCell(listId, productId, "quantity");
   const [units] = useShoppingListProductCell(listId, productId, "units");
@@ -39,20 +42,16 @@ export default function ShoppingListProductItem({
     "isPurchased"
   );
 
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
   
-      const theme = useColorScheme();
-      const colors = Colors[theme ?? 'light'];
-      const styles = createStyles(colors);
-  
-  // New store selection fields
   const [selectedStore] = useShoppingListProductCell(listId, productId, "selectedStore");
   const [selectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
   const [category] = useShoppingListProductCell(listId, productId, "category");
 
-  // ✅ Get list data for collaborators
   const listData = useShoppingListData(listId);
   
-  // ✅ Initialize notifications
   const listNotifications = useListNotifications({
     listId: listId,
     listName: listData?.name || "",
@@ -62,19 +61,13 @@ export default function ShoppingListProductItem({
 
   const deleteCallback = useDelShoppingListProductCallback(listId, productId);
 
-  // ✅ Enhanced delete callback with notification
   const handleDelete = async () => {
-    // Call the original delete callback
     deleteCallback();
-    
-    // Notify collaborators
     await listNotifications.notifyItemRemoved(name);
   };
 
-  // ✅ Enhanced toggle purchased with notification
-  // ⭐ NEW: Only allow toggling when in "Shopping" mode (ongoing status)
-  const handleTogglePurchased = async () => {
-    // Prevent toggle if not in shopping mode
+  // 🔧 CRITICAL FIX: Prevent ANY accidental status changes
+  const handleTogglePurchased = () => {
     if (status !== 'ongoing') {
       return;
     }
@@ -85,20 +78,61 @@ export default function ShoppingListProductItem({
       );
     }
     
-    const newPurchasedState = !isPurchased;
-    setIsPurchased(newPurchasedState);
+    console.log('🔄 Toggling purchased state for:', name);
+    console.log('📊 BEFORE toggle - Current list status:', status);
     
-    // Notify collaborators
-    if (newPurchasedState) {
-      await listNotifications.notifyItemPurchased(name);
+    // 🔧 CRITICAL: Get current status from store BEFORE toggling
+    const currentStatus = store?.getValue('status');
+    console.log('📊 Status in store before toggle:', currentStatus);
+    
+    const newPurchasedState = !isPurchased;
+    
+    // 🔧 CRITICAL FIX: Use transaction to ensure atomic update with status preservation
+    if (store) {
+      store.transaction(() => {
+        // Toggle the purchased state
+        setIsPurchased(newPurchasedState);
+        
+        // 🔧 CRITICAL: Explicitly preserve the status
+        if (currentStatus === 'ongoing') {
+          store.setValue('status', 'ongoing');
+          console.log('✅ Explicitly preserved status as "ongoing" in transaction');
+        }
+      });
     } else {
-      await listNotifications.notifyItemUnpurchased(name);
+      // Fallback if no store
+      setIsPurchased(newPurchasedState);
     }
+    
+    console.log('✅ Toggled purchased state to:', newPurchasedState);
+    console.log('⚠️ List status MUST remain as:', status);
+    
+    // Verify status after toggle
+    setTimeout(() => {
+      const statusAfter = store?.getValue('status');
+      console.log('📊 Status verification after toggle:', statusAfter);
+      if (statusAfter !== 'ongoing') {
+        console.error('🚨 CRITICAL ERROR: Status was changed to:', statusAfter);
+        console.error('🚨 This should NEVER happen when toggling isPurchased!');
+      }
+    }, 100);
+    
+    // Notify collaborators after a delay to not block UI
+    setTimeout(async () => {
+      try {
+        if (newPurchasedState) {
+          await listNotifications.notifyItemPurchased(name);
+        } else {
+          await listNotifications.notifyItemUnpurchased(name);
+        }
+        console.log('📢 Notification sent successfully');
+      } catch (error) {
+        console.error('❌ Error notifying collaborators:', error);
+      }
+    }, 0);
   };
 
   const totalPrice = selectedPrice * quantity;
-
-  // ⭐ NEW: Check button is only enabled in "Shopping" mode
   const isCheckButtonEnabled = status === 'ongoing';
 
   const RightAction = (
@@ -196,7 +230,6 @@ export default function ShoppingListProductItem({
               )}
             </View>
 
-            {/* Store and Price Information */}
             {(selectedStore || selectedPrice > 0) && (
               <View style={styles.storeInfo}>
                 {selectedStore && (
@@ -247,7 +280,6 @@ export default function ShoppingListProductItem({
     </ReanimatedSwipeable>
   );
 }
-
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {

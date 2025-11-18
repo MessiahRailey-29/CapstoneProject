@@ -11,6 +11,10 @@ import { useProducts, useProductPrices } from "@/hooks/useProducts";
 import { DatabaseProduct, ProductPrice } from "@/services/productsApi";
 import { Colors } from "@/constants/Colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useEnhancedDuplicateDetection } from '@/hooks/useEnhancedDuplicateDetection';
+import DuplicateActionModal from '@/components/DuplicateActionModal';
+import { ProductSummary } from '@/services/DuplicateDetectionService';
+import { useShoppingListStore, useShoppingListProductIds } from '@/stores/ShoppingListStore';
 
 interface SelectedStoreInfo {
   store: string;
@@ -48,6 +52,45 @@ export default function NewItemScreen() {
   const { products, loading: productsLoading, searchProducts, hasProducts, isApiConfigured } = useProducts();
   const { prices, loading: pricesLoading } = useProductPrices(selectedProduct?.id || null);
 
+  // Enhanced duplicate detection setup
+  const store = useShoppingListStore(listId);
+  const productIds = useShoppingListProductIds(listId) || [];
+  
+  // Get current list products for duplicate checking
+  const currentListProducts: ProductSummary[] = useMemo(() => {
+    return productIds.map(productId => {
+      const productName = store?.getCell('products', productId, 'name') as string || '';
+      const productQuantity = store?.getCell('products', productId, 'quantity') as number || 0;
+      const units = store?.getCell('products', productId, 'units') as string || '';
+      const productStore = store?.getCell('products', productId, 'selectedStore') as string || '';
+      const isPurchased = store?.getCell('products', productId, 'isPurchased') as boolean || false;
+      const createdAt = store?.getCell('products', productId, 'createdAt') as string || '';
+      
+      return {
+        name: productName,
+        quantity: productQuantity,
+        units,
+        selectedStore: productStore,
+        isPurchased,
+        createdAt,
+        listName: '',
+        listId,
+        productId,
+      };
+    }).filter(p => p.name);
+  }, [productIds, store, listId]);
+
+  // Initialize enhanced duplicate detection
+  const {
+    duplicateInfo,
+    isModalVisible,
+    checkForDuplicate,
+    handleDuplicateAction,
+  } = useEnhancedDuplicateDetection({
+    currentListProducts,
+    similarityThreshold: 0.8,
+  });
+
   const suggestions = useMemo(() => {
     if (!name.trim() || name.length < 2 || !hasProducts) return [];
     return searchProducts(name).slice(0, 8);
@@ -83,44 +126,137 @@ export default function NewItemScreen() {
 
     let addedCount = 0;
     let duplicateCount = 0;
+    let mergedCount = 0;
 
     for (const product of productsToAdd) {
-      const productId = await addShoppingListProduct(
-        product.name,
-        product.quantity,
-        "",
-        product.notes || "",
-        product.store || "",
-        product.price || 0,
-        product.databaseProductId || 0,
-        product.category || ""
-      );
+      try {
+        // Check for duplicates with enhanced detection
+        const action = await checkForDuplicate(
+          product.name,
+          product.quantity,
+          '', // units - add if available in your QueuedProduct
+          product.store || ''
+        );
 
-      if (productId === null) {
+        console.log(`🔍 Duplicate check for "${product.name}": action = ${action}`);
+
+        if (action === 'cancel') {
+          console.log('❌ User cancelled adding product');
+          continue; // Skip this product
+        }
+
+        if (action === 'discard') {
+          console.log('🗑️ User chose to discard product');
+          duplicateCount++;
+          continue; // Skip this product
+        }
+
+        if (action === 'merge') {
+          console.log('🔀 Attempting to merge product');
+          // Find existing product and update its quantity
+          const normalizedName = product.name.toLowerCase().trim();
+          const existingProduct = currentListProducts.find(p => {
+            const nameMatch = p.name.toLowerCase().trim() === normalizedName;
+            // For merge, we want to merge even if stores are different
+            return nameMatch;
+          });
+
+          if (existingProduct && existingProduct.productId) {
+            const newQuantity = existingProduct.quantity + product.quantity;
+            store?.setCell('products', existingProduct.productId, 'quantity', newQuantity);
+            console.log(`✅ Merged: ${existingProduct.quantity} + ${product.quantity} = ${newQuantity}`);
+            
+            // If user merged different stores, update the store to show both or the new one
+            if (product.store && existingProduct.selectedStore !== product.store) {
+              // Optionally update to show merged stores or keep existing
+              // store?.setCell('products', existingProduct.productId, 'selectedStore', product.store);
+            }
+            
+            mergedCount++;
+            continue;
+          } else {
+            console.log('⚠️ Could not find existing product to merge, adding as new');
+            // If merge fails, fall through to add as new
+          }
+        }
+
+        // For 'add-anyway' or when merge fails, add as new product
+        console.log(`➕ Adding product as new: "${product.name}" from store: "${product.store || 'none'}"`);
+        
+        // When user explicitly chooses to add anyway, we should bypass duplicate detection
+        // Option 1: Try the normal add first
+        let productId = await addShoppingListProduct(
+          product.name,
+          product.quantity,
+          "",
+          product.notes || "",
+          product.store || "",
+          product.price || 0,
+          product.databaseProductId || 0,
+          product.category || ""
+        );
+
+        console.log(`📝 Product ID returned: ${productId}`);
+
+        // If it returned null but user chose add-anyway, add directly to store
+        if (productId === null && action === 'add-anyway' && store) {
+          console.log('🔧 Bypassing duplicate check - adding directly to store');
+          const newProductId = `product_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          store.setRow('products', newProductId, {
+            name: product.name,
+            quantity: product.quantity,
+            category: product.category || '',
+            notes: product.notes || '',
+            selectedStore: product.store || '',
+            selectedPrice: product.price || 0,
+            isPurchased: false,
+            createdAt: new Date().toISOString(),
+            units: '', // Add default units if needed
+          });
+          
+          productId = newProductId;
+          console.log(`✅ Product added directly with ID: ${productId}`);
+        }
+
+        if (productId === null) {
+          console.log('⚠️ addShoppingListProduct returned null - may indicate internal duplicate detection');
+          duplicateCount++;
+        } else {
+          console.log(`✅ Product added successfully with ID: ${productId}`);
+          addedCount++;
+        }
+      } catch (error) {
+        console.error('❌ Error adding product:', error);
         duplicateCount++;
-      } else {
-        addedCount++;
       }
     }
 
-    if (addedCount > 0 && duplicateCount > 0) {
-      Alert.alert(
-        "Products Added",
-        `${addedCount} product${addedCount !== 1 ? 's' : ''} added successfully.\n${duplicateCount} duplicate${duplicateCount !== 1 ? 's' : ''} detected. Check notifications.`,
-        [{ text: "OK" }]
-      );
-    } else if (addedCount > 0) {
-    } else if (duplicateCount > 0) {
-      Alert.alert(
-        "Duplicates Detected",
-        `All products are already in your list. Check notifications for details.`,
-        [{ text: "OK" }]
-      );
+    // Show summary alert
+    if (addedCount > 0 || mergedCount > 0 || duplicateCount > 0) {
+      const messages = [];
+      if (addedCount > 0) {
+        messages.push(`${addedCount} product${addedCount !== 1 ? 's' : ''} added`);
+      }
+      if (mergedCount > 0) {
+        messages.push(`${mergedCount} product${mergedCount !== 1 ? 's' : ''} merged`);
+      }
+      if (duplicateCount > 0) {
+        messages.push(`${duplicateCount} duplicate${duplicateCount !== 1 ? 's' : ''} skipped`);
+      }
+
+      if (messages.length > 0) {
+        Alert.alert(
+          "Products Processed",
+          messages.join('\n'),
+          [{ text: "OK" }]
+        );
+      }
     }
 
     setAddingAnother(false);
     router.back();
-  }, [name, quantity, notes, selectedStoreInfo, selectedProduct, queuedProducts, addShoppingListProduct, router]);
+  }, [name, quantity, notes, selectedStoreInfo, selectedProduct, queuedProducts, addShoppingListProduct, router, checkForDuplicate, currentListProducts, store]);
 
   const handleCancel = useCallback(() => {
     const hasUnsavedData = name.trim() !== "" || queuedProducts.length > 0;
@@ -274,10 +410,6 @@ export default function NewItemScreen() {
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="automatic"
       >
-        <BodyScrollView
-          contentContainerStyle={styles.container}
-          showsVerticalScrollIndicator={false}
-        >
           {queuedProducts.length > 0 && (
             <View style={styles.queuedSection}>
               <View style={styles.queuedHeader}>
@@ -422,12 +554,10 @@ export default function NewItemScreen() {
                 <TextInput
                   value={quantityInput}
                   onChangeText={(text) => {
-                    // Allow empty string while typing
                     setQuantityInput(text);
                     
-                    // Update actual quantity if valid
                     if (text === '') {
-                      return; // Don't update quantity yet
+                      return;
                     }
                     const num = parseInt(text);
                     if (!isNaN(num) && num > 0) {
@@ -435,7 +565,6 @@ export default function NewItemScreen() {
                     }
                   }}
                   onBlur={() => {
-                    // When focus is lost, ensure we have a valid quantity
                     if (quantityInput === '' || parseInt(quantityInput) < 1) {
                       setQuantityInput('1');
                       setQuantity(1);
@@ -508,6 +637,13 @@ export default function NewItemScreen() {
           </View>
         </BodyScrollView>
       </KeyboardAvoidingView>
+
+      {/* Enhanced Duplicate Detection Modal */}
+      <DuplicateActionModal
+        visible={isModalVisible}
+        duplicateInfo={duplicateInfo}
+        onAction={handleDuplicateAction}
+      />
     </View>
   );
 }

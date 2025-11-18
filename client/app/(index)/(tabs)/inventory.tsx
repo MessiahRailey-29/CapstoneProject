@@ -205,7 +205,7 @@ function InventoryItem({ itemId, storage, showStorage = false }: { itemId: strin
                         },
                       ]}
                     >
-                      <Text style={styles.storageBadgeIcon}>{loc.icon}</Text>
+                      <Text style={styles.storageBadgeIcon}>{loc.image}</Text>
                       {storageLocation === loc.name && (
                         <Text style={styles.storageBadgeText}>{loc.name}</Text>
                       )}
