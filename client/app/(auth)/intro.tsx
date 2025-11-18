@@ -30,7 +30,7 @@ export default function IntroScreen() {
           resizeMode="contain"
         />
         <ThemedText style={styles.subtitle}>
-          Smart Android Mobile Application for Food Wastage Prevention
+          A Smart Android Mobile Application for Food Wastage Prevention
         </ThemedText>
       </View>
 

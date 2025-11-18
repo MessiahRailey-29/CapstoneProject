@@ -126,7 +126,7 @@ const handleShopNow = () => {
 
             console.log("✅ Shopping started for list:", listId);
 
-            // Navigate after verification
+            // Navigate to shopping guide first, then the tab will auto-switch
             setTimeout(() => {
               console.log("🛒 Navigating to shopping guide for list:", listId);
               router.push(`/(index)/list/${listId}/shopping-guide`);
@@ -169,7 +169,7 @@ const handleShopNow = () => {
               console.log("✅ Successfully added items to inventory");
 
               // Track purchases for low stock monitoring
-              console.log("🔔 Tracking purchases for low stock alerts...");
+              console.log("📊 Tracking purchases for low stock alerts...");
               let trackedCount = 0;
               
               for (const product of productsData) {
@@ -196,7 +196,7 @@ const handleShopNow = () => {
 
               Alert.alert(
                 "Shopping Completed!",
-                `✅ Added ${productIds.length} items to your inventory\n✅ List moved to Purchase History\n🔔 Tracking ${trackedCount} items for low stock alerts`,
+                `✅ Added ${productIds.length} items to your inventory\n✅ List moved to Purchase History\n📊 Tracking ${trackedCount} items for low stock alerts`,
                 [
                   {
                     text: "View Inventory",
@@ -204,11 +204,18 @@ const handleShopNow = () => {
                   },
                   {
                     text: "View History",
-                    onPress: () => router.push("/(index)/(tabs)/shopping-lists"),
+                    onPress: () => {
+                      // Navigate back to lists - user will need to manually switch to History tab
+                      router.back();
+                    },
                   },
                   {
                     text: "OK",
                     style: "cancel",
+                    onPress: () => {
+                      // Just go back to the shopping lists screen
+                      router.back();
+                    },
                   },
                 ]
               );
@@ -266,6 +273,10 @@ const handleShopNow = () => {
             if (process.env.EXPO_OS === "ios") {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
+
+            // Navigate back to shopping lists on active tab
+            router.push("/(index)/(tabs)/shopping-lists");
+            // User can manually switch to active tab to see their restored list
 
             console.log("✅ List restored successfully");
           } catch (error) {

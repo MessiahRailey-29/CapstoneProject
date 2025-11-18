@@ -1,27 +1,31 @@
 // utils/notifyCollaborators.ts
-import { useUser } from '@clerk/clerk-expo';
 import { useCallback } from 'react';
+import { useUser } from '@clerk/clerk-expo';
+import { addNotificationToTinyBase } from './addNotificationToTinyBase';
 
-const API_URL = 'http://192.168.1.142:3000'; // ⚠️ CHANGE THIS to your server URL
-
-interface ListCollaborator {
+interface Collaborator {
   userId: string;
-  nickname: string;
+  nickname?: string; // Optional nickname
+  email?: string; // Optional email
+  name?: string; // Optional name
 }
 
 interface NotifyCollaboratorsParams {
   listId: string;
   listName: string;
   emoji: string;
-  action: 'added_item' | 'removed_item' | 'updated_item' | 'marked_purchased' | 'marked_unpurchased' | 'updated_list';
-  itemName?: string;
+  action: 'added_item' | 'removed_item' | 'marked_purchased' | 'marked_unpurchased' | 'updated_list';
+  itemName: string;
   currentUserId: string;
   currentUserName: string;
-  collaborators: ListCollaborator[];
+  collaborators: Collaborator[];
 }
 
 /**
- * Notify all collaborators (except the current user) about changes to a shared list
+ * ✅ Main function that notifies all collaborators (except current user)
+ * by adding notifications to TinyBase store
+ * 
+ * This function can be called directly or imported dynamically
  */
 export async function notifyCollaborators(params: NotifyCollaboratorsParams): Promise<void> {
   const {
@@ -35,130 +39,165 @@ export async function notifyCollaborators(params: NotifyCollaboratorsParams): Pr
     collaborators,
   } = params;
 
-  // Filter out the current user from collaborators
+  // Filter out current user from notifications
   const otherCollaborators = collaborators.filter(c => c.userId !== currentUserId);
 
   if (otherCollaborators.length === 0) {
-    console.log('No collaborators to notify');
+    console.log('⏭️ No other collaborators to notify');
     return;
   }
 
-  // Generate notification message based on action
-  let message = '';
-  switch (action) {
-    case 'added_item':
-      message = `${currentUserName} added "${itemName}" to ${listName}`;
-      break;
-    case 'removed_item':
-      message = `${currentUserName} removed "${itemName}" from ${listName}`;
-      break;
-    case 'updated_item':
-      message = `${currentUserName} updated "${itemName}" in ${listName}`;
-      break;
-    case 'marked_purchased':
-      message = `${currentUserName} marked "${itemName}" as purchased in ${listName}`;
-      break;
-    case 'marked_unpurchased':
-      message = `${currentUserName} unmarked "${itemName}" in ${listName}`;
-      break;
-    case 'updated_list':
-      message = `${currentUserName} updated ${listName}`;
-      break;
-  }
+  // Create notification message based on action type
+  const messages: Record<typeof action, string> = {
+    added_item: `${currentUserName} added "${itemName}" to ${emoji} ${listName}`,
+    removed_item: `${currentUserName} removed "${itemName}" from ${emoji} ${listName}`,
+    marked_purchased: `${currentUserName} marked "${itemName}" as purchased in ${emoji} ${listName}`,
+    marked_unpurchased: `${currentUserName} unmarked "${itemName}" in ${emoji} ${listName}`,
+    updated_list: `${currentUserName} updated ${emoji} ${listName} (${itemName})`,
+  };
 
-  // Send notification to each collaborator
-  for (const collaborator of otherCollaborators) {
+  const message = messages[action] || `${currentUserName} updated ${emoji} ${listName}`;
+  
+  // Set notification title based on action
+  const titles: Record<typeof action, string> = {
+    added_item: 'Item Added',
+    removed_item: 'Item Removed',
+    marked_purchased: 'Item Purchased',
+    marked_unpurchased: 'Item Unmarked',
+    updated_list: 'List Updated',
+  };
+  
+  const title = titles[action] || 'List Update';
+
+  console.log(`📢 Notifying ${otherCollaborators.length} collaborator(s) about: ${action}`);
+
+  // Send notification to each collaborator via TinyBase
+  const notificationPromises = otherCollaborators.map(async (collaborator) => {
     try {
-      const response = await fetch(`${API_URL}/api/notifications/${collaborator.userId}/shared-list-update`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          listId,
-          listName,
-          emoji,
-          message,
-          action,
-          itemName,
-          updatedBy: currentUserName,
-        }),
+      const notificationId = await addNotificationToTinyBase(listId, {
+        userId: collaborator.userId,
+        type: action,
+        title: title,
+        message: message,
+        productName: itemName,
       });
-
-      const data = await response.json();
       
-      if (data.success) {
-        console.log(`✅ Notified collaborator ${collaborator.nickname}`);
+      if (notificationId) {
+        console.log(`✅ Notified ${collaborator.name || collaborator.email} (ID: ${notificationId})`);
       } else {
-        console.error(`❌ Failed to notify ${collaborator.nickname}:`, data.error);
+        console.warn(`⚠️ Failed to create notification for ${collaborator.email}`);
       }
     } catch (error) {
-      console.error(`❌ Error notifying collaborator ${collaborator.nickname}:`, error);
+      console.error(`❌ Failed to notify ${collaborator.email}:`, error);
     }
-  }
+  });
+
+  // Wait for all notifications to be sent
+  await Promise.all(notificationPromises);
+  console.log('✅ All collaborator notifications completed');
 }
 
 /**
- * Hook to easily use notification in components
+ * ✅ React hook for convenient access to notification functions
+ * Automatically handles current user context from Clerk
+ * 
+ * Usage:
+ * ```tsx
+ * const listNotifications = useListNotifications({
+ *   listId: 'list-123',
+ *   listName: 'Groceries',
+ *   emoji: '🛒',
+ *   collaborators: [...],
+ * });
+ * 
+ * await listNotifications.notifyItemAdded('Milk');
+ * await listNotifications.notifyItemPurchased('Eggs');
+ * ```
  */
-export function useCollaboratorNotifications() {
-  const { user } = useUser();
-  
-  const notify = useCallback(async (params: Omit<NotifyCollaboratorsParams, 'currentUserId' | 'currentUserName'>) => {
-    if (!user?.id) {
-      console.warn('⚠️ No user ID available for notifications');
-      return;
-    }
-
-    const currentUserName = user.firstName || user.username || 'Someone';
-
-    await notifyCollaborators({
-      ...params,
-      currentUserId: user.id,
-      currentUserName,
-    });
-  }, [user]);
-
-  return { notifyCollaborators: notify };
-}
-
-/**
- * Hook for cleaner integration - provides convenience methods
- */
-interface UseListNotificationsParams {
+export function useListNotifications(params: {
   listId: string;
   listName: string;
   emoji: string;
-  collaborators: Array<{ userId: string; nickname: string }>;
-}
-
-export function useListNotifications(params: UseListNotificationsParams) {
+  collaborators: Collaborator[];
+}) {
   const { user } = useUser();
   const { listId, listName, emoji, collaborators } = params;
 
-  const notifyAction = useCallback(async (action: string, itemName?: string) => {
-    if (!user?.id || !collaborators || collaborators.length === 0) {
-      return;
-    }
+  // Get current user info with fallbacks
+  const currentUserId = user?.id || '';
+  const currentUserName = user?.firstName || user?.username || 'Someone';
 
-    const currentUserName = user.firstName || user.username || 'Someone';
-
+  // Memoize notification functions to prevent unnecessary re-renders
+  const notifyItemAdded = useCallback(async (itemName: string) => {
     await notifyCollaborators({
       listId,
       listName,
-      emoji: emoji || '🛒',
-      action: action as any,
+      emoji,
+      action: 'added_item',
       itemName,
-      currentUserId: user.id,
+      currentUserId,
       currentUserName,
       collaborators,
     });
-  }, [user, listId, listName, emoji, collaborators]);
+  }, [listId, listName, emoji, currentUserId, currentUserName, collaborators]);
+
+  const notifyItemRemoved = useCallback(async (itemName: string) => {
+    await notifyCollaborators({
+      listId,
+      listName,
+      emoji,
+      action: 'removed_item',
+      itemName,
+      currentUserId,
+      currentUserName,
+      collaborators,
+    });
+  }, [listId, listName, emoji, currentUserId, currentUserName, collaborators]);
+
+  const notifyItemPurchased = useCallback(async (itemName: string) => {
+    await notifyCollaborators({
+      listId,
+      listName,
+      emoji,
+      action: 'marked_purchased',
+      itemName,
+      currentUserId,
+      currentUserName,
+      collaborators,
+    });
+  }, [listId, listName, emoji, currentUserId, currentUserName, collaborators]);
+
+  const notifyItemUnpurchased = useCallback(async (itemName: string) => {
+    await notifyCollaborators({
+      listId,
+      listName,
+      emoji,
+      action: 'marked_unpurchased',
+      itemName,
+      currentUserId,
+      currentUserName,
+      collaborators,
+    });
+  }, [listId, listName, emoji, currentUserId, currentUserName, collaborators]);
+
+  const notifyListUpdated = useCallback(async (changes: string) => {
+    await notifyCollaborators({
+      listId,
+      listName,
+      emoji,
+      action: 'updated_list',
+      itemName: changes,
+      currentUserId,
+      currentUserName,
+      collaborators,
+    });
+  }, [listId, listName, emoji, currentUserId, currentUserName, collaborators]);
 
   return {
-    notifyItemAdded: useCallback((itemName: string) => notifyAction('added_item', itemName), [notifyAction]),
-    notifyItemRemoved: useCallback((itemName: string) => notifyAction('removed_item', itemName), [notifyAction]),
-    notifyItemUpdated: useCallback((itemName: string) => notifyAction('updated_item', itemName), [notifyAction]),
-    notifyItemPurchased: useCallback((itemName: string) => notifyAction('marked_purchased', itemName), [notifyAction]),
-    notifyItemUnpurchased: useCallback((itemName: string) => notifyAction('marked_unpurchased', itemName), [notifyAction]),
-    notifyListUpdated: useCallback(() => notifyAction('updated_list'), [notifyAction]),
+    notifyItemAdded,
+    notifyItemRemoved,
+    notifyItemPurchased,
+    notifyItemUnpurchased,
+    notifyListUpdated,
   };
 }

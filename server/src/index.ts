@@ -16,27 +16,21 @@ try {
   let serviceAccount;
 
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    // Production: Read from Railway environment variable
     console.log('📱 Initializing Firebase from environment variable...');
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   } else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
-    // Development: Read from local file path
     console.log('📱 Initializing Firebase from file path...');
     
-    // Import required modules
     const path = require('path');
     const fs = require('fs');
     
-    // Resolve the path relative to the server root directory (parent of src)
     const filePath = path.resolve(__dirname, '..', process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
     console.log('Resolved path:', filePath);
     
-    // Check if file exists
     if (!fs.existsSync(filePath)) {
       throw new Error(`Firebase file not found at: ${filePath}`);
     }
     
-    // Read and parse the file
     const fileContent = fs.readFileSync(filePath, 'utf8');
     serviceAccount = JSON.parse(fileContent);
     console.log('✅ Firebase credentials loaded successfully');
@@ -65,7 +59,7 @@ app.use(express.json());
 
 // Add request logging middleware
 app.use((req, res, next) => {
-  console.log(`🔥 ${req.method} ${req.url}`);
+  console.log(`📥 ${req.method} ${req.url}`);
   next();
 });
 
@@ -103,73 +97,57 @@ app.get('/api/notifications/test', (req, res) => {
   });
 });
 
-// Import routes with ES modules
-console.log('📦 Loading routes...');
-
-// Dynamic imports wrapped in async function
-async function loadRoutes() {
-  try {
-    const { default: routes } = await import('./routes/index.js');
-    app.use('/api', routes);
-    console.log('✅ Main routes loaded');
-  } catch (error) {
-    console.error('❌ Failed to load main routes:', error);
-  }
-
-  // Load notification routes ONCE
-  try {
-    const { default: notificationRoutes } = await import('./routes/notificationRoutes.js');
-    app.use('/api/notifications', notificationRoutes);
-    console.log('✅ Notification routes loaded');
-  } catch (error) {
-    console.error('❌ Failed to load notification routes:', error);
-  }
-
-  try {
-    const { setupSyncServer } = await import('./syncServer.js');
-    setupSyncServer(httpServer);
-    console.log('✅ Sync server loaded');
-  } catch (error) {
-    console.error('❌ Failed to setup sync server:', error);
-  }
-}
-
 // Start server
 async function start() {
   try {
-    // Load all routes first
-    await loadRoutes();
+    // 1. Load routes first
+    console.log('📦 Loading routes...');
+    
+    try {
+      const { default: routes } = await import('./routes/index.js');
+      app.use('/api', routes);
+      console.log('✅ Main routes loaded');
+    } catch (error) {
+      console.error('❌ Failed to load main routes:', error);
+    }
 
+    try {
+      const { default: notificationRoutes } = await import('./routes/notificationRoutes.js');
+      app.use('/api/notifications', notificationRoutes);
+      console.log('✅ Notification routes loaded');
+    } catch (error) {
+      console.error('❌ Failed to load notification routes:', error);
+    }
+
+    // 2. Connect to MongoDB
     const mongoUri = process.env.MONGODB_URI;
     
     if (mongoUri) {
       console.log('🔌 Connecting to MongoDB...');
       
       try {
-        // Connect to MongoDB
         await mongoose.connect(mongoUri);
         console.log('✅ MongoDB connected successfully');
-        
-        // Start cron jobs ONLY after successful MongoDB connection
-        try {
-          const { startAllNotificationCrons } = await import('./jobs/notificationCronJobs.js');
-          startAllNotificationCrons();
-          console.log('✅ Notification cron jobs started');
-        } catch (error) {
-          console.error('❌ Failed to start cron jobs:', error);
-          console.error('Error details:', error);
-        }
-        
       } catch (error) {
         console.error('❌ MongoDB connection failed:', error);
         console.warn('⚠️ Running without MongoDB features');
-        console.error('Connection error details:', error);
       }
     } else {
       console.log('ℹ️ No MONGODB_URI set - running in sync-only mode');
     }
 
-    // Start HTTP server on all interfaces
+    // 3. Setup TinyBase sync server (must be BEFORE httpServer.listen)
+    console.log('🔄 Setting up TinyBase sync server...');
+    try {
+      const { setupSyncServer } = await import('./syncServer.js');
+      await setupSyncServer(httpServer); // ✅ AWAIT this!
+      console.log('✅ TinyBase sync server ready');
+    } catch (error) {
+      console.error('❌ Failed to setup sync server:', error);
+      console.error('Error details:', error);
+    }
+
+    // 4. Start HTTP server
     const port = Number(PORT);
     httpServer.listen(port, '0.0.0.0', () => {
       console.log('');
@@ -189,6 +167,7 @@ async function start() {
       console.log('');
       console.log('🔗 WebSocket:');
       console.log('   Sync:          ws://192.168.254.104:' + port + '/sync/');
+      console.log('   Notifications: ws://192.168.254.104:' + port + '/sync/globalNotificationsStore');
       console.log('');
       console.log('💡 Test push notifications:');
       console.log('   curl -X POST http://192.168.254.104:' + port + '/api/notifications/YOUR_USER_ID/test-push');
@@ -196,10 +175,22 @@ async function start() {
       console.log('🛠 Debug info:');
       console.log('   curl http://192.168.254.104:' + port + '/api/notifications/YOUR_USER_ID/debug');
       console.log('');
-      console.log('🔄 Manually trigger reminders:');
+      console.log('📄 Manually trigger reminders:');
       console.log('   curl -X POST http://192.168.254.104:' + port + '/api/notifications/admin/trigger-reminders');
       console.log('');
     });
+
+    // 5. Start cron jobs AFTER server is fully running
+    if (mongoose.connection.readyState === 1) {
+      try {
+        const { startAllNotificationCrons } = await import('./jobs/notificationCronJobs.js');
+        startAllNotificationCrons();
+        console.log('✅ Notification cron jobs started');
+      } catch (error) {
+        console.error('❌ Failed to start cron jobs:', error);
+      }
+    }
+
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     console.error('Stack trace:', error);

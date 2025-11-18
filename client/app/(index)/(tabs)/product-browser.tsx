@@ -9,7 +9,6 @@ import TextInput from '@/components/ui/text-input';
 import { useProducts } from '@/hooks/useProducts';
 import { DatabaseProduct } from '@/services/productsApi';
 import { Colors } from '@/constants/Colors';
-import { SwipeableTabWrapper } from "@/components/SwipeableTabWrapper";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Category configuration with icons and colors

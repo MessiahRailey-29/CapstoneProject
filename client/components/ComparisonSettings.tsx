@@ -1,12 +1,21 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Switch, useColorScheme } from 'react-native';
 import TextInput from '@/components/ui/text-input';
-import { ComparisonOption, ComparisonSettings as IComparisonSettings } from '@/services/DuplicateDetectionService';
+import { ComparisonOption } from '@/services/DuplicateDetectionService';
 import { Colors } from '@/constants/Colors';
 
+// Updated interface to include checkDifferentStores
+export interface ComparisonSettings {
+  option: ComparisonOption;
+  customDays?: number;
+  includeCompleted: boolean;
+  similarityThreshold: number;
+  checkDifferentStores?: boolean; // NEW: Alert when same product from different store
+}
+
 interface ComparisonSettingsProps {
-  settings: IComparisonSettings;
-  onSettingsChange: (settings: IComparisonSettings) => void;
+  settings: ComparisonSettings;
+  onSettingsChange: (settings: ComparisonSettings) => void;
 }
 
 const COMPARISON_OPTIONS = [
@@ -23,7 +32,7 @@ export default function ComparisonSettings({
 }: ComparisonSettingsProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const updateSettings = (updates: Partial<IComparisonSettings>) => {
+  const updateSettings = (updates: Partial<ComparisonSettings>) => {
     onSettingsChange({ ...settings, ...updates });
   };
 
@@ -112,6 +121,20 @@ export default function ComparisonSettings({
             <Switch
               value={settings.includeCompleted}
               onValueChange={(value) => updateSettings({ includeCompleted: value })}
+            />
+          </View>
+
+          {/* NEW: Check Different Stores */}
+          <View style={styles.switchRow}>
+            <View style={styles.switchText}>
+              <Text style={styles.switchLabel}>Alert for different stores</Text>
+              <Text style={styles.switchDescription}>
+                Show alert when adding same product from different store
+              </Text>
+            </View>
+            <Switch
+              value={settings.checkDifferentStores ?? true}
+              onValueChange={(value) => updateSettings({ checkDifferentStores: value })}
             />
           </View>
 

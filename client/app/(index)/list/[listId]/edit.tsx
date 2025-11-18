@@ -11,6 +11,7 @@ import { useShoppingListValue } from "@/stores/ShoppingListStore";
 import { StatusBar } from "expo-status-bar";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useUser } from "@clerk/clerk-expo";
+import { Colors } from "@/constants/Colors";
 import { useShoppingListData } from "@/stores/ShoppingListsStore";
 
 export default function EditScreen() {
