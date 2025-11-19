@@ -10,10 +10,10 @@ import {
   useShoppingListStore,
 } from "@/stores/ShoppingListStore";
 import { useUpdateShoppingListStatus } from "@/stores/ShoppingListsStore";
-import { useAddInventoryItemsCallback } from "@/stores/InventoryStore";
 import { useUser } from "@clerk/clerk-expo";
 import { useNotifications } from "@/hooks/useNotifications";
 import CustomAlert from "./ui/CustomAlert";
+import { useAddInventoryWithDuplicateCheck } from "@/hooks/useAddInventoryWithDuplicateCheck";
 
 interface ShopNowButtonProps {
   listId: string;
@@ -28,7 +28,7 @@ export default function ShopNowButton({ listId, currentStatus = 'regular',
   const productIds = useShoppingListProductIds(listId);
   const updateStatusInListsStore = useUpdateShoppingListStatus();
   const updateStatusInListStore = useUpdateListStatus(listId);
-  const addInventoryItems = useAddInventoryItemsCallback();
+  const { checkForDuplicates, addItems, addItemsAnyway } = useAddInventoryWithDuplicateCheck();
 
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
   const [customAlertTitle, setCustomAlertTitle] = useState('');
@@ -157,88 +157,142 @@ export default function ShopNowButton({ listId, currentStatus = 'regular',
   };
 
   const handleCompleteShopping = async () => {
-    showCustomAlert(
-      "Complete Shopping",
-      `This will:\n• Add ${productIds.length} items to your inventory\n• Move this list to Purchase History\n\nContinue?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Complete",
-          style: "default",
-          onPress: async () => {
-            console.log("🛍️ Completing shopping for list:", listId);
-            console.log("📦 Products to add:", productsData.length);
+    // Check for duplicates first
+    const duplicates = checkForDuplicates(productsData);
 
-            try {
-              // Add all products to inventory
-              addInventoryItems(productsData, listId, user?.id || 'unknown');
-              console.log("✅ Successfully added items to inventory");
+    if (duplicates.length > 0) {
+      // Show duplicate warning with choice
+      const duplicateList = duplicates
+        .map(d => `• ${d.newItem.name} (already have ${d.existingItem.quantity} ${d.existingItem.units})`)
+        .join('\n');
 
-              // Track purchases for low stock monitoring
-              console.log("📊 Tracking purchases for low stock alerts...");
-              let trackedCount = 0;
-
-              for (const product of productsData) {
-                if (product.databaseProductId && product.databaseProductId > 0) {
-                  try {
-                    const tracked = await trackPurchase(product.databaseProductId, product.name);
-                    if (tracked) {
-                      trackedCount++;
-                    }
-                  } catch (error) {
-                    console.error(`❌ Failed to track purchase for ${product.name}:`, error);
-                  }
-                }
-              }
-
-              console.log(`✅ Tracked ${trackedCount}/${productsData.length} purchases for low stock monitoring`);
-
-              // FIX: Update ONLY parent store, let sync handle individual store
-              updateStatusInListsStore(listId, 'completed');
-
-              if (process.env.EXPO_OS === "ios") {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              }
-
-              showCustomAlert(
-                "Shopping Completed!",
-                `✅ Added ${productIds.length} items to your inventory\n✅ List moved to Purchase History\n📊 Tracking ${trackedCount} items for low stock alerts`,
-                [
-                  {
-                    text: "View Inventory",
-                    onPress: () => router.push("/(index)/(tabs)/inventory"),
-                  },
-                  {
-                    text: "View History",
-                    onPress: () => {
-                      router.push({
-                        pathname: "/(index)/(tabs)/shopping-lists",
-                        params: { tab: "history" },
-                      });
-                    },
-                  },
-                  {
-                    text: "OK",
-                    style: "cancel",
-                    onPress: () => {
-                      router.back();
-                    },
-                  },
-                ]
-              );
-
-              console.log("✅ Shopping completed for list:", listId);
-            } catch (error) {
-              console.error("❌ Error completing shopping:", error);
-              showCustomAlert('Error', 'Failed to complete shopping. Please try again.');
-            }
+      showCustomAlert(
+        "Duplicate Items Found",
+        `The following items already exist in your inventory:\n\n${duplicateList}\n\nWhat would you like to do?`,
+        [
+          {
+            text: "Discard Duplicates",
+            style: "default",
+            onPress: () => {
+              // Add only non-duplicates
+              console.log(`🗑️ Discarding ${duplicates.length} duplicate items`);
+              completeShoppingWithItems(false);
+            },
           },
-        },
-      ]
-    );
+          {
+            text: "Add Anyway",
+            style: "default",
+            onPress: () => {
+              // Add all items including duplicates
+              console.log(`✅ Adding all items including ${duplicates.length} duplicates`);
+              completeShoppingWithItems(true);
+            },
+          },
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+        ]
+      );
+    } else {
+      // No duplicates, proceed normally
+      showCustomAlert(
+        "Complete Shopping",
+        `This will:\n• Add ${productIds.length} items to your inventory\n• Move this list to Purchase History\n\nContinue?`,
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Complete",
+            style: "default",
+            onPress: () => completeShoppingWithItems(true),
+          },
+        ]
+      );
+    }
+  };
+
+  const completeShoppingWithItems = async (addDuplicates: boolean) => {
+    console.log("🛍️ Completing shopping for list:", listId);
+    console.log("📦 Products to add:", productsData.length);
+
+    try {
+      // Add products to inventory based on user choice
+      let addedIds: string[];
+      if (addDuplicates) {
+        addedIds = addItemsAnyway(productsData, listId, user?.id || 'unknown');
+      } else {
+        addedIds = addItems(productsData, listId, user?.id || 'unknown');
+      }
+
+      const addedCount = addedIds.length;
+      console.log(`✅ Successfully added ${addedCount} items to inventory`);
+
+      // Track purchases for low stock monitoring
+      console.log("📊 Tracking purchases for low stock alerts...");
+      let trackedCount = 0;
+
+      for (const product of productsData) {
+        if (product.databaseProductId && product.databaseProductId > 0) {
+          try {
+            const tracked = await trackPurchase(product.databaseProductId, product.name);
+            if (tracked) {
+              trackedCount++;
+            }
+          } catch (error) {
+            console.error(`❌ Failed to track purchase for ${product.name}:`, error);
+          }
+        }
+      }
+
+      console.log(`✅ Tracked ${trackedCount}/${productsData.length} purchases for low stock monitoring`);
+
+      // FIX: Update ONLY parent store, let sync handle individual store
+      updateStatusInListsStore(listId, 'completed');
+
+      if (process.env.EXPO_OS === "ios") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+
+      const skippedCount = productsData.length - addedCount;
+      const successMessage = skippedCount > 0
+        ? `✅ Added ${addedCount} items to your inventory\n⚠️ Skipped ${skippedCount} duplicate item(s)\n✅ List moved to Purchase History\n📊 Tracking ${trackedCount} items for low stock alerts`
+        : `✅ Added ${addedCount} items to your inventory\n✅ List moved to Purchase History\n📊 Tracking ${trackedCount} items for low stock alerts`;
+
+      showCustomAlert(
+        "Shopping Completed!",
+        successMessage,
+        [
+          {
+            text: "View Inventory",
+            onPress: () => router.push("/(index)/(tabs)/inventory"),
+          },
+          {
+            text: "View History",
+            onPress: () => {
+              router.push({
+                pathname: "/(index)/(tabs)/shopping-lists",
+                params: { tab: "history" },
+              });
+            },
+          },
+          {
+            text: "OK",
+            style: "cancel",
+            onPress: () => {
+              router.back();
+            },
+          },
+        ]
+      );
+
+      console.log("✅ Shopping completed for list:", listId);
+    } catch (error) {
+      console.error("❌ Error completing shopping:", error);
+      showCustomAlert('Error', 'Failed to complete shopping. Please try again.');
+    }
   };
 
 
