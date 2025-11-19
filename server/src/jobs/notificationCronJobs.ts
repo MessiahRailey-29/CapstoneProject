@@ -156,7 +156,7 @@ export async function checkShoppingReminders() {
  */
 export function startShoppingReminderCron() {
   // Run every 5 minutes for better responsiveness (change to '0 * * * *' for hourly in production)
-  cron.schedule('*/5 * * * *', checkShoppingReminders);
+  cron.schedule('* * * * *', checkShoppingReminders);
 
   console.log('🚀 Shopping reminder cron job started (runs every 5 minutes)');
 }

@@ -457,7 +457,7 @@ export default function InventoryScreen() {
           <View style={styles.searchContainer}>
             <TextInput
               ref={searchInputRef}
-              placeholder="Search all items..."
+              placeholder="Search items..."
               value={searchQuery}
               onChangeText={setSearchQuery}
               containerStyle={styles.searchInput}
@@ -505,7 +505,7 @@ export default function InventoryScreen() {
           <View style={styles.searchContainer}>
             <TextInput
               ref={searchInputRef}
-              placeholder="Search all items..."
+              placeholder="Search items..."
               value={searchQuery}
               onChangeText={setSearchQuery}
               containerStyle={styles.searchInput}
