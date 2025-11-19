@@ -20,8 +20,6 @@ import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotific
 import { useListNotifications } from "@/utils/notifyCollaborators";
 import { Colors } from "@/constants/Colors";
 import FloatingActionFab from "@/components/ShoppingListFaB";
-import { registerStoreForList, unregisterStoreForList } from '@/stores/getStoreForList';
-import CustomAlert from "@/components/ui/CustomAlert";
 
 interface ProductSection {
   title: string;
@@ -38,59 +36,48 @@ export default function ListScreen() {
   renderCount.current++;
   console.log(`🔄 RENDER #${renderCount.current} - ListScreen for ${listId}`);
 
-  const handleFabAction = (key) => {
-    switch (key) {
+  const handleFabAction = (key)=>{
+    switch(key){
       case 'edit':
         router.push({
           pathname: "/list/[listId]/edit",
           params: { listId },
         });
-        break;
+      break;
       case 'duplicates':
         router.push({
           pathname: "/list/[listId]/duplicate-check",
           params: { listId },
         });
-        break;
+      break;
       case 'share':
         router.push({
           pathname: "/list/[listId]/share",
           params: { listId },
         });
-        break;
+      break;
       case 'add':
         router.push({
           pathname: "/list/[listId]/product/new",
           params: { listId },
         });
-        break;
+      break;
     }
 }
   //colors and schemes
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
+  
 
+  // 📍 NEW: Get pending product params from URL
   const addProductId = params.addProductId ? Number(params.addProductId) : null;
   const addProductName = params.addProductName as string | undefined;
   const addProductPrice = params.addProductPrice ? Number(params.addProductPrice) : null;
   const addProductStore = params.addProductStore as string | undefined;
-
+  
+  // Track if we've already added the product (prevent double-adding)
   const hasAddedProduct = useRef(false);
-
-  const [customAlertVisible, setCustomAlertVisible] = useState(false);
-  const [customAlertTitle, setCustomAlertTitle] = useState('');
-  const [customAlertMessage, setCustomAlertMessage] = useState('');
-  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
-
-  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
-    setCustomAlertTitle(title);
-    setCustomAlertMessage(message);
-    setCustomAlertButtons(
-      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
-    );
-    setCustomAlertVisible(true);
-  };
 
   // Raw values from valuesCopy (always available)
   const listData = useShoppingListData(listId);
@@ -103,11 +90,7 @@ export default function ListScreen() {
   const productIds = useShoppingListProductIds(listId);
   const store = useShoppingListStore(listId);
 
-  useEffect(() => {
-    registerStoreForList(listId, store);
-    return () => unregisterStoreForList(listId);
-  }, [listId, store]);
-
+  // 🐛 DEBUG: Log when productIds changes
   const prevProductIdsRef = useRef(productIds);
   useEffect(() => {
     if (prevProductIdsRef.current.length !== productIds.length) {
@@ -137,9 +120,7 @@ export default function ListScreen() {
   const displayEmoji = emoji || listData.emoji || "❓";
   const displayDescription = description || listData.description || "";
   const budget = hydratedBudget ?? listData.budget ?? 0;
-
-  // Use listData.status as the source of truth
-  const status = (listData.status || 'regular') as 'regular' | 'ongoing' | 'completed';
+  const status = listData.status || 'regular';
   const isHistory = status === 'completed';
 
   // ⭐ NEW: Group products by category
@@ -153,7 +134,7 @@ export default function ListScreen() {
     productIds.forEach(productId => {
       const product = store.getRow("products", productId);
       const category = (product?.category as string) || 'Uncategorized';
-
+      
       if (!categoryMap.has(category)) {
         categoryMap.set(category, []);
       }
@@ -240,8 +221,8 @@ export default function ListScreen() {
 
   // Render product item
   const renderItem = ({ item: productId }: { item: string }) => (
-    <ShoppingListProductItem
-      listId={listId}
+    <ShoppingListProductItem 
+      listId={listId} 
       productId={productId}
       status={status}
     />
@@ -251,7 +232,7 @@ export default function ListScreen() {
     <>
       <Stack.Screen
         options={{
-          headerStyle: { backgroundColor: colors.mainBackground },
+          headerStyle: {backgroundColor: colors.mainBackground},
           headerTitle: displayEmoji + " " + displayName,
           headerRight: () => (
             <View
@@ -264,7 +245,7 @@ export default function ListScreen() {
           ),
         }}
       />
-
+      
       <View style={{
         backgroundColor: colors.mainBackground,
         flex: 1
@@ -276,7 +257,7 @@ export default function ListScreen() {
           keyExtractor={(item) => item}
           contentContainerStyle={{
             paddingTop: 12,
-            paddingBottom: 100,
+            paddingBottom: 100,         
             backgroundColor: colors.mainBackground,
           }}
           contentInsetAdjustmentBehavior="automatic"
@@ -309,16 +290,8 @@ export default function ListScreen() {
             </BodyScrollView>
           )}
         />
-
       </View>
-      <FloatingActionFab position={{ bottom: 70, right: 24 }} onAction={handleFabAction} />
-      <CustomAlert
-        visible={customAlertVisible}
-        title={customAlertTitle}
-        message={customAlertMessage}
-        buttons={customAlertButtons}
-        onClose={() => setCustomAlertVisible(false)}
-      />
+      <FloatingActionFab position={{ bottom: 70, right: 24 }} onAction={handleFabAction}/>
     </>
   );
 }

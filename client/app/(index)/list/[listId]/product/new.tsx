@@ -15,7 +15,6 @@ import { useEnhancedDuplicateDetection } from '@/hooks/useEnhancedDuplicateDetec
 import DuplicateActionModal from '@/components/DuplicateActionModal';
 import { ProductSummary } from '@/services/DuplicateDetectionService';
 import { useShoppingListStore, useShoppingListProductIds } from '@/stores/ShoppingListStore';
-import CustomAlert from "@/components/ui/CustomAlert";
 
 interface SelectedStoreInfo {
   store: string;
@@ -53,24 +52,10 @@ export default function NewItemScreen() {
   const { products, loading: productsLoading, searchProducts, hasProducts, isApiConfigured } = useProducts();
   const { prices, loading: pricesLoading } = useProductPrices(selectedProduct?.id || null);
 
-  const [customAlertVisible, setCustomAlertVisible] = useState(false);
-  const [customAlertTitle, setCustomAlertTitle] = useState('');
-  const [customAlertMessage, setCustomAlertMessage] = useState('');
-  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
-
-  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
-    setCustomAlertTitle(title);
-    setCustomAlertMessage(message);
-    setCustomAlertButtons(
-      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
-    );
-    setCustomAlertVisible(true);
-  };
-
   // Enhanced duplicate detection setup
   const store = useShoppingListStore(listId);
   const productIds = useShoppingListProductIds(listId) || [];
-
+  
   // Get current list products for duplicate checking
   const currentListProducts: ProductSummary[] = useMemo(() => {
     return productIds.map(productId => {
@@ -80,7 +65,7 @@ export default function NewItemScreen() {
       const productStore = store?.getCell('products', productId, 'selectedStore') as string || '';
       const isPurchased = store?.getCell('products', productId, 'isPurchased') as boolean || false;
       const createdAt = store?.getCell('products', productId, 'createdAt') as string || '';
-
+      
       return {
         name: productName,
         quantity: productQuantity,
@@ -180,13 +165,13 @@ export default function NewItemScreen() {
             const newQuantity = existingProduct.quantity + product.quantity;
             store?.setCell('products', existingProduct.productId, 'quantity', newQuantity);
             console.log(`✅ Merged: ${existingProduct.quantity} + ${product.quantity} = ${newQuantity}`);
-
+            
             // If user merged different stores, update the store to show both or the new one
             if (product.store && existingProduct.selectedStore !== product.store) {
               // Optionally update to show merged stores or keep existing
               // store?.setCell('products', existingProduct.productId, 'selectedStore', product.store);
             }
-
+            
             mergedCount++;
             continue;
           } else {
@@ -197,7 +182,7 @@ export default function NewItemScreen() {
 
         // For 'add-anyway' or when merge fails, add as new product
         console.log(`➕ Adding product as new: "${product.name}" from store: "${product.store || 'none'}"`);
-
+        
         // When user explicitly chooses to add anyway, we should bypass duplicate detection
         // Option 1: Try the normal add first
         let productId = await addShoppingListProduct(
@@ -217,7 +202,7 @@ export default function NewItemScreen() {
         if (productId === null && action === 'add-anyway' && store) {
           console.log('🔧 Bypassing duplicate check - adding directly to store');
           const newProductId = `product_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
+          
           store.setRow('products', newProductId, {
             name: product.name,
             quantity: product.quantity,
@@ -229,7 +214,7 @@ export default function NewItemScreen() {
             createdAt: new Date().toISOString(),
             units: '', // Add default units if needed
           });
-
+          
           productId = newProductId;
           console.log(`✅ Product added directly with ID: ${productId}`);
         }
@@ -261,7 +246,7 @@ export default function NewItemScreen() {
       }
 
       if (messages.length > 0) {
-        showCustomAlert(
+        Alert.alert(
           "Products Processed",
           messages.join('\n'),
           [{ text: "OK" }]
@@ -275,11 +260,11 @@ export default function NewItemScreen() {
 
   const handleCancel = useCallback(() => {
     const hasUnsavedData = name.trim() !== "" || queuedProducts.length > 0;
-
+    
     if (hasUnsavedData) {
-      showCustomAlert(
+      Alert.alert(
         "Unsaved Changes",
-        queuedProducts.length > 0
+        queuedProducts.length > 0 
           ? `You have ${queuedProducts.length} product${queuedProducts.length !== 1 ? 's' : ''} in queue. What would you like to do?`
           : "You have unsaved product details. What would you like to do?",
         [
@@ -333,7 +318,7 @@ export default function NewItemScreen() {
   }, []);
 
   const handleUpdateProduct = useCallback((productId: string, updates: Partial<QueuedProduct>) => {
-    setQueuedProducts(prev =>
+    setQueuedProducts(prev => 
       prev.map(p => p.id === productId ? { ...p, ...updates } : p)
     );
   }, []);
@@ -384,12 +369,12 @@ export default function NewItemScreen() {
   const styles = createStyles(colors);
 
   return (
-    <View style={{ backgroundColor: colors.mainBackground, flex: 1 }}>
+    <View style={{backgroundColor: colors.mainBackground, flex: 1}}>
       <Stack.Screen
         options={{
           headerLargeTitle: false,
-          headerTitle: queuedProducts.length > 0
-            ? `Add product (${queuedProducts.length} queued)`
+          headerTitle: queuedProducts.length > 0 
+            ? `Add product (${queuedProducts.length} queued)` 
             : "Add product",
           headerTitleStyle: {
             fontSize: queuedProducts.length > 0 ? 17 : 20,
@@ -414,17 +399,17 @@ export default function NewItemScreen() {
           ),
         }}
       />
-
+      
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null}
-        keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 60 : 0}>
-        <BodyScrollView
-          contentContainerStyle={styles.container}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentInsetAdjustmentBehavior="automatic"
-        >
+          style={{flex: 1}}
+          behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null }
+          keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 60 : 0}>
+      <BodyScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior="automatic"
+      >
           {queuedProducts.length > 0 && (
             <View style={styles.queuedSection}>
               <View style={styles.queuedHeader}>
@@ -473,7 +458,7 @@ export default function NewItemScreen() {
                 </Pressable>
               )}
             </View>
-
+          
             {selectedStoreInfo && (
               <View style={styles.selectedStoreBadge}>
                 <IconSymbol name="storefront" color="#007AFF" size={16} />
@@ -570,7 +555,7 @@ export default function NewItemScreen() {
                   value={quantityInput}
                   onChangeText={(text) => {
                     setQuantityInput(text);
-
+                    
                     if (text === '') {
                       return;
                     }
@@ -659,13 +644,6 @@ export default function NewItemScreen() {
         duplicateInfo={duplicateInfo}
         onAction={handleDuplicateAction}
       />
-      <CustomAlert
-        visible={customAlertVisible}
-        title={customAlertTitle}
-        message={customAlertMessage}
-        buttons={customAlertButtons}
-        onClose={() => setCustomAlertVisible(false)}
-      />
     </View>
   );
 }
@@ -717,10 +695,10 @@ function QueuedProductCard({
     setEditSelectedProduct(selectedProd);
     setShowEditSuggestions(false);
     setShowEditStoreSelection(true);
-    onUpdate({
-      name: selectedProd.name,
+    onUpdate({ 
+      name: selectedProd.name, 
       databaseProductId: selectedProd.id,
-      category: selectedProd.category
+      category: selectedProd.category 
     });
   };
 
@@ -731,9 +709,9 @@ function QueuedProductCard({
       priceId: price.id
     });
     setShowEditStoreSelection(false);
-    onUpdate({
-      store: price.store,
-      price: price.price
+    onUpdate({ 
+      store: price.store, 
+      price: price.price 
     });
   };
 

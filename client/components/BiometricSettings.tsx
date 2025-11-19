@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, StyleSheet, Alert, Switch } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { BodyScrollView } from '@/components/ui/BodyScrollView';
@@ -12,7 +12,6 @@ import {
   authenticateWithBiometrics,
 } from '@/utils/biometricAuth';
 import { useUser } from '@clerk/clerk-expo';
-import CustomAlert from './ui/CustomAlert';
 
 export default function BiometricSettingsScreen() {
   const { user } = useUser();
@@ -20,20 +19,6 @@ export default function BiometricSettingsScreen() {
   const [biometricType, setBiometricType] = React.useState<string>('none');
   const [biometricEnabled, setBiometricEnabled] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
-
-  const [customAlertVisible, setCustomAlertVisible] = useState(false);
-  const [customAlertTitle, setCustomAlertTitle] = useState('');
-  const [customAlertMessage, setCustomAlertMessage] = useState('');
-  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
-
-  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
-    setCustomAlertTitle(title);
-    setCustomAlertMessage(message);
-    setCustomAlertButtons(
-      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
-    );
-    setCustomAlertVisible(true);
-  };
 
   React.useEffect(() => {
     checkBiometrics();
@@ -51,7 +36,7 @@ export default function BiometricSettingsScreen() {
   const handleToggleBiometric = async (value: boolean) => {
     if (value) {
       // Enable biometric login
-      showCustomAlert(
+      Alert.prompt(
         'Enable Biometric Login',
         'Enter your password to enable biometric login',
         [
@@ -63,7 +48,7 @@ export default function BiometricSettingsScreen() {
             text: 'Enable',
             onPress: async (password) => {
               if (!password) {
-                showCustomAlert('Error', 'Password is required');
+                Alert.alert('Error', 'Password is required');
                 return;
               }
 
@@ -76,20 +61,21 @@ export default function BiometricSettingsScreen() {
 
               if (result.success) {
                 setBiometricEnabled(true);
-                showCustomAlert(
+                Alert.alert(
                   'Success',
                   `${getBiometricTypeName(biometricType)} login enabled!`
                 );
               } else {
-                showCustomAlert('Error', result.error || 'Could not enable biometric login');
+                Alert.alert('Error', result.error || 'Could not enable biometric login');
               }
             },
           },
         ],
+        'secure-text'
       );
     } else {
       // Disable biometric login
-      showCustomAlert(
+      Alert.alert(
         'Disable Biometric Login',
         'Are you sure you want to disable biometric login?',
         [
@@ -109,9 +95,9 @@ export default function BiometricSettingsScreen() {
               if (authResult.success) {
                 await disableBiometricLogin();
                 setBiometricEnabled(false);
-                showCustomAlert('Success', 'Biometric login disabled');
+                Alert.alert('Success', 'Biometric login disabled');
               } else {
-                showCustomAlert('Error', 'Authentication required to disable biometric login');
+                Alert.alert('Error', 'Authentication required to disable biometric login');
               }
             },
           },
@@ -123,9 +109,9 @@ export default function BiometricSettingsScreen() {
   const testBiometric = async () => {
     const result = await authenticateWithBiometrics('Test biometric authentication');
     if (result.success) {
-      showCustomAlert('Success', 'Authentication successful!');
+      Alert.alert('Success', 'Authentication successful!');
     } else {
-      showCustomAlert('Failed', result.error || 'Authentication failed');
+      Alert.alert('Failed', result.error || 'Authentication failed');
     }
   };
 
@@ -234,13 +220,6 @@ export default function BiometricSettingsScreen() {
           </ThemedText>
         </View>
       )}
-      <CustomAlert
-        visible={customAlertVisible}
-        title={customAlertTitle}
-        message={customAlertMessage}
-        buttons={customAlertButtons}
-        onClose={() => setCustomAlertVisible(false)}
-      />
     </BodyScrollView>
   );
 }

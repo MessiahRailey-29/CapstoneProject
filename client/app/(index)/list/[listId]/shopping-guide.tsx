@@ -1,6 +1,6 @@
 // app/(index)/list/[listId]/shopping-guide.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, ScrollView, Pressable, Text, Alert, useColorScheme } from 'react-native';
+import { StyleSheet, View, ScrollView, Pressable, Text, Alert } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
@@ -21,8 +21,6 @@ import {
 } from '@/constants/storeLocations';
 import { useAddInventoryItemsCallback } from '@/stores/InventoryStore';
 import { useUser } from '@clerk/clerk-expo';
-import CustomAlert from '@/components/ui/CustomAlert';
-import { Colors } from '@/constants/Colors';
 
 // Extended type with distance
 interface StoreWithDistance extends StoreLocation {
@@ -45,10 +43,6 @@ function StoreCard({
   isSelected: boolean;
 }) {
   const { store, products, totalPrice, productCount } = storeData;
-    // color scheme + styles
-    const scheme = useColorScheme();
-    const colors = Colors[scheme ?? "light"];
-    const styles = createStyles(colors);
 
   return (
     <Pressable
@@ -61,7 +55,7 @@ function StoreCard({
     >
       {/* Stop Badge */}
       <View style={[styles.stopBadge, isSelected && styles.stopBadgeSelected]}>
-        <Text style={[styles.stopText, isSelected && styles.stopTextSelected]}>Stop {index + 1}</Text>
+        <Text style={styles.stopText}>Stop {index + 1}</Text>
       </View>
 
       {/* Store Header */}
@@ -146,20 +140,6 @@ export default function ShoppingGuideScreen() {
   
   const store = useShoppingListStore(listId);
 
-      const [customAlertVisible, setCustomAlertVisible] = useState(false);
-      const [customAlertTitle, setCustomAlertTitle] = useState('');
-      const [customAlertMessage, setCustomAlertMessage] = useState('');
-      const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
-  
-      const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
-          setCustomAlertTitle(title);
-          setCustomAlertMessage(message);
-          setCustomAlertButtons(
-              buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
-          );
-          setCustomAlertVisible(true);
-      };
-
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [storeGroups, setStoreGroups] = useState<ProductsByStoreWithDistance[]>([]);
@@ -196,7 +176,7 @@ export default function ShoppingGuideScreen() {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          showCustomAlert('Permission Denied', 'Location permission is needed to show nearby stores on the map');
+          Alert.alert('Permission Denied', 'Location permission is needed to show nearby stores on the map');
           setLoading(false);
           return;
         }
@@ -277,11 +257,6 @@ export default function ShoppingGuideScreen() {
   const totalCost = storeGroups.reduce((sum, group) => sum + group.totalPrice, 0);
   const totalItems = productsData.length;
   const totalStores = storeGroups.length;
-
-    // color scheme + styles
-    const scheme = useColorScheme();
-    const colors = Colors[scheme ?? "light"];
-    const styles = createStyles(colors);
 
   return (
     <>
@@ -378,22 +353,14 @@ export default function ShoppingGuideScreen() {
           )}
         </ScrollView>
       </View>
-      <CustomAlert
-                visible={customAlertVisible}
-                title={customAlertTitle}
-                message={customAlertMessage}
-                buttons={customAlertButtons}
-                onClose={() => setCustomAlertVisible(false)}
-            />
     </>
   );
 }
 
-function createStyles(colors: typeof Colors.light) {
-  return StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.mainBackground,
+    backgroundColor: '#f5f5f7',
   },
   mapContainer: {
     height: 280,
@@ -408,7 +375,7 @@ function createStyles(colors: typeof Colors.light) {
     zIndex: 10,
   },
   mapOverlayCard: {
-    backgroundColor: colors.background,
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
     padding: 14,
     borderRadius: 12,
     shadowColor: '#000',
@@ -447,11 +414,11 @@ function createStyles(colors: typeof Colors.light) {
     color: '#34C759',
   },
   summaryHeader: {
-    backgroundColor: colors.background,
+    backgroundColor: '#fff',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.text,
+    borderBottomColor: '#E5E5EA',
   },
   summaryCard: {
     flexDirection: 'row',
@@ -469,13 +436,13 @@ function createStyles(colors: typeof Colors.light) {
   },
   summaryItemLabel: {
     fontSize: 11,
-    color: colors.ghost,
+    color: '#666',
     fontWeight: '500',
   },
   summaryItemValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.text,
+    color: '#000',
   },
   summaryDivider: {
     width: 1,
@@ -504,7 +471,7 @@ function createStyles(colors: typeof Colors.light) {
   },
   emptyText: {
     textAlign: 'center',
-    color: colors.ghost,
+    color: '#666',
   },
   instructionBanner: {
     flexDirection: 'row',
@@ -524,7 +491,7 @@ function createStyles(colors: typeof Colors.light) {
     fontWeight: '600',
   },
   storeCard: {
-    backgroundColor: colors.background,
+    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -560,13 +527,8 @@ function createStyles(colors: typeof Colors.light) {
     backgroundColor: '#007AFF',
     borderColor: '#007AFF',
   },
-  stopTextSelected: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
   stopText: {
-    color: '#000',
+    color: '#666',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -590,7 +552,6 @@ function createStyles(colors: typeof Colors.light) {
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 2,
-    color: colors.text
   },
   storeMetaRow: {
     flexDirection: 'row',
@@ -599,7 +560,7 @@ function createStyles(colors: typeof Colors.light) {
   },
   storeAddress: {
     fontSize: 13,
-    color: colors.ghost,
+    color: '#666',
     flex: 1,
   },
   storeHours: {
@@ -678,11 +639,11 @@ function createStyles(colors: typeof Colors.light) {
   productName: {
     fontSize: 14,
     flex: 1,
-    color: colors.text,
+    color: '#000',
   },
   productPrice: {
     fontSize: 13,
-    color: '#34C759',
+    color: '#666',
     fontWeight: '600',
   },
   moreProducts: {
@@ -713,4 +674,3 @@ function createStyles(colors: typeof Colors.light) {
     marginLeft: 4,
   },
 });
-}
