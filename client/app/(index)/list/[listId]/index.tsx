@@ -19,8 +19,6 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotifications";
 import { useListNotifications } from "@/utils/notifyCollaborators";
 import { Colors } from "@/constants/Colors";
-import { useRecipeSuggestions } from "@/hooks/useRecipeSuggestions";
-import { RecipeSection } from "@/components/RecipeSection";
 import FloatingActionFab from "@/components/ShoppingListFaB";
 import { registerStoreForList, unregisterStoreForList } from '@/stores/getStoreForList';
 import CustomAlert from "@/components/ui/CustomAlert";
@@ -35,9 +33,10 @@ export default function ListScreen() {
   const params = useLocalSearchParams();
   const listId = params.listId as string;
 
+  // 🐛 DEBUG: Track render count
   const renderCount = useRef(0);
   renderCount.current++;
-  console.log(`📄 RENDER #${renderCount.current} - ListScreen for ${listId}`);
+  console.log(`🔄 RENDER #${renderCount.current} - ListScreen for ${listId}`);
 
   const handleFabAction = (key) => {
     switch (key) {
@@ -66,8 +65,8 @@ export default function ListScreen() {
         });
         break;
     }
-  }
-
+}
+  //colors and schemes
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
@@ -117,33 +116,15 @@ export default function ListScreen() {
     }
   }, [productIds]);
 
-  const { recipes, loading: recipesLoading, fetchSuggestions } = useRecipeSuggestions();
-  const [recipeSuggestionsPrompted, setRecipeSuggestionsPrompted] = useShoppingListValue(
-    listId,
-    "recipeSuggestionsPrompted"
-  );
-  const [recipeSuggestionsEnabled, setRecipeSuggestionsEnabled] = useShoppingListValue(
-    listId,
-    "recipeSuggestionsEnabled"
-  );
 
-  const prevRecipePrompedRef = useRef(recipeSuggestionsPrompted);
-  const prevRecipeEnabledRef = useRef(recipeSuggestionsEnabled);
-  useEffect(() => {
-    if (prevRecipePrompedRef.current !== recipeSuggestionsPrompted) {
-      console.log(`🍳 recipeSuggestionsPrompted CHANGED: ${prevRecipePrompedRef.current} → ${recipeSuggestionsPrompted}`);
-      prevRecipePrompedRef.current = recipeSuggestionsPrompted;
-    }
-    if (prevRecipeEnabledRef.current !== recipeSuggestionsEnabled) {
-      console.log(`🍳 recipeSuggestionsEnabled CHANGED: ${prevRecipeEnabledRef.current} → ${recipeSuggestionsEnabled}`);
-      prevRecipeEnabledRef.current = recipeSuggestionsEnabled;
-    }
-  }, [recipeSuggestionsPrompted, recipeSuggestionsEnabled]);
-
-  const hasShownRecipePrompt = useRef(false);
+  // ✅ CRITICAL FIX: Check if data is still loading
+  // If BOTH listData and hydrated values are empty, we're still loading
   const isLoadingData = !listData.name && !name;
+  
+  // 📍 Get the add product function - safe to call here since we're in a component
   const addProduct = useAddProductWithNotifications(listId);
 
+  // ✅ Initialize notification system for this list
   const listNotifications = useListNotifications({
     listId: listId,
     listName: listData?.name || "",
@@ -151,6 +132,7 @@ export default function ListScreen() {
     collaborators: (listData as any)?.collaborators || [],
   });
 
+  // Safe fallbacks - prioritize hydrated values, then listData
   const displayName = name || listData.name || "";
   const displayEmoji = emoji || listData.emoji || "❓";
   const displayDescription = description || listData.description || "";
@@ -160,25 +142,7 @@ export default function ListScreen() {
   const status = (listData.status || 'regular') as 'regular' | 'ongoing' | 'completed';
   const isHistory = status === 'completed';
 
-  // 🔍 DEBUG: Track status changes
-  const prevStatusRef = useRef<string>('regular');
-  useEffect(() => {
-    if (prevStatusRef.current !== status) {
-      console.log('🚨 STATUS CHANGED IN LIST SCREEN:', {
-        from: prevStatusRef.current,
-        to: status,
-        timestamp: new Date().toISOString()
-      });
-      prevStatusRef.current = status;
-    }
-  }, [status]);
-
-  console.log("📊 Status Check:", {
-    listDataStatus: listData?.status,
-    finalStatus: status,
-    renderCount: renderCount.current
-  });
-
+  // ⭐ NEW: Group products by category
   const categorizedProducts = useMemo(() => {
     if (!store || !productIds || productIds.length === 0) {
       return [];
@@ -210,173 +174,7 @@ export default function ListScreen() {
     return sections;
   }, [store, productIds]);
 
-  const handleFetchRecipes = async () => {
-    console.log('🍳 handleFetchRecipes called');
-
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-
-    if (!recipeSuggestionsEnabled) {
-      console.log('🍳 Enabling recipe suggestions');
-      setRecipeSuggestionsEnabled(true);
-    }
-
-    const productNames = productIds.map(id => {
-      const product = store?.getRow("products", id);
-      return product?.name as string;
-    }).filter(Boolean);
-
-    console.log('🍳 Fetching recipes for:', displayName);
-    console.log('📦 With products:', productNames);
-
-    const results = await fetchSuggestions(displayName, productNames);
-
-    console.log('✅ Received recipes:', results.length);
-
-    if (results.length === 0) {
-      showCustomAlert(
-        'No Recipes Found',
-        `Sorry, we couldn't find any recipes for "${displayName}".`,
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
-  const effectRunCount = useRef(0);
-
-  useEffect(() => {
-    effectRunCount.current++;
-    console.log(`🔥 RECIPE PROMPT EFFECT RUN #${effectRunCount.current}`);
-    console.log('📊 Effect State:', {
-      hasShownRecipePrompt: hasShownRecipePrompt.current,
-      recipeSuggestionsPrompted,
-      displayName,
-      status,
-      productCount: productIds.length,
-      isLoadingData,
-    });
-
-    if (hasShownRecipePrompt.current) {
-      console.log('⏭️ Already shown, skipping');
-      return;
-    }
-
-    if (recipeSuggestionsPrompted) {
-      console.log('⏭️ Already prompted before, marking and skipping');
-      hasShownRecipePrompt.current = true;
-      return;
-    }
-
-    const shouldShow = displayName && status === 'regular' && productIds.length > 0 && !isLoadingData;
-
-    if (!shouldShow) {
-      console.log('⏭️ Conditions not met');
-      return;
-    }
-
-    console.log('🚨 WOULD SHOW PROMPT HERE - but disabled for debugging');
-    hasShownRecipePrompt.current = true;
-
-    const timer = setTimeout(() => {
-      showCustomAlert(
-        '🍳 Recipe Suggestions',
-        `Would you like recipe suggestions for "${displayName}"?`,
-        [
-          {
-            text: 'No Thanks',
-            style: 'cancel',
-            onPress: () => {
-              console.log('User declined recipe suggestions');
-              setRecipeSuggestionsPrompted(true);
-              setRecipeSuggestionsEnabled(false);
-            },
-          },
-          {
-            text: 'Yes, Show Me!',
-            onPress: async () => {
-              console.log('User accepted recipe suggestions');
-              setRecipeSuggestionsPrompted(true);
-              setRecipeSuggestionsEnabled(true);
-              await handleFetchRecipes();
-            },
-          },
-        ]
-      );
-    }, 1500);
-
-    return () => clearTimeout(timer);
-
-  }, [displayName, status, isLoadingData, recipeSuggestionsPrompted]);
-
-  console.log("📊 List Screen State:", {
-    renderCount: renderCount.current,
-    effectRunCount: effectRunCount.current,
-    listId,
-    budget,
-    name: displayName,
-    productCount: productIds.length,
-    status,
-    recipeSuggestionsPrompted,
-    recipeSuggestionsEnabled,
-    recipesCount: recipes.length,
-    recipesLoading,
-    hasShownRecipePrompt: hasShownRecipePrompt.current,
-  });
-
-  useEffect(() => {
-    if (
-      !hasAddedProduct.current &&
-      addProduct &&
-      addProductId &&
-      addProductName &&
-      addProductPrice !== null &&
-      addProductStore
-    ) {
-      hasAddedProduct.current = true;
-
-      console.log('🔍 Auto-adding pending product:', {
-        id: addProductId,
-        name: addProductName,
-        price: addProductPrice,
-        store: addProductStore
-      });
-
-      const timer = setTimeout(async () => {
-        try {
-          const productAddedId = await addProduct(
-            addProductName,
-            1,
-            'pc',
-            '',
-            addProductStore,
-            addProductPrice,
-            addProductId,
-            ''
-          );
-
-          if (productAddedId) {
-            console.log('✅ Product auto-added successfully:', productAddedId);
-            showCustomAlert(
-              'Product Added',
-              `${addProductName} has been added to your list!`,
-              [{ text: 'OK' }]
-            );
-          }
-        } catch (error) {
-          console.error('❌ Failed to auto-add product:', error);
-          showCustomAlert(
-            'Error',
-            'Failed to add product to the list.',
-            [{ text: 'OK' }]
-          );
-        }
-      }, 500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [addProduct, addProductId, addProductName, addProductPrice, addProductStore]);
-
+  // ✅ FIX: Use correct route path
   const navigateToNewProduct = () => {
     router.push({
       pathname: "/list/[listId]/product/new",
@@ -384,6 +182,7 @@ export default function ListScreen() {
     });
   };
 
+  // ✅ SHOW LOADING STATE while data is syncing
   if (isLoadingData) {
     return (
       <>
@@ -417,25 +216,16 @@ export default function ListScreen() {
         </ThemedText>
       ) : null}
 
+      {/* Budget Summary */}
       <BudgetSummary listId={listId} budget={budget} />
 
-      {(recipeSuggestionsEnabled || recipes.length > 0) && (
-        <RecipeSection
-          recipes={recipes}
-          loading={recipesLoading}
-          listId={listId}
-          onRefresh={handleFetchRecipes}
-        />
-      )}
 
-      <ShopNowButton
-        listId={listId}
-        currentStatus={status}
-        showCustomAlert={showCustomAlert}
-      />
+      {/* Shop Now Button with status */}
+      <ShopNowButton listId={listId} currentStatus={status} />
     </View>
   );
 
+  // Render category header
   const renderSectionHeader = ({ section }: { section: ProductSection }) => (
     <View style={styles.categoryHeader}>
       <View style={styles.categoryHeaderContent}>
@@ -448,6 +238,7 @@ export default function ListScreen() {
     </View>
   );
 
+  // Render product item
   const renderItem = ({ item: productId }: { item: string }) => (
     <ShoppingListProductItem
       listId={listId}
@@ -469,12 +260,6 @@ export default function ListScreen() {
                 alignItems: "center",
               }}
             >
-              <Pressable
-                onPress={handleFetchRecipes}
-                style={{ padding: 8 }}
-              >
-                <IconSymbol name="book.fill" size={24} color="#007AFF" />
-              </Pressable>
             </View>
           ),
         }}

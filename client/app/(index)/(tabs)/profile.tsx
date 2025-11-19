@@ -25,7 +25,6 @@ export default function ProfileScreen() {
     const [showNameEdit, setShowNameEdit] = React.useState(false);
     const [editedFirstName, setEditedFirstName] = React.useState('');
     const [editedLastName, setEditedLastName] = React.useState('');
-    const [editedPhoneNumber, setEditedPhoneNumber] = React.useState('');
     const [isSavingName, setIsSavingName] = React.useState(false);
 
     const [customAlertVisible, setCustomAlertVisible] = useState(false);
@@ -157,11 +156,9 @@ export default function ProfileScreen() {
     const openNameEdit = () => {
         const metaFirstName = user?.unsafeMetadata?.firstName as string;
         const metaLastName = user?.unsafeMetadata?.lastName as string;
-        const metaPhoneNumber = user?.unsafeMetadata?.phoneNumber as string;
 
         setEditedFirstName(metaFirstName || user?.firstName || '');
         setEditedLastName(metaLastName || user?.lastName || '');
-        setEditedPhoneNumber(metaPhoneNumber || '');
         setShowNameEdit(true);
     };
 
@@ -197,7 +194,6 @@ export default function ProfileScreen() {
                     ...user.unsafeMetadata,
                     firstName: editedFirstName.trim(),
                     lastName: editedLastName.trim(),
-                    phoneNumber: editedPhoneNumber.trim() || null,
                 },
             });
 
@@ -376,11 +372,7 @@ export default function ProfileScreen() {
                         <ThemedText style={styles.userEmail}>
                             {user?.emailAddresses[0]?.emailAddress}
                         </ThemedText>
-                        {user?.unsafeMetadata?.phoneNumber && (
-                            <ThemedText style={styles.userPhone}>
-                                📱 {user.unsafeMetadata.phoneNumber as string}
-                            </ThemedText>
-                        )}
+                        
                         <View style={styles.memberBadge}>
                             <ThemedText style={styles.memberBadgeText}>
                                 🎉 Member since {getMemberSince()}

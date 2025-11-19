@@ -1,22 +1,21 @@
 // components/NotificationCenter.tsx
 import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-// ✅ CHANGED: Use TinyBase hook for real-time updates
-import { useNotificationsFromStore } from '../hooks/useNotificationsFromStore';
+import { useNotifications } from '../hooks/useNotifications';
 
 interface NotificationCenterProps {
   userId: string;
 }
 
 export function NotificationCenter({ userId }: NotificationCenterProps) {
-  // ✅ CHANGED: Now using TinyBase store
   const {
     notifications,
     unreadCount,
+    loading,
     markAsRead,
     deleteNotification,
     markAllAsRead,
-  } = useNotificationsFromStore(userId);
+  } = useNotifications(userId);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -29,8 +28,8 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     }
   };
 
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -47,8 +46,8 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
   const renderNotification = ({ item }: any) => (
     <TouchableOpacity
       style={[styles.notification, !item.isRead && styles.unread]}
-      onPress={() => markAsRead(item.id)}
-      onLongPress={() => deleteNotification(item.id)}
+      onPress={() => markAsRead(item._id)}
+      onLongPress={() => deleteNotification(item._id)}
     >
       <View style={styles.iconContainer}>
         <Text style={styles.icon}>{getNotificationIcon(item.type)}</Text>
@@ -80,7 +79,9 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
         )}
       </View>
 
-      {notifications.length === 0 ? (
+      {loading ? (
+        <Text style={styles.loading}>Loading...</Text>
+      ) : notifications.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>🔔</Text>
           <Text style={styles.emptyText}>No notifications yet</Text>
@@ -89,7 +90,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
         <FlatList
           data={notifications}
           renderItem={renderNotification}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item._id}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -171,6 +172,11 @@ const styles = StyleSheet.create({
   time: {
     fontSize: 12,
     color: '#999',
+  },
+  loading: {
+    textAlign: 'center',
+    padding: 32,
+    color: '#666',
   },
   emptyState: {
     flex: 1,

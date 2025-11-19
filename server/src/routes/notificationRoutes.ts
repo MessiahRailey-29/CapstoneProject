@@ -197,25 +197,13 @@ router.post('/:userId/schedule-reminder', async (req, res) => {
     const { userId } = req.params;
     const { listId, listName, emoji, scheduledDate } = req.body;
 
-    console.log('\n🔔 ========================================');
-    console.log('🔔 SCHEDULE REMINDER REQUEST');
-    console.log('🔔 ========================================');
-    console.log('User ID:', userId);
-    console.log('List ID:', listId);
-    console.log('List Name:', listName);
-    console.log('Scheduled Date:', scheduledDate);
-    console.log('Current Time (Server):', new Date().toISOString());
-    console.log('Current Time (PH):', new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-
     // Delete any existing schedules for this list
-    const deleteResult = await ShoppingSchedule.deleteMany({
+    await ShoppingSchedule.deleteMany({
       userId,
       listId
     });
     
-    if (deleteResult.deletedCount > 0) {
-      console.log(`🗑️ Deleted ${deleteResult.deletedCount} old schedule(s) for list ${listId}`);
-    }
+    console.log(`🗑️ Deleted old schedule(s) for list ${listId}`);
 
     // Create a schedule record
     const schedule = new ShoppingSchedule({
@@ -230,68 +218,21 @@ router.post('/:userId/schedule-reminder', async (req, res) => {
     await schedule.save();
     
     console.log('✅ Created shopping schedule:', {
-      _id: schedule._id,
       userId,
       listId,
-      scheduledDate: schedule.scheduledDate.toISOString()
+      scheduledDate: schedule.scheduledDate,
+      _id: schedule._id
     });
 
-    // ⚡ IMMEDIATELY check if this reminder should be sent NOW
-    console.log('\n⚡ ========================================');
-    console.log('⚡ IMMEDIATE NOTIFICATION CHECK');
-    console.log('⚡ ========================================');
-    console.log('Checking if notification should be sent right now...');
-    
-    const { checkSingleSchedule } = await import('../jobs/notificationCronJobs.js');
-    const wasSentNow = await checkSingleSchedule(schedule);
-
-    if (wasSentNow) {
-      console.log('\n🎉 ========================================');
-      console.log('🎉 NOTIFICATION SENT IMMEDIATELY!');
-      console.log('🎉 ========================================');
-      console.log('✅ The notification was delivered instantly!');
-      console.log('✅ User should see it in their app now!');
-      console.log('✅ No waiting required!');
-      console.log('========================================\n');
-      
-      res.json({ 
-        success: true, 
-        schedule,
-        sentImmediately: true,
-        message: '🎉 Reminder sent immediately! Check your notifications.',
-        deliveryStatus: 'instant'
-      });
-    } else {
-      console.log('\n📅 ========================================');
-      console.log('📅 SCHEDULED FOR LATER');
-      console.log('📅 ========================================');
-      console.log('ℹ️ Notification will be sent at the scheduled time');
-      console.log('ℹ️ Cron job will check every minute');
-      console.log('ℹ️ 2-hour grace period ensures delivery');
-      console.log('========================================\n');
-      
-      res.json({ 
-        success: true, 
-        schedule,
-        sentImmediately: false,
-        message: 'Shopping reminder scheduled successfully',
-        deliveryStatus: 'scheduled'
-      });
-    }
+    res.json({ 
+      success: true, 
+      schedule,
+      message: 'Shopping reminder scheduled successfully'
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error('\n❌ ========================================');
-    console.error('❌ ERROR SCHEDULING REMINDER');
-    console.error('❌ ========================================');
-    console.error('Error:', errorMessage);
-    console.error('Stack:', error);
-    console.error('========================================\n');
-    
-    res.status(500).json({ 
-      success: false, 
-      error: errorMessage,
-      deliveryStatus: 'failed'
-    });
+    console.error('❌ Error creating schedule:', errorMessage);
+    res.status(500).json({ success: false, error: errorMessage });
   }
 });
 

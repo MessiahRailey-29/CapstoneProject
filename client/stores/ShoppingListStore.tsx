@@ -23,8 +23,6 @@ const VALUES_SCHEMA = {
   completedAt: { type: "string", default: "" },
   createdAt: { type: "string" },
   updatedAt: { type: "string" },
-  recipeSuggestionsPrompted: { type: "boolean", default: false },
-  recipeSuggestionsEnabled: { type: "boolean", default: false },
 } as const;
 
 // Rest of the file stays exactly the same...
@@ -418,8 +416,7 @@ export default function ShoppingListStore({
       if (parsedData.values) {
         const validValueKeys: (keyof typeof VALUES_SCHEMA)[] = [
           'name', 'description', 'emoji', 'color', 'shoppingDate', 'budget', 
-          'status', 'completedAt', 'createdAt', 'updatedAt',
-          'recipeSuggestionsPrompted', 'recipeSuggestionsEnabled'
+          'status', 'completedAt', 'createdAt', 'updatedAt'
         ];
         
         store.transaction(() => {
