@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import QuickAddFab from "@/components/AddShoppingListFaB";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CustomAlert from "@/components/ui/CustomAlert";
 
 type TabType = 'active' | 'ongoing' | 'history';
 type SortOption = 'name' | 'date' | 'items' | 'budget';
@@ -52,6 +53,20 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId, isHistory =
   const shoppingDate = listData?.shoppingDate || null;
   const completedAt = listData?.completedAt || null;
 
+      const [customAlertVisible, setCustomAlertVisible] = useState(false);
+      const [customAlertTitle, setCustomAlertTitle] = useState('');
+      const [customAlertMessage, setCustomAlertMessage] = useState('');
+      const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+  
+      const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+          setCustomAlertTitle(title);
+          setCustomAlertMessage(message);
+          setCustomAlertButtons(
+              buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+          );
+          setCustomAlertVisible(true);
+      };
+
   const swipeableRef = useRef<Swipeable>(null);
 
   const handlePress = useCallback(() => {
@@ -59,7 +74,7 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId, isHistory =
   }, [listId, router]);
 
   const handleDelete = useCallback(() => {
-    Alert.alert(
+    showCustomAlert(
       "Delete List",
       `Are you sure you want to delete "${name}"? This action cannot be undone.`,
       [
@@ -227,6 +242,20 @@ export default function HomeScreen() {
   const colors = Colors[theme ?? 'light'];
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+      const [customAlertVisible, setCustomAlertVisible] = useState(false);
+      const [customAlertTitle, setCustomAlertTitle] = useState('');
+      const [customAlertMessage, setCustomAlertMessage] = useState('');
+      const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+  
+      const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+          setCustomAlertTitle(title);
+          setCustomAlertMessage(message);
+          setCustomAlertButtons(
+              buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+          );
+          setCustomAlertVisible(true);
+      };
+
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [sortBy, setSortBy] = useState<SortOption>('date');
   const [filterBy, setFilterBy] = useState<FilterOption>('all');
@@ -333,7 +362,7 @@ export default function HomeScreen() {
                     activeTab === 'ongoing' ? 'Ongoing' : 
                     'Purchase History';
 
-    Alert.alert(
+    showCustomAlert(
       `Delete All ${tabName} Lists`,
       `Are you sure you want to delete all ${currentLists.length} ${tabName.toLowerCase()} list${currentLists.length !== 1 ? 's' : ''}? This action cannot be undone.`,
       [

@@ -16,20 +16,21 @@ import { useUser } from '@clerk/clerk-expo';
 import { useNotificationsFromStore } from '@/hooks/useNotificationsFromStore';
 import { useShoppingListData } from '@/stores/ShoppingListsStore';
 import { Colors } from '@/constants/Colors';
+import CustomAlert, { AlertButton } from '@/components/ui/CustomAlert';
 
 // Component to display notification with shopping list details
-function NotificationItem({ 
-  notification, 
-  onPress, 
-  onDelete 
-}: { 
-  notification: any; 
-  onPress: () => void; 
+function NotificationItem({
+  notification,
+  onPress,
+  onDelete
+}: {
+  notification: any;
+  onPress: () => void;
   onDelete: () => void;
 }) {
   const listId = notification.listId; // ✅ CHANGED: Direct access from TinyBase row
   const listData = useShoppingListData(listId || '');
-  
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'shopping_reminder':
@@ -72,6 +73,8 @@ function NotificationItem({
     });
   };
 
+
+
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
   const styles = createStyles(colors);
@@ -89,22 +92,22 @@ function NotificationItem({
           <ThemedText style={styles.notificationIcon}>
             {isShoppingReminder && hasListData ? listData.emoji : getNotificationIcon(notification.type)}
           </ThemedText>
-          
+
           <View style={styles.notificationTextContainer}>
             {isShoppingReminder && hasListData && (
               <ThemedText style={styles.listName}>
                 {listData.name}
               </ThemedText>
             )}
-            
+
             <ThemedText style={styles.notificationTitle}>
               {notification.title}
             </ThemedText>
-            
+
             <ThemedText style={styles.notificationMessage}>
               {notification.message}
             </ThemedText>
-            
+
             {isShoppingReminder && notification.scheduledDate && (
               <View style={styles.dateContainer}>
                 <ThemedText style={styles.scheduledDate}>
@@ -112,12 +115,12 @@ function NotificationItem({
                 </ThemedText>
               </View>
             )}
-            
+
             <ThemedText style={styles.notificationTime}>
               {formatDate(notification.createdAt)}
             </ThemedText>
           </View>
-          
+
           {!notification.isRead && <View style={styles.unreadDot} />}
         </View>
       </View>
@@ -143,6 +146,20 @@ export default function NotificationsScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
   const styles = createStyles(colors);
+
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
 
   // ✅ CHANGED: Use TinyBase hook for real-time updates
   const {
@@ -175,7 +192,7 @@ export default function NotificationsScreen() {
   };
 
   const handleClearAll = () => {
-    Alert.alert(
+    showCustomAlert(
       'Clear All Notifications',
       'Are you sure you want to delete all notifications?',
       [
@@ -239,6 +256,13 @@ export default function NotificationsScreen() {
           )}
         </ScrollView>
       </View>
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </>
   );
 }

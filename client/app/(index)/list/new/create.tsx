@@ -20,10 +20,25 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useUser } from "@clerk/clerk-expo";
 import { Colors } from "@/constants/Colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import CustomAlert from "@/components/ui/CustomAlert";
 
 export default function CreateListScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
 
   // Pending product params (when creating a list for a recommended product)
   const pendingProductId = params.pendingProductId
@@ -110,7 +125,7 @@ export default function CreateListScreen() {
     );
 
     if (!listId) {
-      Alert.alert("Error", "Failed to create list");
+      showCustomAlert("Error", "Failed to create list");
       return;
     }
 
@@ -293,7 +308,7 @@ export default function CreateListScreen() {
             borderColor={selectedColor}
           />
         </View>
-        
+
         <TouchableOpacity
           onPress={handleCreateList}
           disabled={!listName}
@@ -307,6 +322,13 @@ export default function CreateListScreen() {
           </Text>
         </TouchableOpacity>
       </BodyScrollView>
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </>
   );
 }

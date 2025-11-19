@@ -23,6 +23,7 @@ import { useRecipeSuggestions } from "@/hooks/useRecipeSuggestions";
 import { RecipeSection } from "@/components/RecipeSection";
 import FloatingActionFab from "@/components/ShoppingListFaB";
 import { registerStoreForList, unregisterStoreForList } from '@/stores/getStoreForList';
+import CustomAlert from "@/components/ui/CustomAlert";
 
 interface ProductSection {
   title: string;
@@ -38,45 +39,59 @@ export default function ListScreen() {
   renderCount.current++;
   console.log(`📄 RENDER #${renderCount.current} - ListScreen for ${listId}`);
 
-  const handleFabAction = (key)=>{
-    switch(key){
+  const handleFabAction = (key) => {
+    switch (key) {
       case 'edit':
         router.push({
           pathname: "/list/[listId]/edit",
           params: { listId },
         });
-      break;
+        break;
       case 'duplicates':
         router.push({
           pathname: "/list/[listId]/duplicate-check",
           params: { listId },
         });
-      break;
+        break;
       case 'share':
         router.push({
           pathname: "/list/[listId]/share",
           params: { listId },
         });
-      break;
+        break;
       case 'add':
         router.push({
           pathname: "/list/[listId]/product/new",
           params: { listId },
         });
-      break;
+        break;
     }
   }
 
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
-  
+
   const addProductId = params.addProductId ? Number(params.addProductId) : null;
   const addProductName = params.addProductName as string | undefined;
   const addProductPrice = params.addProductPrice ? Number(params.addProductPrice) : null;
   const addProductStore = params.addProductStore as string | undefined;
-  
+
   const hasAddedProduct = useRef(false);
+
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
 
   // Raw values from valuesCopy (always available)
   const listData = useShoppingListData(listId);
@@ -89,11 +104,11 @@ export default function ListScreen() {
   const productIds = useShoppingListProductIds(listId);
   const store = useShoppingListStore(listId);
 
-     useEffect(() => {
-     registerStoreForList(listId, store);
-     return () => unregisterStoreForList(listId);
-   }, [listId, store]);
-   
+  useEffect(() => {
+    registerStoreForList(listId, store);
+    return () => unregisterStoreForList(listId);
+  }, [listId, store]);
+
   const prevProductIdsRef = useRef(productIds);
   useEffect(() => {
     if (prevProductIdsRef.current.length !== productIds.length) {
@@ -104,11 +119,11 @@ export default function ListScreen() {
 
   const { recipes, loading: recipesLoading, fetchSuggestions } = useRecipeSuggestions();
   const [recipeSuggestionsPrompted, setRecipeSuggestionsPrompted] = useShoppingListValue(
-    listId, 
+    listId,
     "recipeSuggestionsPrompted"
   );
   const [recipeSuggestionsEnabled, setRecipeSuggestionsEnabled] = useShoppingListValue(
-    listId, 
+    listId,
     "recipeSuggestionsEnabled"
   );
 
@@ -140,7 +155,7 @@ export default function ListScreen() {
   const displayEmoji = emoji || listData.emoji || "❓";
   const displayDescription = description || listData.description || "";
   const budget = hydratedBudget ?? listData.budget ?? 0;
-  
+
   // Use listData.status as the source of truth
   const status = (listData.status || 'regular') as 'regular' | 'ongoing' | 'completed';
   const isHistory = status === 'completed';
@@ -174,7 +189,7 @@ export default function ListScreen() {
     productIds.forEach(productId => {
       const product = store.getRow("products", productId);
       const category = (product?.category as string) || 'Uncategorized';
-      
+
       if (!categoryMap.has(category)) {
         categoryMap.set(category, []);
       }
@@ -197,7 +212,7 @@ export default function ListScreen() {
 
   const handleFetchRecipes = async () => {
     console.log('🍳 handleFetchRecipes called');
-    
+
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -214,13 +229,13 @@ export default function ListScreen() {
 
     console.log('🍳 Fetching recipes for:', displayName);
     console.log('📦 With products:', productNames);
-    
+
     const results = await fetchSuggestions(displayName, productNames);
-    
+
     console.log('✅ Received recipes:', results.length);
-    
+
     if (results.length === 0) {
-      Alert.alert(
+      showCustomAlert(
         'No Recipes Found',
         `Sorry, we couldn't find any recipes for "${displayName}".`,
         [{ text: 'OK' }]
@@ -254,7 +269,7 @@ export default function ListScreen() {
     }
 
     const shouldShow = displayName && status === 'regular' && productIds.length > 0 && !isLoadingData;
-    
+
     if (!shouldShow) {
       console.log('⏭️ Conditions not met');
       return;
@@ -262,9 +277,9 @@ export default function ListScreen() {
 
     console.log('🚨 WOULD SHOW PROMPT HERE - but disabled for debugging');
     hasShownRecipePrompt.current = true;
-    
+
     const timer = setTimeout(() => {
-      Alert.alert(
+      showCustomAlert(
         '🍳 Recipe Suggestions',
         `Would you like recipe suggestions for "${displayName}"?`,
         [
@@ -319,14 +334,14 @@ export default function ListScreen() {
       addProductStore
     ) {
       hasAddedProduct.current = true;
-      
+
       console.log('🔍 Auto-adding pending product:', {
         id: addProductId,
         name: addProductName,
         price: addProductPrice,
         store: addProductStore
       });
-      
+
       const timer = setTimeout(async () => {
         try {
           const productAddedId = await addProduct(
@@ -342,7 +357,7 @@ export default function ListScreen() {
 
           if (productAddedId) {
             console.log('✅ Product auto-added successfully:', productAddedId);
-            Alert.alert(
+            showCustomAlert(
               'Product Added',
               `${addProductName} has been added to your list!`,
               [{ text: 'OK' }]
@@ -350,14 +365,14 @@ export default function ListScreen() {
           }
         } catch (error) {
           console.error('❌ Failed to auto-add product:', error);
-          Alert.alert(
+          showCustomAlert(
             'Error',
             'Failed to add product to the list.',
             [{ text: 'OK' }]
           );
         }
       }, 500);
-      
+
       return () => clearTimeout(timer);
     }
   }, [addProduct, addProductId, addProductName, addProductPrice, addProductStore]);
@@ -405,7 +420,7 @@ export default function ListScreen() {
       <BudgetSummary listId={listId} budget={budget} />
 
       {(recipeSuggestionsEnabled || recipes.length > 0) && (
-        <RecipeSection 
+        <RecipeSection
           recipes={recipes}
           loading={recipesLoading}
           listId={listId}
@@ -413,7 +428,11 @@ export default function ListScreen() {
         />
       )}
 
-      <ShopNowButton listId={listId} currentStatus={status} />
+      <ShopNowButton
+        listId={listId}
+        currentStatus={status}
+        showCustomAlert={showCustomAlert}
+      />
     </View>
   );
 
@@ -430,8 +449,8 @@ export default function ListScreen() {
   );
 
   const renderItem = ({ item: productId }: { item: string }) => (
-    <ShoppingListProductItem 
-      listId={listId} 
+    <ShoppingListProductItem
+      listId={listId}
       productId={productId}
       status={status}
     />
@@ -441,7 +460,7 @@ export default function ListScreen() {
     <>
       <Stack.Screen
         options={{
-          headerStyle: {backgroundColor: colors.mainBackground},
+          headerStyle: { backgroundColor: colors.mainBackground },
           headerTitle: displayEmoji + " " + displayName,
           headerRight: () => (
             <View
@@ -460,7 +479,7 @@ export default function ListScreen() {
           ),
         }}
       />
-      
+
       <View style={{
         backgroundColor: colors.mainBackground,
         flex: 1
@@ -472,7 +491,7 @@ export default function ListScreen() {
           keyExtractor={(item) => item}
           contentContainerStyle={{
             paddingTop: 12,
-            paddingBottom: 100,         
+            paddingBottom: 100,
             backgroundColor: colors.mainBackground,
           }}
           contentInsetAdjustmentBehavior="automatic"
@@ -505,8 +524,16 @@ export default function ListScreen() {
             </BodyScrollView>
           )}
         />
+
       </View>
-      <FloatingActionFab position={{ bottom: 70, right: 24 }} onAction={handleFabAction}/>
+      <FloatingActionFab position={{ bottom: 70, right: 24 }} onAction={handleFabAction} />
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </>
   );
 }

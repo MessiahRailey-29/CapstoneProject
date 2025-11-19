@@ -13,6 +13,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useShoppingListIds, useShoppingListsValues } from '@/stores/ShoppingListsStore';
 import { useAddProductWithNotifications } from '@/hooks/useAddProductWithNotifications';
 import { useRouter } from 'expo-router';
+import CustomAlert from './ui/CustomAlert';
 
 interface ShoppingListSelectorModalProps {
   visible: boolean;
@@ -25,9 +26,9 @@ interface ShoppingListSelectorModalProps {
 }
 
 // Helper component that wraps each list item with its own hook
-function ShoppingListItem({ 
-  listId, 
-  listValues, 
+function ShoppingListItem({
+  listId,
+  listValues,
   productId,
   productName,
   price,
@@ -45,14 +46,28 @@ function ShoppingListItem({
   onClose: () => void;
 }) {
   const router = useRouter();
-  
+
   // 🔔 UPDATED: Use helper hook with automatic notification support
   const addProduct = useAddProductWithNotifications(listId);
+
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
 
   const handlePress = async () => {
     try {
       if (!addProduct) {
-        Alert.alert('Error', 'Shopping list not found');
+        showCustomAlert('Error', 'Shopping list not found');
         return;
       }
 
@@ -70,7 +85,7 @@ function ShoppingListItem({
 
       // 🔔 If productAddedId is null, duplicate was found and notification was created
       if (productAddedId) {
-        Alert.alert(
+        showCustomAlert(
           'Success',
           `${productName} added to your shopping list!`,
           [
@@ -87,15 +102,15 @@ function ShoppingListItem({
         onSuccess?.();
       } else {
         // Duplicate was found - notification was automatically created
-        Alert.alert(
-          'Duplicate Product', 
+        showCustomAlert(
+          'Duplicate Product',
           `${productName} is already in this list. Check your notifications for details.`,
           [{ text: 'OK' }]
         );
       }
     } catch (error) {
       console.error('Error adding product:', error);
-      Alert.alert('Error', 'Failed to add product to list');
+      showCustomAlert('Error', 'Failed to add product to list');
     }
   };
 
@@ -142,10 +157,24 @@ export default function ShoppingListSelectorModal({
   const shoppingListIds = useShoppingListIds();
   const shoppingListsValues = useShoppingListsValues();
 
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
+
   // 🔔 UPDATED: Navigate to create list page instead of creating inline
   const handleCreateNewList = () => {
     onClose(); // Close the modal first
-    
+
     // Navigate to the create list page
     // You can pass the product info as params if you want to add it automatically
     router.push({
@@ -181,7 +210,7 @@ export default function ShoppingListSelectorModal({
           </View>
 
           {/* Content */}
-          <ScrollView 
+          <ScrollView
             style={styles.content}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={true}
@@ -228,7 +257,7 @@ export default function ShoppingListSelectorModal({
             ) : (
               shoppingListsValues.map((list, index) => {
                 const listId = shoppingListIds[index];
-                
+
                 return (
                   <ShoppingListItem
                     key={listId}
@@ -247,6 +276,13 @@ export default function ShoppingListSelectorModal({
           </ScrollView>
         </View>
       </View>
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </Modal>
   );
 }

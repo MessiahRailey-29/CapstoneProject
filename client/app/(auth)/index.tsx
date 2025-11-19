@@ -9,17 +9,19 @@ import TextInput from '@/components/ui/text-input';
 import { ClerkAPIError } from '@clerk/types';
 import { ErrorDisplay } from '@/components/ui/ErrorDisplay';
 import { IconSymbol } from "@/components/ui/IconSymbol";
-import { 
-  checkLoginAttempts, 
-  recordLoginAttempt, 
-  updateLastActivity 
+import {
+    checkLoginAttempts,
+    recordLoginAttempt,
+    updateLastActivity
 } from '@/utils/securityUtils';
 import {
-  checkBiometricCapability,
-  biometricLogin,
-  getBiometricTypeName,
+    checkBiometricCapability,
+    biometricLogin,
+    getBiometricTypeName,
 } from "@/utils/biometricAuth";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import CustomAlert from '@/components/ui/CustomAlert';
 
 export default function SignInScreen() {
     const { signIn, setActive, isLoaded } = useSignIn();
@@ -38,6 +40,22 @@ export default function SignInScreen() {
     const [biometricAvailable, setBiometricAvailable] = React.useState(false);
     const [biometricType, setBiometricType] = React.useState<string>("none");
     const [isAuthenticating, setIsAuthenticating] = React.useState(false);
+
+    const [customAlertVisible, setCustomAlertVisible] = useState(false);
+    const [customAlertTitle, setCustomAlertTitle] = useState('');
+    const [customAlertMessage, setCustomAlertMessage] = useState('');
+    const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+    const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+        setCustomAlertTitle(title);
+        setCustomAlertMessage(message);
+        setCustomAlertButtons(
+            buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+        );
+        requestAnimationFrame(() => {
+            setCustomAlertVisible(true);
+        });
+    };
 
     // Check if user is already signed in
     React.useEffect(() => {
@@ -82,20 +100,20 @@ export default function SignInScreen() {
 
     const handleBiometricSignIn = async () => {
         if (!isLoaded) return;
-        
+
         // Check if already signed in
         if (isSignedIn) {
             console.log('Already signed in, redirecting...');
             router.replace("/(index)/(tabs)");
             return;
         }
-        
+
         setIsAuthenticating(true);
         try {
             const result = await biometricLogin();
-            
+
             if (!result.success) {
-                Alert.alert('Authentication Failed', result.error || 'Biometric authentication failed');
+                showCustomAlert('Authentication Failed', result.error || 'Biometric authentication failed');
                 return;
             }
 
@@ -111,7 +129,7 @@ export default function SignInScreen() {
                 await setActive({ session: signInAttempt.createdSessionId });
                 router.replace("/(index)/(tabs)");
             } else {
-                Alert.alert('Sign In Failed', 'Please try signing in with your password.');
+                showCustomAlert('Sign In Failed', 'Please try signing in with your password.');
             }
         } catch (e) {
             console.error("Biometric login error:", e);
@@ -122,10 +140,10 @@ export default function SignInScreen() {
                     console.log('Already signed in error detected, redirecting...');
                     router.replace("/(index)/(tabs)");
                 } else {
-                    Alert.alert('Sign In Failed', 'Invalid credentials. Please try signing in with your password.');
+                    showCustomAlert('Sign In Failed', 'Invalid credentials. Please try signing in with your password.');
                 }
             } else {
-                Alert.alert('Error', 'Biometric authentication failed. Try again or log in manually.');
+                showCustomAlert('Error', 'Biometric authentication failed. Try again or log in manually.');
             }
         } finally {
             setIsAuthenticating(false);
@@ -145,7 +163,7 @@ export default function SignInScreen() {
         // Check if account is locked out
         const attemptCheck = await checkLoginAttempts(emailAddress);
         if (!attemptCheck.allowed) {
-            Alert.alert(
+            showCustomAlert(
                 'Account Temporarily Locked',
                 `Too many failed login attempts. Please try again in ${formatLockoutTime()}.`,
                 [{ text: 'OK' }]
@@ -173,7 +191,7 @@ export default function SignInScreen() {
             }
         } catch (err) {
             console.error(JSON.stringify(err, null, 2));
-            
+
             if (isClerkAPIResponseError(err)) {
                 // Check if error is "already signed in"
                 const errorMessage = err.errors?.[0]?.message || '';
@@ -191,7 +209,7 @@ export default function SignInScreen() {
 
             // Show warning if getting close to lockout
             if (remainingAttempts !== null && remainingAttempts <= 2 && remainingAttempts > 0) {
-                Alert.alert(
+                showCustomAlert(
                     'Warning',
                     `Invalid credentials. ${remainingAttempts} attempt${remainingAttempts !== 1 ? 's' : ''} remaining before temporary lockout.`,
                     [{ text: 'OK' }]
@@ -218,126 +236,133 @@ export default function SignInScreen() {
 
     return (
         <KeyboardAvoidingView
-        style={{flex: 1}}
-        behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null }
-        keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.bottom + 60 : 0}>
-            <BodyScrollView 
+            style={{ flex: 1 }}
+            behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null}
+            keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.bottom + 60 : 0}>
+            <BodyScrollView
                 contentContainerStyle={{ padding: 16 }}
                 keyboardShouldPersistTaps="handled"
                 contentInsetAdjustmentBehavior="automatic">
-            <View style={styles.header}>
-                <ThemedText style={styles.welcomeText}>Hello!</ThemedText>
-                <ThemedText style={styles.subtitleText}>Sign in to your account</ThemedText>
-            </View>
-
-            {isLockedOut && (
-                <View style={styles.lockoutBanner}>
-                    <ThemedText style={styles.lockoutText}>
-                        🔒 Account temporarily locked due to multiple failed attempts.
-                    </ThemedText>
-                    <ThemedText style={styles.lockoutTime}>
-                        Try again in {formatLockoutTime()}
-                    </ThemedText>
+                <View style={styles.header}>
+                    <ThemedText style={styles.welcomeText}>Hello!</ThemedText>
+                    <ThemedText style={styles.subtitleText}>Sign in to your account</ThemedText>
                 </View>
-            )}
 
-            {!isLockedOut && remainingAttempts !== null && remainingAttempts < 5 && (
-                <View style={styles.warningBanner}>
-                    <ThemedText style={styles.warningText}>
-                        ⚠️ {remainingAttempts} login attempt{remainingAttempts !== 1 ? 's' : ''} remaining
-                    </ThemedText>
-                </View>
-            )}
+                {isLockedOut && (
+                    <View style={styles.lockoutBanner}>
+                        <ThemedText style={styles.lockoutText}>
+                            🔒 Account temporarily locked due to multiple failed attempts.
+                        </ThemedText>
+                        <ThemedText style={styles.lockoutTime}>
+                            Try again in {formatLockoutTime()}
+                        </ThemedText>
+                    </View>
+                )}
 
-            {/* Biometric Authentication Button */}
-            {biometricAvailable && !isLockedOut && (
-                <View style={styles.biometricContainer}>
-                    <Pressable
-                        style={[styles.biometricIconButton, isAuthenticating && { opacity: 0.6 }]}
-                        onPress={handleBiometricSignIn}
-                        disabled={isAuthenticating}
+                {!isLockedOut && remainingAttempts !== null && remainingAttempts < 5 && (
+                    <View style={styles.warningBanner}>
+                        <ThemedText style={styles.warningText}>
+                            ⚠️ {remainingAttempts} login attempt{remainingAttempts !== 1 ? 's' : ''} remaining
+                        </ThemedText>
+                    </View>
+                )}
+
+                {/* Biometric Authentication Button */}
+                {biometricAvailable && !isLockedOut && (
+                    <View style={styles.biometricContainer}>
+                        <Pressable
+                            style={[styles.biometricIconButton, isAuthenticating && { opacity: 0.6 }]}
+                            onPress={handleBiometricSignIn}
+                            disabled={isAuthenticating}
+                        >
+                            <IconSymbol
+                                name={biometricType === "face" ? "person" : "hand.raised"}
+                                size={48}
+                                color="#3B82F6"
+                            />
+                        </Pressable>
+                        <ThemedText style={styles.biometricLabel}>
+                            Sign in with {getBiometricTypeName(biometricType)}
+                        </ThemedText>
+                    </View>
+                )}
+
+                {biometricAvailable && !isLockedOut && (
+                    <View style={styles.divider}>
+                        <View style={styles.dividerLine} />
+                        <ThemedText style={styles.dividerText}>or</ThemedText>
+                        <View style={styles.dividerLine} />
+                    </View>
+                )}
+
+                <TextInput
+                    label="Email"
+                    value={emailAddress}
+                    placeholder="Enter your email"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    onChangeText={setEmailAddress}
+                    editable={!isLockedOut}
+                />
+
+                <TextInput
+                    value={password}
+                    label="Password"
+                    placeholder="Enter your password"
+                    secureTextEntry={true}
+                    onChangeText={(password) => setPassword(password)}
+                    editable={!isLockedOut}
+                />
+
+                <ErrorDisplay errors={errors} />
+
+                <Button
+                    onPress={onSignInPress}
+                    loading={isSigningIn}
+                    disabled={!emailAddress || !password || isSigningIn || isLockedOut}
+                >
+                    Sign In
+                </Button>
+
+                <View style={styles.linkContainer}>
+                    <ThemedText style={styles.linkText}>Forgot your password?</ThemedText>
+                    <Button
+                        onPress={() => router.push("/(auth)/reset-password")}
+                        variant="ghost"
                     >
-                        <IconSymbol
-                            name={biometricType === "face" ? "person" : "hand.raised"}
-                            size={48}
-                            color="#3B82F6"
-                        />
-                    </Pressable>
-                    <ThemedText style={styles.biometricLabel}>
-                        Sign in with {getBiometricTypeName(biometricType)}
-                    </ThemedText>
+                        Reset Password
+                    </Button>
                 </View>
-            )}
 
-            {biometricAvailable && !isLockedOut && (
                 <View style={styles.divider}>
                     <View style={styles.dividerLine} />
                     <ThemedText style={styles.dividerText}>or</ThemedText>
                     <View style={styles.dividerLine} />
                 </View>
-            )}
 
-            <TextInput
-                label="Email"
-                value={emailAddress}
-                placeholder="Enter your email"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                onChangeText={setEmailAddress}
-                editable={!isLockedOut}
+                <View style={styles.linkContainer}>
+                    <ThemedText style={styles.linkText}>Don't have an account?</ThemedText>
+                    <Button
+                        onPress={() => router.push("/(auth)/sign-up")}
+                        variant="ghost"
+                    >
+                        Sign Up
+                    </Button>
+                </View>
+
+                <View style={styles.securityNote}>
+                    <ThemedText style={styles.securityNoteText}>
+                        🔒 Your connection is secure and encrypted
+                    </ThemedText>
+                </View>
+            </BodyScrollView>
+            <CustomAlert
+                visible={customAlertVisible}
+                title={customAlertTitle}
+                message={customAlertMessage}
+                buttons={customAlertButtons}
+                onClose={() => setCustomAlertVisible(false)}
             />
-
-            <TextInput
-                value={password}
-                label="Password"
-                placeholder="Enter your password"
-                secureTextEntry={true}
-                onChangeText={(password) => setPassword(password)}
-                editable={!isLockedOut}
-            />
-
-            <ErrorDisplay errors={errors} />
-
-            <Button
-                onPress={onSignInPress}
-                loading={isSigningIn}
-                disabled={!emailAddress || !password || isSigningIn || isLockedOut}
-            >
-                Sign In
-            </Button>
-
-            <View style={styles.linkContainer}>
-                <ThemedText style={styles.linkText}>Forgot your password?</ThemedText>
-                <Button
-                    onPress={() => router.push("/(auth)/reset-password")}
-                    variant="ghost"
-                >
-                    Reset Password
-                </Button>
-            </View>
-
-            <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <ThemedText style={styles.dividerText}>or</ThemedText>
-                <View style={styles.dividerLine} />
-            </View>
-
-            <View style={styles.linkContainer}>
-                <ThemedText style={styles.linkText}>Don't have an account?</ThemedText>
-                <Button
-                    onPress={() => router.push("/(auth)/sign-up")}
-                    variant="ghost"
-                >
-                    Sign Up
-                </Button>
-            </View>
-
-            <View style={styles.securityNote}>
-                <ThemedText style={styles.securityNoteText}>
-                    🔒 Your connection is secure and encrypted
-                </ThemedText>
-            </View>
-        </BodyScrollView>
         </KeyboardAvoidingView>
     );
 }

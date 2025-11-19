@@ -19,6 +19,7 @@ import { Recipe, recipeApi } from '@/services/recipeApi';
 import { Colors } from '@/constants/Colors';
 import * as Haptics from 'expo-haptics';
 import { useAddProductWithNotifications } from '@/hooks/useAddProductWithNotifications';
+import CustomAlert from './ui/CustomAlert';
 
 interface RecipeDetailsModalProps {
   visible: boolean;
@@ -56,6 +57,20 @@ export function RecipeDetailsModal({
   const [addingIngredients, setAddingIngredients] = useState(false);
 
   const addProduct = useAddProductWithNotifications(listId);
+
+      const [customAlertVisible, setCustomAlertVisible] = useState(false);
+      const [customAlertTitle, setCustomAlertTitle] = useState('');
+      const [customAlertMessage, setCustomAlertMessage] = useState('');
+      const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+  
+      const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+          setCustomAlertTitle(title);
+          setCustomAlertMessage(message);
+          setCustomAlertButtons(
+              buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+          );
+          setCustomAlertVisible(true);
+      };
 
   useEffect(() => {
     if (visible && recipe) {
@@ -146,7 +161,7 @@ export function RecipeDetailsModal({
   // ⭐ UPDATED: Add all ingredients with database price lookup
   const handleAddAllIngredients = async () => {
     if (!detailedRecipe?.ingredients || !addProduct) {
-      Alert.alert('Error', 'No ingredients available to add');
+      showCustomAlert('Error', 'No ingredients available to add');
       return;
     }
 
@@ -193,7 +208,7 @@ export function RecipeDetailsModal({
       setAddingIngredients(false);
 
       if (addedCount > 0) {
-        Alert.alert(
+        showCustomAlert(
           'Ingredients Added! 🎉',
           `${addedCount} ingredient${addedCount !== 1 ? 's' : ''} added to your shopping list${skippedCount > 0 ? ` (${skippedCount} skipped as duplicates)` : ''}.${pricesFoundCount > 0 ? `\n\n💰 Found prices for ${pricesFoundCount} ingredient${pricesFoundCount !== 1 ? 's' : ''}!` : ''}`,
           [
@@ -204,7 +219,7 @@ export function RecipeDetailsModal({
           ]
         );
       } else {
-        Alert.alert(
+        showCustomAlert(
           'Already Added',
           'All ingredients are already in your shopping list.',
           [{ text: 'OK' }]
@@ -213,7 +228,7 @@ export function RecipeDetailsModal({
     } catch (error) {
       console.error('Error adding ingredients:', error);
       setAddingIngredients(false);
-      Alert.alert('Error', 'Failed to add ingredients to shopping list');
+      showCustomAlert('Error', 'Failed to add ingredients to shopping list');
     }
   };
 

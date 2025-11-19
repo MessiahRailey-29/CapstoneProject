@@ -17,27 +17,43 @@ import {
 import { Colors } from '@/constants/Colors';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import CustomAlert from '@/components/ui/CustomAlert';
 
 export default function BiometricSettingsScreen() {
   const { user } = useUser();
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
   const insets = useSafeAreaInsets();
-  
+
   const [biometricAvailable, setBiometricAvailable] = React.useState(false);
   const [biometricType, setBiometricType] = React.useState<'fingerprint' | 'face' | 'iris' | 'none'>('none');
   const [isEnrolled, setIsEnrolled] = React.useState(false);
   const [isEnabled, setIsEnabled] = React.useState(false);
   const [storedEmail, setStoredEmail] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
-  
+
   // For enabling biometric login
   const [showPasswordPrompt, setShowPasswordPrompt] = React.useState(false);
   const [password, setPassword] = React.useState('');
   const [isProcessing, setIsProcessing] = React.useState(false);
-  
+
   // For changing registered account
   const [isChangingAccount, setIsChangingAccount] = React.useState(false);
+
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
 
   // Load biometric capability and status
   React.useEffect(() => {
@@ -68,13 +84,13 @@ export default function BiometricSettingsScreen() {
 
   const handleToggleBiometric = async (value: boolean) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     if (value) {
       // Enable biometric login
       setShowPasswordPrompt(true);
     } else {
       // Disable biometric login
-      Alert.alert(
+      showCustomAlert(
         'Disable Biometric Login',
         'Are you sure you want to disable biometric login? You will need to enter your password next time.',
         [
@@ -94,12 +110,12 @@ export default function BiometricSettingsScreen() {
 
   const handleEnableBiometric = async () => {
     if (!password.trim()) {
-      Alert.alert('Error', 'Please enter your password');
+      showCustomAlert('Error', 'Please enter your password');
       return;
     }
 
     if (!user?.emailAddresses[0]?.emailAddress) {
-      Alert.alert('Error', 'Email address not found');
+      showCustomAlert('Error', 'Email address not found');
       return;
     }
 
@@ -107,19 +123,19 @@ export default function BiometricSettingsScreen() {
 
     try {
       const email = user.emailAddresses[0].emailAddress;
-      
+
       // Enable biometric login with password
       const result = await enableBiometricLogin(email, password);
 
       if (result.success) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        
+
         const action = isChangingAccount ? 'updated' : 'enabled';
-        const message = isChangingAccount 
+        const message = isChangingAccount
           ? `${getBiometricTypeName(biometricType)} login has been updated for ${email}.`
           : `${getBiometricTypeName(biometricType)} login has been enabled for your account.`;
-        
-        Alert.alert(
+
+        showCustomAlert(
           'Success',
           message,
           [
@@ -136,12 +152,12 @@ export default function BiometricSettingsScreen() {
         );
       } else {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Error', result.error || 'Failed to enable biometric login');
+        showCustomAlert('Error', result.error || 'Failed to enable biometric login');
       }
     } catch (error: any) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       console.error('Error enabling biometric:', error);
-      Alert.alert('Error', error.message || 'Failed to enable biometric login');
+      showCustomAlert('Error', error.message || 'Failed to enable biometric login');
     } finally {
       setIsProcessing(false);
     }
@@ -149,16 +165,16 @@ export default function BiometricSettingsScreen() {
 
   const handleDisableBiometric = async () => {
     setIsProcessing(true);
-    
+
     try {
       await disableBiometricLogin();
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Biometric login has been disabled');
+      showCustomAlert('Success', 'Biometric login has been disabled');
       loadBiometricStatus();
     } catch (error) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       console.error('Error disabling biometric:', error);
-      Alert.alert('Error', 'Failed to disable biometric login');
+      showCustomAlert('Error', 'Failed to disable biometric login');
     } finally {
       setIsProcessing(false);
     }
@@ -166,8 +182,8 @@ export default function BiometricSettingsScreen() {
 
   const handleChangeAccount = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
-    Alert.alert(
+
+    showCustomAlert(
       'Change Registered Account',
       `Currently registered: ${storedEmail}\n\nTo change the account, you'll need to enter your password for the current account (${user?.emailAddresses[0]?.emailAddress}).`,
       [
@@ -188,17 +204,17 @@ export default function BiometricSettingsScreen() {
 
   const handleTestBiometric = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
+
     const result = await authenticateWithBiometrics(
       `Test ${getBiometricTypeName(biometricType)}`
     );
 
     if (result.success) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Biometric authentication successful!');
+      showCustomAlert('Success', 'Biometric authentication successful!');
     } else {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Failed', result.error || 'Biometric authentication failed');
+      showCustomAlert('Failed', result.error || 'Biometric authentication failed');
     }
   };
 
@@ -226,7 +242,7 @@ export default function BiometricSettingsScreen() {
         {/* Device Capability Section */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Device Information</ThemedText>
-          
+
           <View style={styles.infoRow}>
             <ThemedText style={styles.infoLabel}>Biometric Hardware:</ThemedText>
             <ThemedText style={styles.infoValue}>
@@ -289,7 +305,7 @@ export default function BiometricSettingsScreen() {
                 >
                   Test {getBiometricTypeName(biometricType)}
                 </Button>
-                
+
                 {storedEmail !== user?.emailAddresses[0]?.emailAddress && (
                   <Button
                     onPress={handleChangeAccount}
@@ -367,7 +383,7 @@ export default function BiometricSettingsScreen() {
               >
                 Cancel
               </Button>
-              
+
               <Button
                 onPress={handleEnableBiometric}
                 loading={isProcessing}
@@ -380,6 +396,13 @@ export default function BiometricSettingsScreen() {
           </View>
         </View>
       )}
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </>
   );
 }
