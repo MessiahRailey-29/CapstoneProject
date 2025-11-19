@@ -20,7 +20,6 @@ import { useAddProductWithNotifications } from "@/hooks/useAddProductWithNotific
 import { useListNotifications } from "@/utils/notifyCollaborators";
 import { Colors } from "@/constants/Colors";
 import FloatingActionFab from "@/components/ShoppingListFaB";
-import { registerStoreForList, unregisterStoreForList } from '@/stores/getStoreForList';
 import CustomAlert from "@/components/ui/CustomAlert";
 
 interface ProductSection {
@@ -102,11 +101,6 @@ export default function ListScreen() {
   const [hydratedBudget] = useShoppingListValue(listId, "budget");
   const productIds = useShoppingListProductIds(listId);
   const store = useShoppingListStore(listId);
-
-  useEffect(() => {
-    registerStoreForList(listId, store);
-    return () => unregisterStoreForList(listId);
-  }, [listId, store]);
 
   const prevProductIdsRef = useRef(productIds);
   useEffect(() => {
@@ -221,7 +215,11 @@ export default function ListScreen() {
 
 
       {/* Shop Now Button with status */}
-      <ShopNowButton listId={listId} currentStatus={status} />
+      <ShopNowButton
+        listId={listId}
+        currentStatus={status}
+        showCustomAlert={showCustomAlert}
+      />
     </View>
   );
 

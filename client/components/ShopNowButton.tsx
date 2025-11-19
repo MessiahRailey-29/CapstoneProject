@@ -21,7 +21,7 @@ interface ShopNowButtonProps {
   showCustomAlert: (title: string, message: string, buttons?: any[]) => void;
 }
 
-export default function ShopNowButton({ listId, currentStatus = 'regular', 
+export default function ShopNowButton({ listId, currentStatus = 'regular',
   showCustomAlert }: ShopNowButtonProps) {
   const router = useRouter();
   const { user } = useUser();
@@ -214,15 +214,16 @@ export default function ShopNowButton({ listId, currentStatus = 'regular',
                   {
                     text: "View History",
                     onPress: () => {
-                      // Navigate back to lists - user will need to manually switch to History tab
-                      router.back();
+                      router.push({
+                        pathname: "/(index)/(tabs)/shopping-lists",
+                        params: { tab: "history" },
+                      });
                     },
                   },
                   {
                     text: "OK",
                     style: "cancel",
                     onPress: () => {
-                      // Just go back to the shopping lists screen
                       router.back();
                     },
                   },

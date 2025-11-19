@@ -174,18 +174,6 @@ export default function ProfileScreen() {
                 return;
             }
 
-            // Validate phone number if provided
-            if (editedPhoneNumber.trim()) {
-                const cleanedPhone = editedPhoneNumber.replace(/\D/g, '');
-                if (cleanedPhone.length < 10 || cleanedPhone.length > 15) {
-                    showCustomAlert(
-                        'Invalid Phone Number',
-                        'Please enter a valid phone number (10-15 digits) or leave it empty.'
-                    );
-                    return;
-                }
-            }
-
             setIsSavingName(true);
 
             // Update user metadata with new names and phone number
@@ -746,12 +734,6 @@ const createStyles = (colors: any) => StyleSheet.create({
         fontSize: 15,
         color: colors.text,
         marginBottom: 4,
-    },
-    userPhone: {
-        fontSize: 14,
-        color: colors.text,
-        marginBottom: 12,
-        opacity: 0.8,
     },
     memberBadge: {
         backgroundColor: '#f0f8ff',

@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   Button,
+  useColorScheme
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
@@ -71,8 +72,6 @@ function NotificationItem({
       year: 'numeric',
     });
   };
-
-
 
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
@@ -269,10 +268,11 @@ const handleNotificationPress = async (notificationId: string, data: any) => {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: any) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.mainBackground,
   },
   header: {
     flexDirection: 'row',
@@ -302,21 +302,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   notificationCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     marginHorizontal: 16,
     marginVertical: 6,
     padding: 16,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
   unreadCard: {
-    backgroundColor: '#f0f8ff',
+    backgroundColor: colors.background,
     borderLeftWidth: 4,
     borderLeftColor: '#007AFF',
   },
@@ -338,22 +338,23 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 4,
-    color: '#000',
+    color: colors.text,
   },
   notificationTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+    color: colors.text
   },
   notificationMessage: {
     fontSize: 14,
-    color: '#666',
+    color: colors.exposedGhost,
     marginBottom: 6,
     lineHeight: 20,
   },
   notificationTime: {
     fontSize: 12,
-    color: '#999',
+    color: colors.exposedGhost,
   },
   dateContainer: {
     marginTop: 4,
@@ -397,12 +398,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.exposedGhost,
     textAlign: 'center',
     lineHeight: 24,
   },
   settingsButton: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.mainBackground,
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#e5e5e5',
@@ -414,3 +415,4 @@ const styles = StyleSheet.create({
     color: '#007AFF',
   },
 });
+}

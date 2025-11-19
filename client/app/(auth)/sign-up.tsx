@@ -109,19 +109,6 @@ export default function SignUpScreen() {
             return;
         }
 
-        // Validate phone number format (basic validation)
-        if (phoneNumber.trim()) {
-            // Remove all non-numeric characters for validation
-            const cleanedPhone = phoneNumber.replace(/\D/g, '');
-            if (cleanedPhone.length < 10 || cleanedPhone.length > 15) {
-                showAlert(
-                    'Invalid Phone Number',
-                    'Please enter a valid phone number (10-15 digits).'
-                );
-                return;
-            }
-        }
-
         setStep('credentials');
     };
 
