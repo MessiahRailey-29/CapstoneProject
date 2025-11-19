@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { CategoryExpense } from '@/hooks/useExpenseAnalytics';
 import { Colors } from '@/constants/Colors'
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatCurrency } from '@/utils/formatCurrency';
 interface CategoryChartProps {
   categories: CategoryExpense[];
 }
@@ -87,7 +88,7 @@ export function CategoryChart({ categories }: CategoryChartProps) {
                     ]}
                   >
                     <ThemedText style={styles.barValue}>
-                      ₱{category.total.toFixed(0)}
+                      ₱{formatCurrency(category.total)}
                     </ThemedText>
                   </View>
                 </View>
@@ -190,7 +191,7 @@ function createStyles(colors: typeof Colors.light) {
     barContainer: {
       flex: 1,
       height: 32,
-      backgroundColor: '#f0f0f0ce',
+      backgroundColor: '#f0f0f06e',
       borderRadius: 6,
       borderColor: '#00000084',
       borderWidth: 0.7,
@@ -210,6 +211,7 @@ function createStyles(colors: typeof Colors.light) {
       textShadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.3,
       textShadowRadius: 7,
+      width: 50
     },
     percentage: {
       fontSize: 12,

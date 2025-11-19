@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import { View, Pressable, StyleSheet, Alert, useColorScheme, Modal, FlatList, ActivityIndicator, Text } from "react-native";
+import { View, Pressable, StyleSheet, Alert, useColorScheme, Modal, FlatList, ActivityIndicator, Text, KeyboardAvoidingView, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
@@ -17,6 +17,7 @@ import { useProductPrices } from "@/hooks/useProducts";
 import { EvilIcons } from "@expo/vector-icons";
 import { exposedGhostText, borderColor } from '../../../../../constants/Colors';
 import CustomAlert from "@/components/ui/CustomAlert";
+import { ScrollView } from "react-native-gesture-handler";
 
 // Define ProductPrice type locally to match the API structure
 interface ProductPrice {
@@ -135,7 +136,8 @@ function ProductContent({
   return (
     <>
       <BodyScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={{ ...styles.container, paddingBottom: 200 }}
+        keyboardShouldPersistTaps="handled"
       >
         <StatusBar style="light" animated />
 
@@ -257,8 +259,7 @@ function ProductContent({
                 )}
               </>
             ) : (
-              <Pressable
-                onPress={() => setShowStorePicker(true)}
+              <View
                 style={styles.infoRow}
               >
                 <ThemedText style={styles.infoLabel}>Unit Price:</ThemedText>
@@ -269,9 +270,8 @@ function ProductContent({
                   >
                     Tap to add price
                   </ThemedText>
-                  <IconSymbol name="chevron.right" size={16} color="#999" />
                 </View>
-              </Pressable>
+              </View>
             )}
           </View>
         </View>
@@ -413,18 +413,27 @@ function ProductContent({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowStorePicker(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Pressable onPress={() => setShowStorePicker(false)}>
-              <IconSymbol name="xmark" size={24} color="#007AFF" />
-            </Pressable>
-            <ThemedText type="title" style={styles.modalTitle}>
-              Select Store & Price
-            </ThemedText>
-            <View style={{ width: 24 }} />
-          </View>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 200 : 0} // adjust if you have a header
+        >
+          <ScrollView
+            contentContainerStyle={{ backgroundColor: colors.background, flexGrow: 1, padding: 16, paddingBottom: 100 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Pressable onPress={() => setShowStorePicker(false)}>
+                <IconSymbol name="xmark" size={24} color="#007AFF" />
+              </Pressable>
+              <ThemedText type="title" style={styles.modalTitle}>
+                Select Store & Price
+              </ThemedText>
+              <View style={{ width: 24 }} />
+            </View>
 
-          <View style={styles.modalContent}>
+            {/* Prices or "No Store Data Available" */}
             {databaseProductId && prices.length > 0 ? (
               <>
                 <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
@@ -447,7 +456,7 @@ function ProductContent({
                       />
                     )}
                     keyExtractor={(item) => item.id.toString()}
-                    contentContainerStyle={styles.storeList}
+                    scrollEnabled={false} // let the ScrollView handle scrolling
                   />
                 )}
               </>
@@ -463,9 +472,9 @@ function ProductContent({
               </View>
             )}
 
-            {/* Custom Price Entry */}
+            {/* Custom Price Section */}
             <View style={styles.customPriceSection}>
-              <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+              <ThemedText type="defaultSemiBold" style={styles.sectionTitleEnter}>
                 Or Enter Custom Price
               </ThemedText>
               <View style={styles.customPriceRow}>
@@ -504,9 +513,10 @@ function ProductContent({
                 Save Custom Price
               </Button>
             </View>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
+
       <CustomAlert
         visible={customAlertVisible}
         title={customAlertTitle}
@@ -845,6 +855,12 @@ function createStyles(colors: typeof Colors.light) {
       padding: 16,
     },
     sectionTitle: {
+      fontSize: 16,
+      marginBottom: 12,
+      color: colors.ghost,
+      marginTop: 12
+    },
+    sectionTitleEnter: {
       fontSize: 16,
       marginBottom: 12,
       color: colors.ghost,

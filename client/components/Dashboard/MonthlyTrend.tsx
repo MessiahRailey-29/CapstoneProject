@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { MonthlyExpense } from '@/hooks/useExpenseAnalytics';
 import { Colors, exposedGhostText, ghostText } from '@/constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatCurrency } from "@/utils/formatCurrency";
 
 interface MonthlyTrendProps {
   monthlyData: MonthlyExpense[];
@@ -16,18 +17,17 @@ export function MonthlyTrend({ monthlyData }: MonthlyTrendProps) {
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
-
   if (monthlyData.length === 0) {
 
     const maxAmount = Math.max(...monthlyData.map(m => m.total));
 
     return (
-    <LinearGradient
-      colors={['#4CAF50', '#A5D6A7', '#81C784', '#4CAF50', '#66BB6A', '#81C784', '#A5D6A7', '#C8E6C9']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
-    >
+      <LinearGradient
+        colors={['#4CAF50', '#A5D6A7', '#81C784', '#4CAF50', '#66BB6A', '#81C784', '#A5D6A7', '#C8E6C9']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
         <ThemedText style={styles.title}>Monthly Spending Trend</ThemedText>
         <View style={styles.emptyState}>
           <ThemedText style={styles.emptyText}>
@@ -85,10 +85,7 @@ export function MonthlyTrend({ monthlyData }: MonthlyTrendProps) {
                   >
                     <View style={styles.barContent}>
                       <ThemedText style={styles.barAmount}>
-                        ₱{month.total >= 1000
-                          ? `${(month.total / 1000).toFixed(1)}k`
-                          : month.total.toFixed(0)
-                        }
+                        ₱{formatCurrency(month.total)}
                       </ThemedText>
                       {isCurrentMonth && (
                         <View style={styles.currentBadge}>
@@ -125,7 +122,7 @@ export function MonthlyTrend({ monthlyData }: MonthlyTrendProps) {
             </View>
             <ThemedText style={styles.summaryLabel}>Average</ThemedText>
             <ThemedText style={styles.summaryValue}>
-              ₱{(monthlyData.reduce((sum, m) => sum + m.total, 0) / monthlyData.length).toFixed(0)}
+              ₱{formatCurrency(monthlyData.reduce((sum, m) => sum + m.total, 0) / monthlyData.length)}
             </ThemedText>
           </View>
 
@@ -135,7 +132,7 @@ export function MonthlyTrend({ monthlyData }: MonthlyTrendProps) {
             </View>
             <ThemedText style={styles.summaryLabel}>Highest</ThemedText>
             <ThemedText style={styles.summaryValue}>
-              ₱{Math.max(...monthlyData.map(m => m.total)).toFixed(0)}
+              ₱{formatCurrency(Math.max(...monthlyData.map(m => m.total)))}
             </ThemedText>
           </View>
 
@@ -145,7 +142,7 @@ export function MonthlyTrend({ monthlyData }: MonthlyTrendProps) {
             </View>
             <ThemedText style={styles.summaryLabel}>Lowest</ThemedText>
             <ThemedText style={styles.summaryValue}>
-              ₱{Math.min(...monthlyData.map(m => m.total)).toFixed(0)}
+              ₱{formatCurrency(Math.min(...monthlyData.map(m => m.total)))}
             </ThemedText>
           </View>
         </LinearGradient>

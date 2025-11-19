@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Button } from '@react-navigation/elements';
 import { EvilIcons } from '@expo/vector-icons';
+import { formatCurrency } from '@/utils/formatCurrency';
 interface BudgetSummaryProps {
   listId: string;
   budget: number;
@@ -114,12 +115,6 @@ export default function BudgetSummary({
     return 'Over budget';
   };
 
-  const formatCurrency = (amount: number) => {
-    return amount.toLocaleString('en-PH', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-  };
 
   // Show component if we have spending OR a budget set
   if (budget === 0 && totalSpent === 0) {
@@ -264,7 +259,13 @@ export default function BudgetSummary({
             .slice(0, 5)
             .map((item, index) => (
               <View key={item.productId} style={styles.breakdownItem}>
-                <Text style={styles.productName} numberOfLines={1}>
+                <Text style=
+                {styles.productName} 
+                numberOfLines={1} 
+                ellipsizeMode="tail"
+                adjustsFontSizeToFit={true}
+                minimumFontScale={0.7} 
+                >
                   {item.name} (×{item.quantity})
                 </Text>
                 <Text style={styles.productCost}>
@@ -407,6 +408,7 @@ function createStyles(colors: typeof Colors.light) {
       flex: 1,
       fontSize: 14,
       color: colors.text,
+      marginRight: 8,
     },
     productCost: {
       fontSize: 14,

@@ -4,6 +4,7 @@ import { StyleSheet, View, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors'
+import { formatCurrency } from "@/utils/formatCurrency";
 
 type ValidIconName =
   | "calendar"
@@ -48,7 +49,7 @@ export function ExpenseCard({
         {icon && <IconSymbol name={icon} size={24} color={color} />}
       </View>
 
-      <ThemedText style={styles.amount}>₱{amount.toFixed(2)}</ThemedText>
+      <ThemedText style={styles.amount}>₱{formatCurrency(amount)}</ThemedText>
 
       {subtitle && (
         <ThemedText style={styles.subtitle}>{subtitle}</ThemedText>

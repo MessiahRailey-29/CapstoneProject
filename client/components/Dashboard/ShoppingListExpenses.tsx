@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { backgroundColors, borderColor, Colors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatCurrency } from "@/utils/formatCurrency";
 
 export function ShoppingListExpenses() {
   const router = useRouter();
@@ -64,7 +65,7 @@ export function ShoppingListExpenses() {
           style={[styles.summaryCard, { borderLeftColor: '#007AFF' }]}>
           <ThemedText style={styles.summaryLabel}>Total Budget</ThemedText>
           <ThemedText style={styles.summaryValue}>
-            ₱{expenses.totalBudget.toFixed(2)}
+            ₱{formatCurrency(expenses.totalBudget)}
           </ThemedText>
         </LinearGradient>
 
@@ -74,7 +75,7 @@ export function ShoppingListExpenses() {
           end={{ x: 1, y: 1 }} style={[styles.summaryCard, { borderLeftColor: '#34C759' }]}>
           <ThemedText style={styles.summaryLabel}>Projected</ThemedText>
           <ThemedText style={styles.summaryValue}>
-            ₱{expenses.totalProjected.toFixed(2)}
+            ₱{formatCurrency(expenses.totalProjected)}
           </ThemedText>
         </LinearGradient>
       </View>
@@ -151,7 +152,7 @@ function ListExpenseCard({
           <View style={styles.statRow}>
             <ThemedText style={styles.statLabel}>Budget:</ThemedText>
             <ThemedText style={styles.statValue}>
-              ₱{list.budget.toFixed(2)}
+              ₱{formatCurrency(list.budget)}
             </ThemedText>
           </View>
 
@@ -161,7 +162,7 @@ function ListExpenseCard({
               styles.statValue,
               list.overBudget && styles.statValueOverBudget,
             ]}>
-              ₱{list.projectedTotal.toFixed(2)}
+              ₱{formatCurrency(list.projectedTotal)}
             </ThemedText>
           </View>
 
@@ -185,8 +186,8 @@ function ListExpenseCard({
                 {backgroundColor: list.overBudget ?'#FF3B30' : '#34C759'}
               ]}>
                 {list.overBudget ? '₱' : '₱'}
-                {Math.abs(list.budgetRemaining).toFixed(2)}
-                {list.overBudget ? ' over' : ' left'}
+{formatCurrency(Math.abs(list.budgetRemaining))}
+{list.overBudget ? ' over' : ' left'}
               </ThemedText>
             </>
           )}
