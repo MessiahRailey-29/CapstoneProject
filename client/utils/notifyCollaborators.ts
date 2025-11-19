@@ -66,33 +66,55 @@ export async function notifyCollaborators(params: NotifyCollaboratorsParams): Pr
       break;
   }
 
-  // Send notification to each collaborator
-  for (const collaborator of otherCollaborators) {
-    try {
-      const response = await fetch(`${API_URL}/api/notifications/${collaborator.userId}/shared-list-update`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          listId,
-          listName,
-          emoji,
-          message,
-          action,
-          itemName,
-          updatedBy: currentUserName,
-        }),
-      });
+  console.log(`📢 Notifying ${otherCollaborators.length} collaborator(s):`, message);
 
-      const data = await response.json();
-      
-      if (data.success) {
-        console.log(`✅ Notified collaborator ${collaborator.nickname}`);
-      } else {
-        console.error(`❌ Failed to notify ${collaborator.nickname}:`, data.error);
+  // Send notification to each collaborator
+  const results = await Promise.allSettled(
+    otherCollaborators.map(async (collaborator) => {
+      try {
+        const response = await fetch(`${API_URL}/api/notifications/${collaborator.userId}/shared-list-update`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            listId,
+            listName,
+            emoji,
+            message,
+            action,
+            itemName,
+            updatedBy: currentUserName,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log(`✅ Notified collaborator ${collaborator.nickname} (${collaborator.userId})`);
+          return { success: true, collaborator: collaborator.nickname };
+        } else {
+          console.error(`❌ Failed to notify ${collaborator.nickname}:`, data.error);
+          return { success: false, collaborator: collaborator.nickname, error: data.error };
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`❌ Network error notifying ${collaborator.nickname}:`, errorMessage);
+        return { success: false, collaborator: collaborator.nickname, error: errorMessage };
       }
-    } catch (error) {
-      console.error(`❌ Error notifying collaborator ${collaborator.nickname}:`, error);
-    }
+    })
+  );
+
+  // Log summary
+  const successful = results.filter(r => r.status === 'fulfilled' && (r.value as any).success).length;
+  const failed = results.length - successful;
+  
+  if (failed > 0) {
+    console.warn(`⚠️ Notification summary: ${successful} succeeded, ${failed} failed`);
+  } else {
+    console.log(`✅ All ${successful} notifications sent successfully`);
   }
 }
 

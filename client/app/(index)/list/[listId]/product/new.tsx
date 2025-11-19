@@ -55,7 +55,6 @@ export default function NewItemScreen() {
   // Enhanced duplicate detection setup
   const store = useShoppingListStore(listId);
   const productIds = useShoppingListProductIds(listId) || [];
-  
   // Get current list products for duplicate checking
   const currentListProducts: ProductSummary[] = useMemo(() => {
     return productIds.map(productId => {

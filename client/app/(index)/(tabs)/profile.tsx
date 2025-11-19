@@ -24,6 +24,12 @@ export default function ProfileScreen() {
     const [editedFirstName, setEditedFirstName] = React.useState('');
     const [editedLastName, setEditedLastName] = React.useState('');
     const [isSavingName, setIsSavingName] = React.useState(false);
+    
+    // Password confirmation states
+    const [showPasswordConfirm, setShowPasswordConfirm] = React.useState(false);
+    const [confirmPassword, setConfirmPassword] = React.useState('');
+    const [passwordAction, setPasswordAction] = React.useState<'reset' | 'delete' | null>(null);
+    const [isVerifyingPassword, setIsVerifyingPassword] = React.useState(false);
 
     // Load profile picture from Clerk's imageUrl
     React.useEffect(() => {
@@ -158,10 +164,8 @@ export default function ProfileScreen() {
                 return;
             }
 
-
             setIsSavingName(true);
 
-            // Update user metadata with new names and phone number
             await user.update({
                 unsafeMetadata: {
                     ...user.unsafeMetadata,
@@ -181,11 +185,70 @@ export default function ProfileScreen() {
         }
     };
 
+    const verifyPassword = async () => {
+        if (!confirmPassword.trim()) {
+            Alert.alert('Error', 'Please enter your password');
+            return;
+        }
+
+        if (!user) {
+            Alert.alert('Error', 'User not found');
+            return;
+        }
+
+        setIsVerifyingPassword(true);
+
+        try {
+            // Verify password by attempting to update it with the same password
+            await user.updatePassword({
+                currentPassword: confirmPassword,
+                newPassword: confirmPassword,
+            });
+
+            // Password is correct, proceed with the action
+            setShowPasswordConfirm(false);
+            setConfirmPassword('');
+
+            if (passwordAction === 'reset') {
+                resetAllExpenseData();
+            } else if (passwordAction === 'delete') {
+                HandleDeleteAccount();
+            }
+        } catch (error: any) {
+            console.error('Password verification error:', error);
+            
+            // Check the error message
+            const errorMessage = error?.errors?.[0]?.message || error?.message || '';
+            const longMessage = error?.errors?.[0]?.longMessage || '';
+            
+            console.log('Error details:', { errorMessage, longMessage });
+            
+            // Check if it's a password verification error
+            if (errorMessage.toLowerCase().includes('password') || 
+                errorMessage.toLowerCase().includes('incorrect') ||
+                errorMessage.toLowerCase().includes('current_password') ||
+                longMessage.toLowerCase().includes('password')) {
+                Alert.alert('Incorrect Password', 'The password you entered is incorrect. Please try again.');
+            } else {
+                // For any other error, show generic message
+                Alert.alert('Verification Failed', 'Unable to verify password. Please try again.');
+            }
+        } finally {
+            setIsVerifyingPassword(false);
+        }
+    };
+
+    const openPasswordConfirmation = (action: 'reset' | 'delete') => {
+        setPasswordAction(action);
+        setConfirmPassword('');
+        setShowPasswordConfirm(true);
+    };
+
     const HandleDeleteAccount = async () => {
         try {
             Alert.alert(
                 "Delete account",
-                "Are you sure you want to delete your account?",
+                "Are you sure you want to delete your account? This action cannot be undone.",
                 [
                     {
                         text: "Cancel",
@@ -209,7 +272,6 @@ export default function ProfileScreen() {
 
     // Get user initials for avatar
     const getInitials = () => {
-        // Try metadata first
         const metaFirstName = user?.unsafeMetadata?.firstName as string;
         const metaLastName = user?.unsafeMetadata?.lastName as string;
         
@@ -217,7 +279,6 @@ export default function ProfileScreen() {
             return `${metaFirstName[0]}${metaLastName[0]}`.toUpperCase();
         }
         
-        // Fallback to Clerk's built-in fields
         if (user?.firstName && user?.lastName) {
             return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
         }
@@ -240,7 +301,6 @@ export default function ProfileScreen() {
 
     // Get full name for display
     const getFullName = () => {
-        // Try to get from metadata first
         const metaFirstName = user?.unsafeMetadata?.firstName as string;
         const metaLastName = user?.unsafeMetadata?.lastName as string;
         
@@ -248,7 +308,6 @@ export default function ProfileScreen() {
             return `${metaFirstName} ${metaLastName}`;
         }
         
-        // Fallback to Clerk's built-in fields
         if (user?.firstName && user?.lastName) {
             return `${user.firstName} ${user.lastName}`;
         }
@@ -328,7 +387,7 @@ export default function ProfileScreen() {
                     onPress={() => router.push('/(index)/biometric-settings' as any)}
                 >
                     <View style={[styles.settingIcon, { backgroundColor: '#E0F2FF' }]}>
-                        <ThemedText style={styles.iconText}>🔐</ThemedText>
+                        <ThemedText style={styles.iconText}>🔒</ThemedText>
                     </View>
                     <View style={styles.settingContent}>
                         <ThemedText style={styles.settingLabel}>Biometric Login</ThemedText>
@@ -395,7 +454,7 @@ export default function ProfileScreen() {
                     style={styles.settingItem}
                     onPress={async () => {
                         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        HandleDeleteAccount();
+                        openPasswordConfirmation('delete');
                     }}
                 >
                     <View style={[styles.settingIcon, { backgroundColor: '#FFEBEE' }]}>
@@ -412,29 +471,7 @@ export default function ProfileScreen() {
                     style={styles.settingItem}
                     onPress={async () => {
                         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        Alert.alert(
-                            "Reset Expense Data",
-                            "Are you sure you want to delete all expense data? This action cannot be undone.",
-                            [
-                                {
-                                    text: "Cancel",
-                                    style: "cancel",
-                                },
-                                {
-                                    text: "Reset",
-                                    onPress: async () => {
-                                        try {
-                                            await resetAllExpenseData();
-                                            Alert.alert("Success", "All expense data has been reset");
-                                        } catch (error) {
-                                            Alert.alert("Error", "Failed to reset expense data");
-                                            console.error(error);
-                                        }
-                                    },
-                                    style: "destructive",
-                                },
-                            ]
-                        );
+                        openPasswordConfirmation('reset');
                     }}
                 >
                     <View style={[styles.settingIcon, { backgroundColor: '#FFF3E0' }]}>
@@ -576,6 +613,74 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </TouchableOpacity>
             </Modal>
+
+            {/* Password Confirmation Modal */}
+            <Modal
+                visible={showPasswordConfirm}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowPasswordConfirm(false)}
+            >
+                <TouchableOpacity 
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowPasswordConfirm(false)}
+                >
+                    <TouchableOpacity 
+                        activeOpacity={1}
+                        onPress={(e) => e.stopPropagation()}
+                    >
+                        <View style={styles.avatarModalContent}>
+                            <ThemedText style={styles.modalTitle}>
+                                {passwordAction === 'delete' ? '⚠️ Confirm Delete' : '🔐 Confirm Action'}
+                            </ThemedText>
+                            
+                            <ThemedText style={styles.passwordWarning}>
+                                {passwordAction === 'delete' 
+                                    ? 'This will permanently delete your account and all associated data. Please enter your password to confirm.'
+                                    : 'This will delete all your expense data. Please enter your password to confirm.'}
+                            </ThemedText>
+
+                            <View style={styles.inputContainer}>
+                                <ThemedText style={styles.inputLabel}>Password</ThemedText>
+                                <TextInput
+                                    style={styles.input}
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    placeholder="Enter your password"
+                                    placeholderTextColor="#999"
+                                    secureTextEntry
+                                    autoCapitalize="none"
+                                    autoFocus
+                                />
+                            </View>
+                            
+                            <View style={styles.modalButtonContainer}>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.cancelButton, { flex: 1, marginRight: 8 }]}
+                                    onPress={() => {
+                                        setShowPasswordConfirm(false);
+                                        setConfirmPassword('');
+                                    }}
+                                    disabled={isVerifyingPassword}
+                                >
+                                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.dangerButton, { flex: 1, marginLeft: 8 }]}
+                                    onPress={verifyPassword}
+                                    disabled={isVerifyingPassword || !confirmPassword.trim()}
+                                >
+                                    <Text style={styles.dangerButtonText}>
+                                        {isVerifyingPassword ? 'Verifying...' : 'Confirm'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            </Modal>
         </BodyScrollView>
     );
 }
@@ -691,12 +796,6 @@ const createStyles = (colors: any) => StyleSheet.create({
         fontSize: 15,
         color: colors.text,
         marginBottom: 4,
-    },
-    userPhone: {
-        fontSize: 14,
-        color: colors.text,
-        marginBottom: 12,
-        opacity: 0.8,
     },
     memberBadge: {
         backgroundColor: '#f0f8ff',
@@ -863,6 +962,13 @@ const createStyles = (colors: any) => StyleSheet.create({
         borderWidth: 1,
         borderColor: '#e0e0e0',
     },
+    passwordWarning: {
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
+        marginBottom: 20,
+        lineHeight: 20,
+    },
     modalButtonContainer: {
         flexDirection: 'row',
         width: '100%',
@@ -896,6 +1002,16 @@ const createStyles = (colors: any) => StyleSheet.create({
         borderColor: '#007AFF',
     },
     saveButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#fff',
+    },
+    dangerButton: {
+        backgroundColor: '#DC2626',
+        borderWidth: 2,
+        borderColor: '#DC2626',
+    },
+    dangerButtonText: {
         fontSize: 16,
         fontWeight: '700',
         color: '#fff',

@@ -7,230 +7,436 @@ dotenv.config();
 
 const products = [
   // ========== BEVERAGES ==========
-  { id: 1, name: 'Coke 1.5L', category: 'Beverages' },
-  { id: 2, name: 'Sprite 1.5L', category: 'Beverages' },
-  { id: 3, name: 'Royal True Orange 1.5L', category: 'Beverages' },
-  { id: 4, name: 'Pepsi 1.5L', category: 'Beverages' },
-  { id: 5, name: 'Mountain Dew 1.5L', category: 'Beverages' },
-  { id: 6, name: 'C2 Green Tea Apple 1L', category: 'Beverages' },
-  { id: 7, name: 'Zesto Orange 200ml (pack of 10)', category: 'Beverages' },
-  { id: 8, name: 'Del Monte Pineapple Juice 1L', category: 'Beverages' },
-  { id: 9, name: 'Minute Maid Orange Juice 1L', category: 'Beverages' },
-  { id: 10, name: 'Gatorade Blue Bolt 500ml', category: 'Beverages' },
-  { id: 11, name: 'Summit Mineral Water 1L', category: 'Beverages' },
-  { id: 12, name: 'Wilkins Distilled Water 1L', category: 'Beverages' },
+  // Coke - Multiple sizes
+  { id: 1, name: 'Coke', category: 'Beverages', unit: '330ml can' },
+  { id: 2, name: 'Coke', category: 'Beverages', unit: '500ml' },
+  { id: 3, name: 'Coke', category: 'Beverages', unit: '1L' },
+  { id: 4, name: 'Coke', category: 'Beverages', unit: '1.5L' },
+  { id: 5, name: 'Coke', category: 'Beverages', unit: '2L' },
+  
+  // Sprite - Multiple sizes
+  { id: 6, name: 'Sprite', category: 'Beverages', unit: '330ml can' },
+  { id: 7, name: 'Sprite', category: 'Beverages', unit: '500ml' },
+  { id: 8, name: 'Sprite', category: 'Beverages', unit: '1L' },
+  { id: 9, name: 'Sprite', category: 'Beverages', unit: '1.5L' },
+  { id: 10, name: 'Sprite', category: 'Beverages', unit: '2L' },
+  
+  // Royal True Orange
+  { id: 11, name: 'Royal True Orange', category: 'Beverages', unit: '330ml can' },
+  { id: 12, name: 'Royal True Orange', category: 'Beverages', unit: '500ml' },
+  { id: 13, name: 'Royal True Orange', category: 'Beverages', unit: '1.5L' },
+  { id: 14, name: 'Royal True Orange', category: 'Beverages', unit: '2L' },
+  
+  // Pepsi
+  { id: 15, name: 'Pepsi', category: 'Beverages', unit: '330ml can' },
+  { id: 16, name: 'Pepsi', category: 'Beverages', unit: '500ml' },
+  { id: 17, name: 'Pepsi', category: 'Beverages', unit: '1.5L' },
+  { id: 18, name: 'Pepsi', category: 'Beverages', unit: '2L' },
+  
+  // Mountain Dew
+  { id: 19, name: 'Mountain Dew', category: 'Beverages', unit: '330ml can' },
+  { id: 20, name: 'Mountain Dew', category: 'Beverages', unit: '500ml' },
+  { id: 21, name: 'Mountain Dew', category: 'Beverages', unit: '1.5L' },
+  
+  // C2 Green Tea
+  { id: 22, name: 'C2 Green Tea Apple', category: 'Beverages', unit: '500ml' },
+  { id: 23, name: 'C2 Green Tea Apple', category: 'Beverages', unit: '1L' },
+  
+  // Zesto Orange
+  { id: 24, name: 'Zesto Orange', category: 'Beverages', unit: '200ml (pack of 10)' },
+  
+  // Del Monte Pineapple Juice
+  { id: 25, name: 'Del Monte Pineapple Juice', category: 'Beverages', unit: '240ml' },
+  { id: 26, name: 'Del Monte Pineapple Juice', category: 'Beverages', unit: '1L' },
+  
+  // Minute Maid Orange Juice
+  { id: 27, name: 'Minute Maid Orange Juice', category: 'Beverages', unit: '1L' },
+  { id: 28, name: 'Minute Maid Orange Juice', category: 'Beverages', unit: '330ml' },
+  
+  // Gatorade
+  { id: 29, name: 'Gatorade Blue Bolt', category: 'Beverages', unit: '500ml' },
+  { id: 30, name: 'Gatorade Blue Bolt', category: 'Beverages', unit: '1L' },
+  
+  // Water
+  { id: 31, name: 'Summit Mineral Water', category: 'Beverages', unit: '500ml' },
+  { id: 32, name: 'Summit Mineral Water', category: 'Beverages', unit: '1L' },
+  { id: 33, name: 'Wilkins Distilled Water', category: 'Beverages', unit: '500ml' },
+  { id: 34, name: 'Wilkins Distilled Water', category: 'Beverages', unit: '1L' },
 
   // ========== DAIRY ==========
-  { id: 13, name: 'Bear Brand Powdered Milk 320g', category: 'Dairy' },
-  { id: 14, name: 'Alaska Evaporated Milk 370ml', category: 'Dairy' },
-  { id: 15, name: 'Nestle Fresh Milk 1L', category: 'Dairy' },
-  { id: 16, name: 'Anchor Full Cream Milk Powder 900g', category: 'Dairy' },
-  { id: 17, name: 'Magnolia Fresh Milk 1L', category: 'Dairy' },
-  { id: 18, name: 'Birch Tree Fortified Powdered Milk 550g', category: 'Dairy' },
-  { id: 19, name: 'Nestle All Purpose Cream 250ml', category: 'Dairy' },
-  { id: 20, name: 'Magnolia Butter 200g', category: 'Dairy' },
-  { id: 21, name: 'Eden Cheese 165g', category: 'Dairy' },
-  { id: 22, name: 'Arla Cream Cheese 150g', category: 'Dairy' },
-  { id: 23, name: 'Nestle Yogurt Strawberry 80g (pack of 4)', category: 'Dairy' },
-  { id: 24, name: 'Selecta Ice Cream Ube 1.3L', category: 'Dairy' },
+  // Powdered Milk
+  { id: 35, name: 'Bear Brand Powdered Milk', category: 'Dairy', unit: '150g' },
+  { id: 36, name: 'Bear Brand Powdered Milk', category: 'Dairy', unit: '320g' },
+  { id: 37, name: 'Bear Brand Powdered Milk', category: 'Dairy', unit: '700g' },
+  
+  // Evaporated Milk
+  { id: 38, name: 'Alaska Evaporated Milk', category: 'Dairy', unit: '154ml' },
+  { id: 39, name: 'Alaska Evaporated Milk', category: 'Dairy', unit: '370ml' },
+  
+  // Fresh Milk
+  { id: 40, name: 'Nestle Fresh Milk', category: 'Dairy', unit: '1L' },
+  { id: 41, name: 'Nestle Fresh Milk', category: 'Dairy', unit: '250ml' },
+  { id: 42, name: 'Magnolia Fresh Milk', category: 'Dairy', unit: '1L' },
+  { id: 43, name: 'Magnolia Fresh Milk', category: 'Dairy', unit: '250ml' },
+  
+  // Milk Powder
+  { id: 44, name: 'Anchor Full Cream Milk Powder', category: 'Dairy', unit: '400g' },
+  { id: 45, name: 'Anchor Full Cream Milk Powder', category: 'Dairy', unit: '900g' },
+  { id: 46, name: 'Birch Tree Fortified Powdered Milk', category: 'Dairy', unit: '330g' },
+  { id: 47, name: 'Birch Tree Fortified Powdered Milk', category: 'Dairy', unit: '550g' },
+  
+  // Cream & Butter
+  { id: 48, name: 'Nestle All Purpose Cream', category: 'Dairy', unit: '250ml' },
+  { id: 49, name: 'Nestle All Purpose Cream', category: 'Dairy', unit: '125ml' },
+  { id: 50, name: 'Magnolia Butter', category: 'Dairy', unit: '200g' },
+  { id: 51, name: 'Magnolia Butter', category: 'Dairy', unit: '100g' },
+  
+  // Cheese
+  { id: 52, name: 'Eden Cheese', category: 'Dairy', unit: '165g' },
+  { id: 53, name: 'Eden Cheese', category: 'Dairy', unit: '440g' },
+  { id: 54, name: 'Arla Cream Cheese', category: 'Dairy', unit: '150g' },
+  
+  // Yogurt
+  { id: 55, name: 'Nestle Yogurt Strawberry', category: 'Dairy', unit: '80g (4-pack)' },
+  
+  // Ice Cream
+  { id: 56, name: 'Selecta Ice Cream Ube', category: 'Dairy', unit: '1.3L' },
+  { id: 57, name: 'Selecta Ice Cream Ube', category: 'Dairy', unit: '750ml' },
 
   // ========== INSTANT NOODLES ==========
-  { id: 25, name: 'Lucky Me Pancit Canton Original', category: 'Instant Noodles' },
-  { id: 26, name: 'Lucky Me Pancit Canton Chilimansi', category: 'Instant Noodles' },
-  { id: 27, name: 'Lucky Me La Paz Batchoy', category: 'Instant Noodles' },
-  { id: 28, name: 'Nissin Cup Noodles Seafood 60g', category: 'Instant Noodles' },
-  { id: 29, name: 'Payless Instant Pancit Canton', category: 'Instant Noodles' },
-  { id: 30, name: 'Quickchow Instant Mami Beef', category: 'Instant Noodles' },
+  { id: 58, name: 'Lucky Me Pancit Canton Original', category: 'Instant Noodles', unit: 'per pack' },
+  { id: 59, name: 'Lucky Me Pancit Canton Original', category: 'Instant Noodles', unit: '10-pack' },
+  { id: 60, name: 'Lucky Me Pancit Canton Chilimansi', category: 'Instant Noodles', unit: 'per pack' },
+  { id: 61, name: 'Lucky Me Pancit Canton Chilimansi', category: 'Instant Noodles', unit: '10-pack' },
+  { id: 62, name: 'Lucky Me La Paz Batchoy', category: 'Instant Noodles', unit: 'per pack' },
+  { id: 63, name: 'Lucky Me La Paz Batchoy', category: 'Instant Noodles', unit: '10-pack' },
+  { id: 64, name: 'Nissin Cup Noodles Seafood', category: 'Instant Noodles', unit: '60g' },
+  { id: 65, name: 'Payless Instant Pancit Canton', category: 'Instant Noodles', unit: 'per pack' },
+  { id: 66, name: 'Quickchow Instant Mami Beef', category: 'Instant Noodles', unit: 'per pack' },
 
   // ========== CANNED GOODS ==========
-  { id: 31, name: 'Century Tuna Flakes in Oil 180g', category: 'Canned Goods' },
-  { id: 32, name: 'Argentina Corned Beef 175g', category: 'Canned Goods' },
-  { id: 33, name: 'Ligo Sardines in Tomato Sauce 155g', category: 'Canned Goods' },
-  { id: 34, name: '555 Tuna Sardines 155g', category: 'Canned Goods' },
-  { id: 35, name: 'Mega Sardines Green 155g', category: 'Canned Goods' },
-  { id: 36, name: 'CDO Liver Spread 85g', category: 'Canned Goods' },
-  { id: 37, name: 'Reno Liver Spread 85g', category: 'Canned Goods' },
-  { id: 38, name: 'Del Monte Spaghetti Sauce Filipino Style 500g', category: 'Canned Goods' },
-  { id: 39, name: 'Hunt\'s Pork & Beans 230g', category: 'Canned Goods' },
-  { id: 40, name: 'Del Monte Pineapple Chunks 227g', category: 'Canned Goods' },
-  { id: 41, name: 'Spam Classic 340g', category: 'Canned Goods' },
-  { id: 42, name: 'Maling Premium Luncheon Meat 340g', category: 'Canned Goods' },
+  // Tuna
+  { id: 67, name: 'Century Tuna Flakes in Oil', category: 'Canned Goods', unit: '180g' },
+  { id: 68, name: 'Century Tuna Flakes in Oil', category: 'Canned Goods', unit: '155g' },
+  
+  // Corned Beef
+  { id: 69, name: 'Argentina Corned Beef', category: 'Canned Goods', unit: '175g' },
+  { id: 70, name: 'Argentina Corned Beef', category: 'Canned Goods', unit: '260g' },
+  
+  // Sardines
+  { id: 71, name: 'Ligo Sardines in Tomato Sauce', category: 'Canned Goods', unit: '155g' },
+  { id: 72, name: 'Ligo Sardines in Tomato Sauce', category: 'Canned Goods', unit: '215g' },
+  { id: 73, name: '555 Tuna Sardines', category: 'Canned Goods', unit: '155g' },
+  { id: 74, name: 'Mega Sardines Green', category: 'Canned Goods', unit: '155g' },
+  { id: 75, name: 'Mega Sardines Green', category: 'Canned Goods', unit: '215g' },
+  
+  // Liver Spread
+  { id: 76, name: 'CDO Liver Spread', category: 'Canned Goods', unit: '85g' },
+  { id: 77, name: 'CDO Liver Spread', category: 'Canned Goods', unit: '175g' },
+  { id: 78, name: 'Reno Liver Spread', category: 'Canned Goods', unit: '85g' },
+  
+  // Sauces & Others
+  { id: 79, name: 'Del Monte Spaghetti Sauce Filipino Style', category: 'Canned Goods', unit: '250g' },
+  { id: 80, name: 'Del Monte Spaghetti Sauce Filipino Style', category: 'Canned Goods', unit: '500g' },
+  { id: 81, name: 'Hunt\'s Pork & Beans', category: 'Canned Goods', unit: '230g' },
+  { id: 82, name: 'Hunt\'s Pork & Beans', category: 'Canned Goods', unit: '150g' },
+  { id: 83, name: 'Del Monte Pineapple Chunks', category: 'Canned Goods', unit: '227g' },
+  
+  // Luncheon Meat
+  { id: 84, name: 'Spam Classic', category: 'Canned Goods', unit: '340g' },
+  { id: 85, name: 'Spam Classic', category: 'Canned Goods', unit: '200g' },
+  { id: 86, name: 'Maling Premium Luncheon Meat', category: 'Canned Goods', unit: '340g' },
+  { id: 87, name: 'Maling Premium Luncheon Meat', category: 'Canned Goods', unit: '200g' },
 
   // ========== COFFEE ==========
-  { id: 43, name: 'Nescafe Classic 50g', category: 'Coffee' },
-  { id: 44, name: 'Nescafe 3-in-1 Original 30s', category: 'Coffee' },
-  { id: 45, name: 'Great Taste White 3-in-1 30s', category: 'Coffee' },
-  { id: 46, name: 'Kopiko Brown Coffee 30s', category: 'Coffee' },
-  { id: 47, name: 'San Mig Coffee Barako 10g (10s)', category: 'Coffee' },
-  { id: 48, name: 'Milo Powder 300g', category: 'Coffee' },
+  // Instant Coffee
+  { id: 88, name: 'Nescafe Classic', category: 'Coffee', unit: '50g' },
+  { id: 89, name: 'Nescafe Classic', category: 'Coffee', unit: '100g' },
+  { id: 90, name: 'Nescafe Classic', category: 'Coffee', unit: '200g' },
+  
+  // 3-in-1 Coffee
+  { id: 91, name: 'Nescafe 3-in-1 Original', category: 'Coffee', unit: '10 sachets' },
+  { id: 92, name: 'Nescafe 3-in-1 Original', category: 'Coffee', unit: '30 sachets' },
+  { id: 93, name: 'Great Taste White 3-in-1', category: 'Coffee', unit: '10 sachets' },
+  { id: 94, name: 'Great Taste White 3-in-1', category: 'Coffee', unit: '30 sachets' },
+  { id: 95, name: 'Kopiko Brown Coffee', category: 'Coffee', unit: '10 sachets' },
+  { id: 96, name: 'Kopiko Brown Coffee', category: 'Coffee', unit: '30 sachets' },
+  { id: 97, name: 'San Mig Coffee Barako', category: 'Coffee', unit: '10 sachets' },
+  
+  // Milo
+  { id: 98, name: 'Milo Powder', category: 'Coffee', unit: '300g' },
+  { id: 99, name: 'Milo Powder', category: 'Coffee', unit: '600g' },
+  { id: 100, name: 'Milo Powder', category: 'Coffee', unit: '1kg' },
 
   // ========== RICE & GRAINS ==========
-  { id: 49, name: 'Sinandomeng Rice (1 kg)', category: 'Rice & Grains' },
-  { id: 50, name: 'Jasmine Rice (1 kg)', category: 'Rice & Grains' },
-  { id: 51, name: 'Dinorado Rice (1 kg)', category: 'Rice & Grains' },
-  { id: 52, name: 'Brown Rice (1 kg)', category: 'Rice & Grains' },
-  { id: 53, name: 'Malagkit Rice (1 kg)', category: 'Rice & Grains' },
+  // Sinandomeng Rice
+  { id: 101, name: 'Sinandomeng Rice', category: 'Rice & Grains', unit: '1 kg' },
+  { id: 102, name: 'Sinandomeng Rice', category: 'Rice & Grains', unit: '5 kg' },
+  { id: 103, name: 'Sinandomeng Rice', category: 'Rice & Grains', unit: '10 kg' },
+  { id: 104, name: 'Sinandomeng Rice', category: 'Rice & Grains', unit: '25 kg' },
+  
+  // Jasmine Rice
+  { id: 105, name: 'Jasmine Rice', category: 'Rice & Grains', unit: '1 kg' },
+  { id: 106, name: 'Jasmine Rice', category: 'Rice & Grains', unit: '5 kg' },
+  { id: 107, name: 'Jasmine Rice', category: 'Rice & Grains', unit: '10 kg' },
+  { id: 108, name: 'Jasmine Rice', category: 'Rice & Grains', unit: '25 kg' },
+  
+  // Dinorado Rice
+  { id: 109, name: 'Dinorado Rice', category: 'Rice & Grains', unit: '1 kg' },
+  { id: 110, name: 'Dinorado Rice', category: 'Rice & Grains', unit: '5 kg' },
+  { id: 111, name: 'Dinorado Rice', category: 'Rice & Grains', unit: '10 kg' },
+  
+  // Brown Rice
+  { id: 112, name: 'Brown Rice', category: 'Rice & Grains', unit: '1 kg' },
+  { id: 113, name: 'Brown Rice', category: 'Rice & Grains', unit: '5 kg' },
+  
+  // Malagkit Rice
+  { id: 114, name: 'Malagkit Rice', category: 'Rice & Grains', unit: '1 kg' },
+  { id: 115, name: 'Malagkit Rice', category: 'Rice & Grains', unit: '5 kg' },
 
   // ========== FRUITS ==========
-  { id: 54, name: 'Royal Banana (1 kg)', category: 'Fruits' },
-  { id: 55, name: 'Latundan Banana (1 kg)', category: 'Fruits' },
-  { id: 56, name: 'Cavendish Banana (1 kg)', category: 'Fruits' },
-  { id: 57, name: 'Mango Manila (1 kg)', category: 'Fruits' },
-  { id: 58, name: 'Papaya (1 kg)', category: 'Fruits' },
-  { id: 59, name: 'Pineapple Queen (per pc)', category: 'Fruits' },
-  { id: 60, name: 'Watermelon (1 kg)', category: 'Fruits' },
-  { id: 61, name: 'Apple Fuji (1 kg)', category: 'Fruits' },
-  { id: 62, name: 'Orange Imported (1 kg)', category: 'Fruits' },
-  { id: 63, name: 'Grapes Red (1 kg)', category: 'Fruits' },
-  { id: 64, name: 'Calamansi (1 kg)', category: 'Fruits' },
-  { id: 65, name: 'Coconut (per pc)', category: 'Fruits' },
+  // Bananas
+  { id: 116, name: 'Royal Banana', category: 'Fruits', unit: 'per kg' },
+  { id: 117, name: 'Royal Banana', category: 'Fruits', unit: 'per dozen' },
+  { id: 118, name: 'Latundan Banana', category: 'Fruits', unit: 'per kg' },
+  { id: 119, name: 'Latundan Banana', category: 'Fruits', unit: 'per dozen' },
+  { id: 120, name: 'Cavendish Banana', category: 'Fruits', unit: 'per kg' },
+  { id: 121, name: 'Cavendish Banana', category: 'Fruits', unit: 'per dozen' },
+  
+  // Tropical Fruits
+  { id: 122, name: 'Mango Manila', category: 'Fruits', unit: 'per kg' },
+  { id: 123, name: 'Mango Manila', category: 'Fruits', unit: 'per piece' },
+  { id: 124, name: 'Papaya', category: 'Fruits', unit: 'per kg' },
+  { id: 125, name: 'Papaya', category: 'Fruits', unit: 'per piece' },
+  { id: 126, name: 'Pineapple Queen', category: 'Fruits', unit: 'per piece' },
+  { id: 127, name: 'Watermelon', category: 'Fruits', unit: 'per kg' },
+  { id: 128, name: 'Watermelon', category: 'Fruits', unit: 'per piece' },
+  
+  // Imported Fruits
+  { id: 129, name: 'Apple Fuji', category: 'Fruits', unit: 'per kg' },
+  { id: 130, name: 'Apple Fuji', category: 'Fruits', unit: 'per piece' },
+  { id: 131, name: 'Orange Imported', category: 'Fruits', unit: 'per kg' },
+  { id: 132, name: 'Orange Imported', category: 'Fruits', unit: 'per piece' },
+  { id: 133, name: 'Grapes Red', category: 'Fruits', unit: 'per kg' },
+  { id: 134, name: 'Grapes Red', category: 'Fruits', unit: '500g' },
+  
+  // Local Fruits
+  { id: 135, name: 'Calamansi', category: 'Fruits', unit: 'per kg' },
+  { id: 136, name: 'Calamansi', category: 'Fruits', unit: '250g' },
+  { id: 137, name: 'Coconut', category: 'Fruits', unit: 'per piece' },
 
   // ========== VEGETABLES ==========
-  { id: 66, name: 'White Onion (1 kg)', category: 'Vegetables' },
-  { id: 67, name: 'Red Onion (1 kg)', category: 'Vegetables' },
-  { id: 68, name: 'Garlic Native (1 kg)', category: 'Vegetables' },
-  { id: 69, name: 'Tomato (1 kg)', category: 'Vegetables' },
-  { id: 70, name: 'Potato (1 kg)', category: 'Vegetables' },
-  { id: 71, name: 'Carrots (1 kg)', category: 'Vegetables' },
-  { id: 72, name: 'Cabbage (1 kg)', category: 'Vegetables' },
-  { id: 73, name: 'Lettuce (per head)', category: 'Vegetables' },
-  { id: 74, name: 'Cucumber (1 kg)', category: 'Vegetables' },
-  { id: 75, name: 'Eggplant (1 kg)', category: 'Vegetables' },
-  { id: 76, name: 'Squash (1 kg)', category: 'Vegetables' },
-  { id: 77, name: 'Sitaw/String Beans (1 kg)', category: 'Vegetables' },
-  { id: 78, name: 'Kangkong (1 bundle)', category: 'Vegetables' },
-  { id: 79, name: 'Pechay (1 bundle)', category: 'Vegetables' },
-  { id: 80, name: 'Malunggay (1 bundle)', category: 'Vegetables' },
-  { id: 81, name: 'Ampalaya/Bitter Gourd (1 kg)', category: 'Vegetables' },
-  { id: 82, name: 'Bell Pepper (1 kg)', category: 'Vegetables' },
-  { id: 83, name: 'Ginger (1 kg)', category: 'Vegetables' },
-  { id: 84, name: 'Green Chili (1 kg)', category: 'Vegetables' },
+  // Onions & Garlic
+  { id: 138, name: 'White Onion', category: 'Vegetables', unit: 'per kg' },
+  { id: 139, name: 'White Onion', category: 'Vegetables', unit: '500g' },
+  { id: 140, name: 'Red Onion', category: 'Vegetables', unit: 'per kg' },
+  { id: 141, name: 'Red Onion', category: 'Vegetables', unit: '500g' },
+  { id: 142, name: 'Garlic Native', category: 'Vegetables', unit: 'per kg' },
+  { id: 143, name: 'Garlic Native', category: 'Vegetables', unit: '250g' },
+  
+  // Common Vegetables
+  { id: 144, name: 'Tomato', category: 'Vegetables', unit: 'per kg' },
+  { id: 145, name: 'Tomato', category: 'Vegetables', unit: '500g' },
+  { id: 146, name: 'Potato', category: 'Vegetables', unit: 'per kg' },
+  { id: 147, name: 'Potato', category: 'Vegetables', unit: '500g' },
+  { id: 148, name: 'Carrots', category: 'Vegetables', unit: 'per kg' },
+  { id: 149, name: 'Carrots', category: 'Vegetables', unit: '500g' },
+  { id: 150, name: 'Cabbage', category: 'Vegetables', unit: 'per kg' },
+  { id: 151, name: 'Cabbage', category: 'Vegetables', unit: 'per head' },
+  { id: 152, name: 'Lettuce', category: 'Vegetables', unit: 'per head' },
+  { id: 153, name: 'Cucumber', category: 'Vegetables', unit: 'per kg' },
+  { id: 154, name: 'Cucumber', category: 'Vegetables', unit: 'per piece' },
+  
+  // Filipino Vegetables
+  { id: 155, name: 'Eggplant', category: 'Vegetables', unit: 'per kg' },
+  { id: 156, name: 'Eggplant', category: 'Vegetables', unit: '500g' },
+  { id: 157, name: 'Squash', category: 'Vegetables', unit: 'per kg' },
+  { id: 158, name: 'Squash', category: 'Vegetables', unit: '500g' },
+  { id: 159, name: 'Sitaw/String Beans', category: 'Vegetables', unit: 'per kg' },
+  { id: 160, name: 'Sitaw/String Beans', category: 'Vegetables', unit: '250g' },
+  { id: 161, name: 'Kangkong', category: 'Vegetables', unit: 'per bundle' },
+  { id: 162, name: 'Pechay', category: 'Vegetables', unit: 'per bundle' },
+  { id: 163, name: 'Malunggay', category: 'Vegetables', unit: 'per bundle' },
+  { id: 164, name: 'Ampalaya/Bitter Gourd', category: 'Vegetables', unit: 'per kg' },
+  { id: 165, name: 'Ampalaya/Bitter Gourd', category: 'Vegetables', unit: '500g' },
+  { id: 166, name: 'Bell Pepper', category: 'Vegetables', unit: 'per kg' },
+  { id: 167, name: 'Bell Pepper', category: 'Vegetables', unit: '250g' },
+  { id: 168, name: 'Ginger', category: 'Vegetables', unit: 'per kg' },
+  { id: 169, name: 'Ginger', category: 'Vegetables', unit: '250g' },
+  { id: 170, name: 'Green Chili', category: 'Vegetables', unit: 'per kg' },
+  { id: 171, name: 'Green Chili', category: 'Vegetables', unit: '100g' },
 
   // ========== MEAT ==========
-  { id: 85, name: 'Chicken Breast (1 kg)', category: 'Meat' },
-  { id: 86, name: 'Chicken Drumsticks (1 kg)', category: 'Meat' },
-  { id: 87, name: 'Chicken Wings (1 kg)', category: 'Meat' },
-  { id: 88, name: 'Chicken Whole (1 kg)', category: 'Meat' },
-  { id: 89, name: 'Pork Belly Liempo (1 kg)', category: 'Meat' },
-  { id: 90, name: 'Pork Kasim (1 kg)', category: 'Meat' },
-  { id: 91, name: 'Pork Chop (1 kg)', category: 'Meat' },
-  { id: 92, name: 'Ground Pork (1 kg)', category: 'Meat' },
-  { id: 93, name: 'Beef Steak Meat (1 kg)', category: 'Meat' },
-  { id: 94, name: 'Ground Beef (1 kg)', category: 'Meat' },
-  { id: 95, name: 'Hotdog Purefoods Tender Juicy 1kg', category: 'Meat' },
-  { id: 96, name: 'Bacon CDO 200g', category: 'Meat' },
+  // Chicken
+  { id: 172, name: 'Chicken Breast', category: 'Meat', unit: 'per kg' },
+  { id: 173, name: 'Chicken Breast', category: 'Meat', unit: '500g' },
+  { id: 174, name: 'Chicken Drumsticks', category: 'Meat', unit: 'per kg' },
+  { id: 175, name: 'Chicken Drumsticks', category: 'Meat', unit: '500g' },
+  { id: 176, name: 'Chicken Wings', category: 'Meat', unit: 'per kg' },
+  { id: 177, name: 'Chicken Wings', category: 'Meat', unit: '500g' },
+  { id: 178, name: 'Chicken Whole', category: 'Meat', unit: 'per kg' },
+  { id: 179, name: 'Chicken Whole', category: 'Meat', unit: 'per piece' },
+  
+  // Pork
+  { id: 180, name: 'Pork Belly Liempo', category: 'Meat', unit: 'per kg' },
+  { id: 181, name: 'Pork Belly Liempo', category: 'Meat', unit: '500g' },
+  { id: 182, name: 'Pork Kasim', category: 'Meat', unit: 'per kg' },
+  { id: 183, name: 'Pork Kasim', category: 'Meat', unit: '500g' },
+  { id: 184, name: 'Pork Chop', category: 'Meat', unit: 'per kg' },
+  { id: 185, name: 'Pork Chop', category: 'Meat', unit: '500g' },
+  { id: 186, name: 'Ground Pork', category: 'Meat', unit: 'per kg' },
+  { id: 187, name: 'Ground Pork', category: 'Meat', unit: '500g' },
+  { id: 188, name: 'Ground Pork', category: 'Meat', unit: '250g' },
+  
+  // Beef
+  { id: 189, name: 'Beef Steak Meat', category: 'Meat', unit: 'per kg' },
+  { id: 190, name: 'Beef Steak Meat', category: 'Meat', unit: '500g' },
+  { id: 191, name: 'Ground Beef', category: 'Meat', unit: 'per kg' },
+  { id: 192, name: 'Ground Beef', category: 'Meat', unit: '500g' },
+  { id: 193, name: 'Ground Beef', category: 'Meat', unit: '250g' },
+  
+  // Processed Meat
+  { id: 194, name: 'Hotdog Purefoods Tender Juicy', category: 'Meat', unit: '1kg' },
+  { id: 195, name: 'Hotdog Purefoods Tender Juicy', category: 'Meat', unit: '500g' },
+  { id: 196, name: 'Bacon CDO', category: 'Meat', unit: '200g' },
+  { id: 197, name: 'Bacon CDO', category: 'Meat', unit: '500g' },
 
   // ========== FISH & SEAFOOD ==========
-  { id: 97, name: 'Bangus/Milkfish (1 kg)', category: 'Fish & Seafood' },
-  { id: 98, name: 'Tilapia (1 kg)', category: 'Fish & Seafood' },
-  { id: 99, name: 'Galunggong (1 kg)', category: 'Fish & Seafood' },
-  { id: 100, name: 'Squid (1 kg)', category: 'Fish & Seafood' },
-  { id: 101, name: 'Shrimp Medium (1 kg)', category: 'Fish & Seafood' },
-  { id: 102, name: 'Blue Marlin Steak (1 kg)', category: 'Fish & Seafood' },
-  { id: 103, name: 'Talakitok (1 kg)', category: 'Fish & Seafood' },
+  { id: 198, name: 'Bangus/Milkfish', category: 'Fish & Seafood', unit: 'per kg' },
+  { id: 199, name: 'Bangus/Milkfish', category: 'Fish & Seafood', unit: 'per piece (medium)' },
+  { id: 200, name: 'Bangus/Milkfish', category: 'Fish & Seafood', unit: 'per piece (large)' },
+  { id: 201, name: 'Tilapia', category: 'Fish & Seafood', unit: 'per kg' },
+  { id: 202, name: 'Tilapia', category: 'Fish & Seafood', unit: 'per piece' },
+  { id: 203, name: 'Galunggong', category: 'Fish & Seafood', unit: 'per kg' },
+  { id: 204, name: 'Galunggong', category: 'Fish & Seafood', unit: '500g' },
+  { id: 205, name: 'Squid', category: 'Fish & Seafood', unit: 'per kg' },
+  { id: 206, name: 'Squid', category: 'Fish & Seafood', unit: '500g' },
+  { id: 207, name: 'Shrimp Medium', category: 'Fish & Seafood', unit: 'per kg' },
+  { id: 208, name: 'Shrimp Medium', category: 'Fish & Seafood', unit: '500g' },
+  { id: 209, name: 'Blue Marlin Steak', category: 'Fish & Seafood', unit: 'per kg' },
+  { id: 210, name: 'Blue Marlin Steak', category: 'Fish & Seafood', unit: '500g' },
+  { id: 211, name: 'Talakitok', category: 'Fish & Seafood', unit: 'per kg' },
+  { id: 212, name: 'Talakitok', category: 'Fish & Seafood', unit: 'per piece' },
 
   // ========== EGGS ==========
-  { id: 104, name: 'Medium Eggs (1 tray)', category: 'Eggs' },
-  { id: 105, name: 'Large Eggs (1 tray)', category: 'Eggs' },
-  { id: 106, name: 'Extra Large Eggs (1 tray)', category: 'Eggs' },
-  { id: 107, name: 'Quail Eggs (per dozen)', category: 'Eggs' },
-  { id: 108, name: 'Salted Eggs (per dozen)', category: 'Eggs' },
+  { id: 213, name: 'Medium Eggs', category: 'Eggs', unit: 'per tray (30 pcs)' },
+  { id: 214, name: 'Medium Eggs', category: 'Eggs', unit: 'per dozen' },
+  { id: 215, name: 'Medium Eggs', category: 'Eggs', unit: 'half dozen' },
+  { id: 216, name: 'Large Eggs', category: 'Eggs', unit: 'per tray (30 pcs)' },
+  { id: 217, name: 'Large Eggs', category: 'Eggs', unit: 'per dozen' },
+  { id: 218, name: 'Large Eggs', category: 'Eggs', unit: 'half dozen' },
+  { id: 219, name: 'Extra Large Eggs', category: 'Eggs', unit: 'per tray (30 pcs)' },
+  { id: 220, name: 'Extra Large Eggs', category: 'Eggs', unit: 'per dozen' },
+  { id: 221, name: 'Quail Eggs', category: 'Eggs', unit: 'per dozen' },
+  { id: 222, name: 'Quail Eggs', category: 'Eggs', unit: 'per tray (30 pcs)' },
+  { id: 223, name: 'Salted Eggs', category: 'Eggs', unit: 'per dozen' },
+  { id: 224, name: 'Salted Eggs', category: 'Eggs', unit: 'half dozen' },
 
   // ========== BREAD & BAKERY ==========
-  { id: 109, name: 'Gardenia Classic White Bread', category: 'Bread & Bakery' },
-  { id: 110, name: 'Gardenia Wheat Bread', category: 'Bread & Bakery' },
-  { id: 111, name: 'Tasty Bread', category: 'Bread & Bakery' },
-  { id: 112, name: 'Pan de Sal (10 pcs)', category: 'Bread & Bakery' },
-  { id: 113, name: 'Ensaymada (per pc)', category: 'Bread & Bakery' },
-  { id: 114, name: 'Spanish Bread (per pc)', category: 'Bread & Bakery' },
-  { id: 115, name: 'Monay (per pc)', category: 'Bread & Bakery' },
+  { id: 225, name: 'Gardenia Classic White Bread', category: 'Bread & Bakery', unit: '450g' },
+  { id: 226, name: 'Gardenia Classic White Bread', category: 'Bread & Bakery', unit: '600g' },
+  { id: 227, name: 'Gardenia Wheat Bread', category: 'Bread & Bakery', unit: '450g' },
+  { id: 228, name: 'Gardenia Wheat Bread', category: 'Bread & Bakery', unit: '600g' },
+  { id: 229, name: 'Tasty Bread', category: 'Bread & Bakery', unit: '450g' },
+  { id: 230, name: 'Pan de Sal', category: 'Bread & Bakery', unit: '10 pcs' },
+  { id: 231, name: 'Pan de Sal', category: 'Bread & Bakery', unit: '20 pcs' },
+  { id: 232, name: 'Ensaymada', category: 'Bread & Bakery', unit: 'per piece' },
+  { id: 233, name: 'Spanish Bread', category: 'Bread & Bakery', unit: 'per piece' },
+  { id: 234, name: 'Monay', category: 'Bread & Bakery', unit: 'per piece' },
 
   // ========== CONDIMENTS & SAUCES ==========
-  { id: 116, name: 'UFC Banana Catsup 320g', category: 'Condiments & Sauces' },
-  { id: 117, name: 'Papa Banana Catsup 320g', category: 'Condiments & Sauces' },
-  { id: 118, name: 'Datu Puti Soy Sauce 385ml', category: 'Condiments & Sauces' },
-  { id: 119, name: 'Silver Swan Soy Sauce 385ml', category: 'Condiments & Sauces' },
-  { id: 120, name: 'Datu Puti Vinegar 385ml', category: 'Condiments & Sauces' },
-  { id: 121, name: 'UFC Vinegar 385ml', category: 'Condiments & Sauces' },
-  { id: 122, name: 'Mama Sita\'s Oyster Sauce 405g', category: 'Condiments & Sauces' },
-  { id: 123, name: 'Knorr Liquid Seasoning 250ml', category: 'Condiments & Sauces' },
-  { id: 124, name: 'Maggi Magic Sarap 50g', category: 'Condiments & Sauces' },
-  { id: 125, name: 'Ajinomoto Umami Seasoning 100g', category: 'Condiments & Sauces' },
-  { id: 126, name: 'Iodized Salt 1kg', category: 'Condiments & Sauces' },
-  { id: 127, name: 'Black Pepper Ground 50g', category: 'Condiments & Sauces' },
-  { id: 128, name: 'UFC Gravy Mix 25g', category: 'Condiments & Sauces' },
-  { id: 129, name: 'McCormick BBQ Marinade Mix 40g', category: 'Condiments & Sauces' },
+  // Ketchup
+  { id: 235, name: 'UFC Banana Catsup', category: 'Condiments & Sauces', unit: '320g' },
+  { id: 236, name: 'UFC Banana Catsup', category: 'Condiments & Sauces', unit: '550g' },
+  { id: 237, name: 'Papa Banana Catsup', category: 'Condiments & Sauces', unit: '320g' },
+  { id: 238, name: 'Papa Banana Catsup', category: 'Condiments & Sauces', unit: '550g' },
+  
+  // Soy Sauce
+  { id: 239, name: 'Datu Puti Soy Sauce', category: 'Condiments & Sauces', unit: '385ml' },
+  { id: 240, name: 'Datu Puti Soy Sauce', category: 'Condiments & Sauces', unit: '1L' },
+  { id: 241, name: 'Silver Swan Soy Sauce', category: 'Condiments & Sauces', unit: '385ml' },
+  { id: 242, name: 'Silver Swan Soy Sauce', category: 'Condiments & Sauces', unit: '1L' },
+  
+  // Vinegar
+  { id: 243, name: 'Datu Puti Vinegar', category: 'Condiments & Sauces', unit: '385ml' },
+  { id: 244, name: 'Datu Puti Vinegar', category: 'Condiments & Sauces', unit: '1L' },
+  { id: 245, name: 'UFC Vinegar', category: 'Condiments & Sauces', unit: '385ml' },
+  { id: 246, name: 'UFC Vinegar', category: 'Condiments & Sauces', unit: '1L' },
+  
+  // Other Sauces & Seasonings
+  { id: 247, name: 'Mama Sita\'s Oyster Sauce', category: 'Condiments & Sauces', unit: '405g' },
+  { id: 248, name: 'Knorr Liquid Seasoning', category: 'Condiments & Sauces', unit: '250ml' },
+  { id: 249, name: 'Knorr Liquid Seasoning', category: 'Condiments & Sauces', unit: '500ml' },
+  { id: 250, name: 'Maggi Magic Sarap', category: 'Condiments & Sauces', unit: '50g' },
+  { id: 251, name: 'Maggi Magic Sarap', category: 'Condiments & Sauces', unit: '100g' },
+  { id: 252, name: 'Ajinomoto Umami Seasoning', category: 'Condiments & Sauces', unit: '100g' },
+  { id: 253, name: 'Ajinomoto Umami Seasoning', category: 'Condiments & Sauces', unit: '200g' },
+  { id: 254, name: 'Iodized Salt', category: 'Condiments & Sauces', unit: '1kg' },
+  { id: 255, name: 'Iodized Salt', category: 'Condiments & Sauces', unit: '500g' },
+  { id: 256, name: 'Black Pepper Ground', category: 'Condiments & Sauces', unit: '50g' },
+  { id: 257, name: 'Black Pepper Ground', category: 'Condiments & Sauces', unit: '100g' },
+  { id: 258, name: 'UFC Gravy Mix', category: 'Condiments & Sauces', unit: '25g' },
+  { id: 259, name: 'McCormick BBQ Marinade Mix', category: 'Condiments & Sauces', unit: '40g' },
 
   // ========== COOKING OIL ==========
-  { id: 130, name: 'Baguio Vegetable Oil 1L', category: 'Cooking Oil' },
-  { id: 131, name: 'Minola Premium Cooking Oil 1L', category: 'Cooking Oil' },
-  { id: 132, name: 'Golden Fiesta Palm Oil 1L', category: 'Cooking Oil' },
-  { id: 133, name: 'Olive Oil Extra Virgin 500ml', category: 'Cooking Oil' },
+  { id: 260, name: 'Baguio Vegetable Oil', category: 'Cooking Oil', unit: '1L' },
+  { id: 261, name: 'Baguio Vegetable Oil', category: 'Cooking Oil', unit: '2L' },
+  { id: 262, name: 'Minola Premium Cooking Oil', category: 'Cooking Oil', unit: '1L' },
+  { id: 263, name: 'Minola Premium Cooking Oil', category: 'Cooking Oil', unit: '2L' },
+  { id: 264, name: 'Golden Fiesta Palm Oil', category: 'Cooking Oil', unit: '1L' },
+  { id: 265, name: 'Golden Fiesta Palm Oil', category: 'Cooking Oil', unit: '2L' },
+  { id: 266, name: 'Olive Oil Extra Virgin', category: 'Cooking Oil', unit: '250ml' },
+  { id: 267, name: 'Olive Oil Extra Virgin', category: 'Cooking Oil', unit: '500ml' },
 
   // ========== PASTA ==========
-  { id: 134, name: 'Royal Spaghetti Pasta 900g', category: 'Pasta' },
-  { id: 135, name: 'Royal Elbow Macaroni 400g', category: 'Pasta' },
-  { id: 136, name: 'San Remo Penne 500g', category: 'Pasta' },
+  { id: 268, name: 'Royal Spaghetti Pasta', category: 'Pasta', unit: '450g' },
+  { id: 269, name: 'Royal Spaghetti Pasta', category: 'Pasta', unit: '900g' },
+  { id: 270, name: 'Royal Elbow Macaroni', category: 'Pasta', unit: '200g' },
+  { id: 271, name: 'Royal Elbow Macaroni', category: 'Pasta', unit: '400g' },
+  { id: 272, name: 'San Remo Penne', category: 'Pasta', unit: '500g' },
+  { id: 273, name: 'San Remo Penne', category: 'Pasta', unit: '1kg' },
 
   // ========== SNACKS ==========
-  { id: 137, name: 'Jack n Jill Piattos Cheese 85g', category: 'Snacks' },
-  { id: 138, name: 'Oishi Prawn Crackers 90g', category: 'Snacks' },
-  { id: 139, name: 'Nova Multigrain Chips 78g', category: 'Snacks' },
-  { id: 140, name: 'Chippy BBQ 110g', category: 'Snacks' },
-  { id: 141, name: 'Boy Bawang Cornick Adobo 100g', category: 'Snacks' },
-  { id: 142, name: 'Skyflakes Crackers 250g', category: 'Snacks' },
-  { id: 143, name: 'Fita Crackers 300g', category: 'Snacks' },
-  { id: 144, name: 'M.Y. San Grahams 200g', category: 'Snacks' },
-  { id: 145, name: 'Oreo Cookies 137g', category: 'Snacks' },
-  { id: 146, name: 'Cream-O Cookies 132g', category: 'Snacks' },
-  { id: 147, name: 'Rebisco Crackers 250g', category: 'Snacks' },
+  { id: 274, name: 'Jack n Jill Piattos Cheese', category: 'Snacks', unit: '40g' },
+  { id: 275, name: 'Jack n Jill Piattos Cheese', category: 'Snacks', unit: '85g' },
+  { id: 276, name: 'Oishi Prawn Crackers', category: 'Snacks', unit: '60g' },
+  { id: 277, name: 'Oishi Prawn Crackers', category: 'Snacks', unit: '90g' },
+  { id: 278, name: 'Nova Multigrain Chips', category: 'Snacks', unit: '78g' },
+  { id: 279, name: 'Chippy BBQ', category: 'Snacks', unit: '110g' },
+  { id: 280, name: 'Boy Bawang Cornick Adobo', category: 'Snacks', unit: '100g' },
+  { id: 281, name: 'Skyflakes Crackers', category: 'Snacks', unit: '250g' },
+  { id: 282, name: 'Skyflakes Crackers', category: 'Snacks', unit: '500g' },
+  { id: 283, name: 'Fita Crackers', category: 'Snacks', unit: '300g' },
+  { id: 284, name: 'Fita Crackers', category: 'Snacks', unit: '600g' },
+  { id: 285, name: 'M.Y. San Grahams', category: 'Snacks', unit: '200g' },
+  { id: 286, name: 'M.Y. San Grahams', category: 'Snacks', unit: '400g' },
+  { id: 287, name: 'Oreo Cookies', category: 'Snacks', unit: '137g' },
+  { id: 288, name: 'Oreo Cookies', category: 'Snacks', unit: '274g' },
+  { id: 289, name: 'Cream-O Cookies', category: 'Snacks', unit: '132g' },
+  { id: 290, name: 'Cream-O Cookies', category: 'Snacks', unit: '264g' },
+  { id: 291, name: 'Rebisco Crackers', category: 'Snacks', unit: '250g' },
 
   // ========== CANDY & SWEETS ==========
-  { id: 148, name: 'Storck Knoppers 25g (pack of 8)', category: 'Candy & Sweets' },
-  { id: 149, name: 'White Rabbit Candy 227g', category: 'Candy & Sweets' },
-  { id: 150, name: 'Hany Candy (per pack)', category: 'Candy & Sweets' },
-  { id: 151, name: 'Choc Nut (per pack)', category: 'Candy & Sweets' },
-
-  // ========== HOUSEHOLD ITEMS ==========
-  { id: 152, name: 'Surf Powder Detergent 1kg', category: 'Household' },
-  { id: 153, name: 'Tide Powder Detergent 1kg', category: 'Household' },
-  { id: 154, name: 'Ariel Powder Detergent 1kg', category: 'Household' },
-  { id: 155, name: 'Downy Fabric Conditioner 1L', category: 'Household' },
-  { id: 156, name: 'Zonrox Bleach 1L', category: 'Household' },
-  { id: 157, name: 'Joy Dishwashing Liquid 485ml', category: 'Household' },
-  { id: 158, name: 'Domex Toilet Bowl Cleaner 500ml', category: 'Household' },
-  { id: 159, name: 'Lysol Disinfectant Spray 400ml', category: 'Household' },
-  { id: 160, name: 'Baygon Multi-Insect Killer 600ml', category: 'Household' },
-  { id: 161, name: 'Kris Trash Bags Large (10s)', category: 'Household' },
-
-  // ========== PERSONAL CARE ==========
-  { id: 162, name: 'Safeguard Bar Soap 135g', category: 'Personal Care' },
-  { id: 163, name: 'Palmolive Naturals Bar Soap 115g', category: 'Personal Care' },
-  { id: 164, name: 'Colgate Toothpaste 150g', category: 'Personal Care' },
-  { id: 165, name: 'Close-Up Toothpaste 160g', category: 'Personal Care' },
-  { id: 166, name: 'Oral-B Toothbrush', category: 'Personal Care' },
-  { id: 167, name: 'Head & Shoulders Shampoo 340ml', category: 'Personal Care' },
-  { id: 168, name: 'Palmolive Shampoo 340ml', category: 'Personal Care' },
-  { id: 169, name: 'Cream Silk Conditioner 340ml', category: 'Personal Care' },
-  { id: 170, name: 'Modess Napkin Ultra Thin 8s', category: 'Personal Care' },
-  { id: 171, name: 'Whisper Napkin Wings 8s', category: 'Personal Care' },
-  { id: 172, name: 'Johnson\'s Baby Powder 200g', category: 'Personal Care' },
-  { id: 173, name: 'Rexona Deodorant Roll-on 40ml', category: 'Personal Care' },
-
-  // ========== BABY PRODUCTS ==========
-  { id: 174, name: 'EQ Diaper Dry Pants Small 14s', category: 'Baby Products' },
-  { id: 175, name: 'Pampers Baby Dry Pants Medium 18s', category: 'Baby Products' },
-  { id: 176, name: 'Johnson\'s Baby Shampoo 200ml', category: 'Baby Products' },
-  { id: 177, name: 'Cerelac Wheat 120g', category: 'Baby Products' },
-  { id: 178, name: 'Lactum 3+ 350g', category: 'Baby Products' },
+  { id: 292, name: 'Storck Knoppers', category: 'Candy & Sweets', unit: '25g (8-pack)' },
+  { id: 293, name: 'White Rabbit Candy', category: 'Candy & Sweets', unit: '227g' },
+  { id: 294, name: 'White Rabbit Candy', category: 'Candy & Sweets', unit: '100g' },
+  { id: 295, name: 'Hany Candy', category: 'Candy & Sweets', unit: 'per pack' },
+  { id: 296, name: 'Choc Nut', category: 'Candy & Sweets', unit: 'per pack (24 pcs)' },
+  { id: 297, name: 'Choc Nut', category: 'Candy & Sweets', unit: 'per pack (12 pcs)' },
 
   // ========== FROZEN GOODS ==========
-  { id: 179, name: 'Magnolia Chicken Nuggets 200g', category: 'Frozen Goods' },
-  { id: 180, name: 'Magnolia Chicken Fries 400g', category: 'Frozen Goods' },
-  { id: 181, name: 'Purefoods Chicken Franks 1kg', category: 'Frozen Goods' },
-  { id: 182, name: 'Crab Sticks 500g', category: 'Frozen Goods' },
-  { id: 183, name: 'Fish Balls 500g', category: 'Frozen Goods' },
-  { id: 184, name: 'Squid Balls 500g', category: 'Frozen Goods' },
+  { id: 298, name: 'Magnolia Chicken Nuggets', category: 'Frozen Goods', unit: '200g' },
+  { id: 299, name: 'Magnolia Chicken Nuggets', category: 'Frozen Goods', unit: '400g' },
+  { id: 300, name: 'Magnolia Chicken Fries', category: 'Frozen Goods', unit: '200g' },
+  { id: 301, name: 'Magnolia Chicken Fries', category: 'Frozen Goods', unit: '400g' },
+  { id: 302, name: 'Purefoods Chicken Franks', category: 'Frozen Goods', unit: '500g' },
+  { id: 303, name: 'Purefoods Chicken Franks', category: 'Frozen Goods', unit: '1kg' },
+  { id: 304, name: 'Crab Sticks', category: 'Frozen Goods', unit: '250g' },
+  { id: 305, name: 'Crab Sticks', category: 'Frozen Goods', unit: '500g' },
+  { id: 306, name: 'Fish Balls', category: 'Frozen Goods', unit: '250g' },
+  { id: 307, name: 'Fish Balls', category: 'Frozen Goods', unit: '500g' },
+  { id: 308, name: 'Squid Balls', category: 'Frozen Goods', unit: '250g' },
+  { id: 309, name: 'Squid Balls', category: 'Frozen Goods', unit: '500g' },
 ];
 
 const prices = [

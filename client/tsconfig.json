@@ -11,7 +11,8 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    "../server/src/mongodb.ts",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-, "../server/src/mongodb.ts"  ]
+  ]
 }
