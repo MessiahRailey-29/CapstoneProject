@@ -46,14 +46,6 @@ export default function ProfileScreen() {
         );
         setCustomAlertVisible(true);
     };
-
-    
-    // Password confirmation states
-    const [showPasswordConfirm, setShowPasswordConfirm] = React.useState(false);
-    const [confirmPassword, setConfirmPassword] = React.useState('');
-    const [passwordAction, setPasswordAction] = React.useState<'reset' | 'delete' | null>(null);
-    const [isVerifyingPassword, setIsVerifyingPassword] = React.useState(false);
-
     // Load profile picture from Clerk's imageUrl
     React.useEffect(() => {
         if (user?.imageUrl) {

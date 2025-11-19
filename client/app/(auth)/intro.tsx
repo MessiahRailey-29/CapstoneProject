@@ -4,7 +4,6 @@ import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "expo-router";
 import { Colors } from "@/constants/Colors";
-import wasteMeNotLogo from "@/assets/images/waste_me_not_logo.png";
 import { LinearGradient } from "expo-linear-gradient";
 
 export default function IntroScreen() {
@@ -25,7 +24,7 @@ export default function IntroScreen() {
       {/* App Branding */}
       <View style={styles.header}>
         <Image
-          source={wasteMeNotLogo}
+          source={require("@/assets/images/waste_me_not_logo.png")}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -44,13 +43,6 @@ export default function IntroScreen() {
           Log In
         </Button>
       </View>
-
-      {/* Footer Note */}
-      <View style={styles.footer}>
-        <ThemedText style={styles.footerText}>
-          🔒 Your data is secure and encrypted
-        </ThemedText>
-      </View>
     </LinearGradient>
   );
 }
@@ -67,8 +59,9 @@ function createStyles(colors: typeof Colors.light) {
       alignItems: "center",
     },
     logo: {
-      width: 250,
-      height: 250,
+      width: 350,
+      height: 350,
+      margin: -25
     },
     subtitle: {
       fontSize: 15,
