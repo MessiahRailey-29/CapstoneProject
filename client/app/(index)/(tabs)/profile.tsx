@@ -26,6 +26,12 @@ export default function ProfileScreen() {
     const [editedFirstName, setEditedFirstName] = React.useState('');
     const [editedLastName, setEditedLastName] = React.useState('');
     const [isSavingName, setIsSavingName] = React.useState(false);
+    
+    // Password confirmation states
+    const [showPasswordConfirm, setShowPasswordConfirm] = React.useState(false);
+    const [confirmPassword, setConfirmPassword] = React.useState('');
+    const [passwordAction, setPasswordAction] = React.useState<'reset' | 'delete' | null>(null);
+    const [isVerifyingPassword, setIsVerifyingPassword] = React.useState(false);
 
     const [customAlertVisible, setCustomAlertVisible] = useState(false);
     const [customAlertTitle, setCustomAlertTitle] = useState('');
@@ -323,6 +329,7 @@ export default function ProfileScreen() {
         }
 
         // Fallback to Clerk's built-in fields
+        
         if (user?.firstName && user?.lastName) {
             return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
         }
@@ -353,6 +360,7 @@ export default function ProfileScreen() {
         }
 
         // Fallback to Clerk's built-in fields
+        
         if (user?.firstName && user?.lastName) {
             return `${user.firstName} ${user.lastName}`;
         }
