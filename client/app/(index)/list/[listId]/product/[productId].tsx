@@ -16,6 +16,7 @@ import { Colors } from "@/constants/Colors";
 import { useProductPrices } from "@/hooks/useProducts";
 import { EvilIcons } from "@expo/vector-icons";
 import { exposedGhostText, borderColor } from '../../../../../constants/Colors';
+import CustomAlert from "@/components/ui/CustomAlert";
 
 // Define ProductPrice type locally to match the API structure
 interface ProductPrice {
@@ -76,7 +77,7 @@ function ProductContent({
   const [selectedPrice, setSelectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
   const [category] = useShoppingListProductCell(listId, productId, "category");
   const [databaseProductId] = useShoppingListProductCell(listId, productId, "databaseProductId");
-  
+
   const createdBy = useShoppingListProductCreatedByNickname(listId, productId);
   const [createdAt] = useShoppingListProductCell(
     listId,
@@ -89,6 +90,20 @@ function ProductContent({
   const [isEditingQuantity, setIsEditingQuantity] = useState(false);
   const [showStorePicker, setShowStorePicker] = useState(false);
   const [isEditingPrice, setIsEditingPrice] = useState(false);
+
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
 
   // Fetch prices from database if product has databaseProductId
   const { prices, loading: pricesLoading } = useProductPrices(databaseProductId || null);
@@ -166,33 +181,33 @@ function ProductContent({
               flexDirection: 'row',
               alignItems: 'center',
               gap: 8,
-              }}>
-            <IconSymbol name="cart.fill" size={20} color="#007AFF" />
-            <ThemedText type="defaultSemiBold" style={styles.cardTitleDetail}>
-              Purchase Details
-            </ThemedText>
+            }}>
+              <IconSymbol name="cart.fill" size={20} color="#007AFF" />
+              <ThemedText type="defaultSemiBold" style={styles.cardTitleDetail}>
+                Purchase Details
+              </ThemedText>
             </View>
-            <Pressable 
-              style={styles.infoRow} 
+            <Pressable
+              style={styles.infoRow}
               onPress={() => setShowStorePicker(true)}
             >
               <View style={styles.editbutton}>
-              <Text style={[styles.edittext]}>
-                Edit
-                <EvilIcons name="pencil" size={19}  color={colors.ghost}/>
-              </Text>
+                <Text style={[styles.edittext]}>
+                  Edit
+                  <EvilIcons name="pencil" size={19} color={colors.ghost} />
+                </Text>
               </View>
             </Pressable>
           </View>
           <View style={styles.priceStoreContainer}>
             {/* Store Display */}
-            <View 
-              style={styles.infoRow} 
+            <View
+              style={styles.infoRow}
             >
               <ThemedText style={styles.infoLabel}>Store:</ThemedText>
               <View style={styles.storeValueContainer}>
-                <ThemedText 
-                  type="defaultSemiBold" 
+                <ThemedText
+                  type="defaultSemiBold"
                   style={[styles.storeName, !store && styles.placeholderText]}
                 >
                   {store || "Tap to select store"}
@@ -223,7 +238,7 @@ function ProductContent({
                       />
                     </View>
                   ) : (
-                    <View 
+                    <View
                       style={styles.priceValueContainer}
                     >
                       <ThemedText type="defaultSemiBold" style={styles.priceText}>
@@ -242,14 +257,14 @@ function ProductContent({
                 )}
               </>
             ) : (
-              <Pressable 
-                onPress={() => setShowStorePicker(true)} 
+              <Pressable
+                onPress={() => setShowStorePicker(true)}
                 style={styles.infoRow}
               >
                 <ThemedText style={styles.infoLabel}>Unit Price:</ThemedText>
                 <View style={styles.priceValueContainer}>
-                  <ThemedText 
-                    type="defaultSemiBold" 
+                  <ThemedText
+                    type="defaultSemiBold"
                     style={[styles.priceText, styles.placeholderText]}
                   >
                     Tap to add price
@@ -282,7 +297,7 @@ function ProductContent({
                 color={quantity <= 1 ? colors.text : "#FFF"}
               />
             </Button>
-            
+
             {isEditingQuantity ? (
               <TextInput
                 value={quantity.toString()}
@@ -315,23 +330,23 @@ function ProductContent({
         </View>
 
         {/* Notes Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <IconSymbol name="note.text" size={20} color="#5856D6" />
-              <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
-                Notes
-              </ThemedText>
-            </View>
-            {notes ? (
-              <ThemedText style={styles.notesDisplay}>
-                {notes}
-              </ThemedText>
-            ) : (
-              <ThemedText style={styles.notesPlaceholder}>
-                No notes added for this product
-              </ThemedText>
-            )}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <IconSymbol name="note.text" size={20} color="#5856D6" />
+            <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
+              Notes
+            </ThemedText>
           </View>
+          {notes ? (
+            <ThemedText style={styles.notesDisplay}>
+              {notes}
+            </ThemedText>
+          ) : (
+            <ThemedText style={styles.notesPlaceholder}>
+              No notes added for this product
+            </ThemedText>
+          )}
+        </View>
 
         {/* Metadata Card */}
         <View style={styles.card}>
@@ -386,7 +401,7 @@ function ProductContent({
             </View>
           </View>
         )}
-        
+
         {/* Bottom padding */}
         <View style={{ height: 40 }} />
       </BodyScrollView>
@@ -481,7 +496,7 @@ function ProductContent({
                   if (selectedStore && price > 0) {
                     setShowStorePicker(false);
                   } else {
-                    Alert.alert("Incomplete", "Please enter both store name and price");
+                    showCustomAlert("Incomplete", "Please enter both store name and price");
                   }
                 }}
                 style={styles.saveButton}
@@ -492,23 +507,30 @@ function ProductContent({
           </View>
         </View>
       </Modal>
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </>
   );
 }
 
-function StoreSelectionItem({ 
-  price, 
-  onSelect, 
+function StoreSelectionItem({
+  price,
+  onSelect,
   isSelected,
   colors
-}: { 
-  price: ProductPrice; 
+}: {
+  price: ProductPrice;
   onSelect: (price: ProductPrice) => void;
   isSelected: boolean;
   colors: typeof Colors.light;
 }) {
   const styles = createStyles(colors);
-  
+
   return (
     <Pressable
       style={[styles.storeItem, isSelected && styles.storeItemSelected]}
@@ -516,10 +538,10 @@ function StoreSelectionItem({
     >
       <View style={styles.storeItemContent}>
         <View style={styles.storeItemLeft}>
-          <IconSymbol 
-            name="storefront.fill" 
-            size={24} 
-            color={isSelected ? "#007AFF" : "#666"} 
+          <IconSymbol
+            name="storefront.fill"
+            size={24}
+            color={isSelected ? "#007AFF" : "#666"}
           />
           <View style={styles.storeItemInfo}>
             <ThemedText type="defaultSemiBold" style={styles.storeItemName}>
@@ -619,10 +641,10 @@ function createStyles(colors: typeof Colors.light) {
     cardTitle: {
       fontSize: 16,
     },
-    editbutton:{
+    editbutton: {
       flexDirection: 'row',
     },
-    edittext:{
+    edittext: {
       fontSize: 18,
       color: colors.exposedGhost
     },

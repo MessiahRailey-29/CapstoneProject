@@ -13,6 +13,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useUser } from "@clerk/clerk-expo";
 import { Colors } from "@/constants/Colors";
 import { useShoppingListData } from "@/stores/ShoppingListsStore";
+import CustomAlert from "@/components/ui/CustomAlert";
 
 export default function EditScreen() {
   const router = useRouter();
@@ -22,11 +23,11 @@ export default function EditScreen() {
   const { user } = useUser();
   const { scheduleShoppingReminder, cancelShoppingReminder } = useNotifications(user?.id || '');
 
-  
-      //color schemes and styles
-      const theme = useColorScheme();
-      const colors = Colors[theme ?? 'light'];
-      const styles = createStyles(colors);
+
+  //color schemes and styles
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
 
   // ✅ Use ShoppingListStore directly instead of valuesCopy
   const listData = useShoppingListData(listId);
@@ -50,14 +51,28 @@ export default function EditScreen() {
   const [shoppingDate, setShoppingDate] = useState<Date | null>(null);
   const [originalDate, setOriginalDate] = useState<Date | null>(null); // Track original date
 
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
+
   // List creation context for emoji/color/date pickers
-  const { 
-    selectedEmoji, 
-    selectedColor, 
+  const {
+    selectedEmoji,
+    selectedColor,
     selectedDate,
-    setSelectedColor, 
+    setSelectedColor,
     setSelectedEmoji,
-    setSelectedDate 
+    setSelectedDate
   } = useListCreation();
 
   const initializedRef = useRef(false);
@@ -70,7 +85,7 @@ export default function EditScreen() {
       setBudget(storeBudget || 0);
       setEmoji(storeEmoji || "🛒");
       setColor(storeColor || "#007AFF");
-      
+
       // Parse and set shopping date
       if (storeShoppingDate) {
         try {
@@ -84,10 +99,10 @@ export default function EditScreen() {
           console.error('Error parsing shopping date:', error);
         }
       }
-      
+
       setSelectedEmoji(storeEmoji || "🛒");
       setSelectedColor(storeColor || "#007AFF");
-      
+
       initializedRef.current = true;
       console.log('✅ Initialized edit screen with date:', storeShoppingDate);
     }
@@ -125,16 +140,16 @@ export default function EditScreen() {
   }, []);
 
   const handleSave = async () => {
-    console.log('💾 Saving to store:', { 
-      name, 
-      description, 
-      budget, 
-      emoji, 
+    console.log('💾 Saving to store:', {
+      name,
+      description,
+      budget,
+      emoji,
       color,
       shoppingDate: shoppingDate?.toISOString() || null,
       originalDate: originalDate?.toISOString() || null
     });
-    
+
     // 🔥 NEW: Track what changed for notification
     const changes = [];
     if (storeName !== name) changes.push('name');
@@ -143,9 +158,9 @@ export default function EditScreen() {
     if (storeColor !== color) changes.push('color');
     if (storeBudget !== budget) changes.push('budget');
     if ((storeShoppingDate || '') !== (shoppingDate?.toISOString() || '')) changes.push('shopping date');
-    
+
     const hasChanges = changes.length > 0;
-    
+
     // Save directly to ShoppingListStore
     setStoreName(name);
     setStoreDescription(description);
@@ -153,28 +168,28 @@ export default function EditScreen() {
     setStoreEmoji(emoji);
     setStoreColor(color);
     setStoreShoppingDate(shoppingDate?.toISOString() || "");
-    
+
     // Handle notification rescheduling if date changed
     const dateChanged = originalDate?.getTime() !== shoppingDate?.getTime();
-    
+
     console.log('🔔 Date comparison:', {
       dateChanged,
       originalTime: originalDate?.getTime(),
       newTime: shoppingDate?.getTime()
     });
-    
+
     if (dateChanged) {
       try {
         console.log('🔔 Date has changed, updating reminders...');
-        
+
         if (shoppingDate) {
           const now = new Date();
           const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           const selectedDay = new Date(shoppingDate.getFullYear(), shoppingDate.getMonth(), shoppingDate.getDate());
-          
+
           if (selectedDay < today) {
             console.warn('⚠️ Cannot schedule reminder for past date');
-            Alert.alert(
+            showCustomAlert(
               'Invalid Date',
               'Cannot set a reminder for a date in the past. Please choose today or a future date.',
               [{ text: 'OK' }]
@@ -183,29 +198,29 @@ export default function EditScreen() {
             const reminderScheduled = await scheduleShoppingReminder(listId, shoppingDate);
             if (reminderScheduled) {
               console.log('🔔 Shopping reminder scheduled (not sent) for', shoppingDate);
-              
+
               const tomorrow = new Date(today);
               tomorrow.setDate(tomorrow.getDate() + 1);
-              
+
               if (selectedDay.getTime() === today.getTime()) {
-                Alert.alert(
+                showCustomAlert(
                   '🔔 Reminder Set',
                   `Your shopping reminder for "${name}" has been set for later today.`,
                   [{ text: 'OK' }]
                 );
               } else if (selectedDay.getTime() === tomorrow.getTime()) {
-                Alert.alert(
+                showCustomAlert(
                   '🔔 Reminder Set',
                   `Your shopping reminder for "${name}" has been set for tomorrow.`,
                   [{ text: 'OK' }]
                 );
               } else {
-                const dateStr = shoppingDate.toLocaleDateString('en-US', { 
-                  month: 'short', 
+                const dateStr = shoppingDate.toLocaleDateString('en-US', {
+                  month: 'short',
                   day: 'numeric',
                   year: shoppingDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
                 });
-                Alert.alert(
+                showCustomAlert(
                   '🔔 Reminder Set',
                   `Your shopping reminder for "${name}" has been scheduled for ${dateStr}.`,
                   [{ text: 'OK' }]
@@ -220,8 +235,8 @@ export default function EditScreen() {
           } catch (error) {
             console.warn('⚠️ Could not cancel reminder (endpoint may not exist):', error);
           }
-          
-          Alert.alert(
+
+          showCustomAlert(
             'Reminder Removed',
             'Shopping date has been cleared. You won\'t receive a reminder for this list.',
             [{ text: 'OK' }]
@@ -229,7 +244,7 @@ export default function EditScreen() {
         }
       } catch (error) {
         console.error('❌ Failed to update reminder:', error);
-        Alert.alert(
+        showCustomAlert(
           'Warning',
           'List saved, but there was an issue updating the reminder.',
           [{ text: 'OK' }]
@@ -238,13 +253,13 @@ export default function EditScreen() {
     } else {
       console.log('🔔 Date unchanged, no reminder updates needed');
     }
-    
+
     // 🔥 NEW: Notify collaborators if this is a shared list and something changed
     if (hasChanges && listData?.collaborators && listData.collaborators.length > 0) {
       try {
         // Dynamically import to avoid circular dependencies
         const { notifyCollaborators } = await import('@/utils/notifyCollaborators');
-        
+
         await notifyCollaborators({
           listId,
           listName: name,
@@ -255,14 +270,14 @@ export default function EditScreen() {
           currentUserName: user?.firstName || user?.username || 'Someone',
           collaborators: listData.collaborators,
         });
-        
+
         console.log('✅ Notified collaborators about list update:', changes);
       } catch (error) {
         console.error('❌ Failed to notify collaborators:', error);
         // Don't show error to user - list was still saved successfully
       }
     }
-    
+
     // Small delay to ensure save completes
     setTimeout(() => {
       router.back();
@@ -284,19 +299,19 @@ export default function EditScreen() {
 
   return (
     <>
-     <Stack.Screen
+      <Stack.Screen
         options={{
           headerLeft: () => (
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onPress={() => router.back()}
             >
               Cancel
             </Button>
           ),
           headerRight: () => (
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onPress={handleSave}
               disabled={isHistory}
               style={isHistory && { opacity: 0.3 }}
@@ -375,6 +390,13 @@ export default function EditScreen() {
             />
           </View>
         </View>
+        <CustomAlert
+          visible={customAlertVisible}
+          title={customAlertTitle}
+          message={customAlertMessage}
+          buttons={customAlertButtons}
+          onClose={() => setCustomAlertVisible(false)}
+        />
       </BodyScrollView>
     </>
   );
@@ -382,17 +404,17 @@ export default function EditScreen() {
 
 function createStyles(colors: typeof Colors.light) {
   return StyleSheet.create({
-  scrollViewContent: { padding: 16 },
-  inputContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
-  titleInputContainer: { flexGrow: 1, flexShrink: 1 },
-  emojiButton: { padding: 1, borderWidth: 3, borderRadius: 100, marginTop: 16 },
-  emojiContainer: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
-  colorButton: { marginTop: 16, padding: 1, borderWidth: 3, borderRadius: 100 },
-  colorContainer: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
-  colorPreview: { width: 24, height: 24, borderRadius: 100 },
-  dateSection: { marginVertical: 16, gap: 8 },
-  dateLabel: { fontSize: 16, fontWeight: "500", color: colors.exposedGhost },
-  budgetSection: { marginVertical: 16, gap: 8 },
-  budgetLabel: { fontSize: 16, fontWeight: "500", color: colors.exposedGhost },
-});
+    scrollViewContent: { padding: 16 },
+    inputContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
+    titleInputContainer: { flexGrow: 1, flexShrink: 1 },
+    emojiButton: { padding: 1, borderWidth: 3, borderRadius: 100, marginTop: 16 },
+    emojiContainer: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
+    colorButton: { marginTop: 16, padding: 1, borderWidth: 3, borderRadius: 100 },
+    colorContainer: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
+    colorPreview: { width: 24, height: 24, borderRadius: 100 },
+    dateSection: { marginVertical: 16, gap: 8 },
+    dateLabel: { fontSize: 16, fontWeight: "500", color: colors.exposedGhost },
+    budgetSection: { marginVertical: 16, gap: 8 },
+    budgetLabel: { fontSize: 16, fontWeight: "500", color: colors.exposedGhost },
+  });
 }

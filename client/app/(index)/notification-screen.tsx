@@ -14,20 +14,22 @@ import { ThemedText } from '@/components/ThemedText';
 import { useUser } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useShoppingListData } from '@/stores/ShoppingListsStore';
+import { Colors } from '@/constants/Colors';
+import CustomAlert, { AlertButton } from '@/components/ui/CustomAlert';
 
 // Component to display notification with shopping list details
-function NotificationItem({ 
-  notification, 
-  onPress, 
-  onDelete 
-}: { 
-  notification: any; 
-  onPress: () => void; 
+function NotificationItem({
+  notification,
+  onPress,
+  onDelete
+}: {
+  notification: any;
+  onPress: () => void;
   onDelete: () => void;
 }) {
   const listId = notification.data?.listId;
   const listData = useShoppingListData(listId || '');
-  
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'shopping_reminder':
@@ -70,7 +72,12 @@ function NotificationItem({
     });
   };
 
-  // For shopping reminders, enhance the display with list details
+
+
+  const scheme = useColorScheme();
+  const colors = Colors[scheme ?? 'light'];
+  const styles = createStyles(colors);
+
   const isShoppingReminder = notification.type === 'shopping_reminder';
   const hasListData = listData && listData.name;
 
@@ -85,7 +92,7 @@ function NotificationItem({
           <ThemedText style={styles.notificationIcon}>
             {isShoppingReminder && hasListData ? listData.emoji : getNotificationIcon(notification.type)}
           </ThemedText>
-          
+
           <View style={styles.notificationTextContainer}>
             {/* Show list name if available */}
             {isShoppingReminder && hasListData && (
@@ -93,29 +100,28 @@ function NotificationItem({
                 {listData.name}
               </ThemedText>
             )}
-            
+
             <ThemedText style={styles.notificationTitle}>
               {notification.title}
             </ThemedText>
-            
+
             <ThemedText style={styles.notificationMessage}>
               {notification.message}
             </ThemedText>
-            
-            {/* Show scheduled date if available */}
-            {isShoppingReminder && listData?.shoppingDate && (
+
+            {isShoppingReminder && notification.scheduledDate && (
               <View style={styles.dateContainer}>
                 <ThemedText style={styles.scheduledDate}>
                   📅 {formatScheduledDate(listData.shoppingDate)}
                 </ThemedText>
               </View>
             )}
-            
+
             <ThemedText style={styles.notificationTime}>
               {formatDate(notification.createdAt)}
             </ThemedText>
           </View>
-          
+
           {!notification.isRead && <View style={styles.unreadDot} />}
         </View>
       </View>
@@ -138,6 +144,25 @@ export default function NotificationsScreen() {
   const { user } = useUser();
   const userId = useMemo(() => user?.id || '', [user?.id]);
 
+  const scheme = useColorScheme();
+  const colors = Colors[scheme ?? 'light'];
+  const styles = createStyles(colors);
+
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
+
+  // ✅ CHANGED: Use TinyBase hook for real-time updates
   const {
     notifications,
     unreadCount,
@@ -168,7 +193,7 @@ const handleNotificationPress = async (notificationId: string, data: any) => {
 };
 
   const handleClearAll = () => {
-    Alert.alert(
+    showCustomAlert(
       'Clear All Notifications',
       'Are you sure you want to delete all notifications?',
       [
@@ -233,6 +258,13 @@ const handleNotificationPress = async (notificationId: string, data: any) => {
           )}
         </ScrollView>
       </View>
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </>
   );
 }
