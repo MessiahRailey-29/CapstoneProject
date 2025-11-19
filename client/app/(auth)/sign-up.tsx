@@ -24,7 +24,6 @@ export default function SignUpScreen() {
     // Form fields
     const [firstName, setFirstName] = React.useState("");
     const [lastName, setLastName] = React.useState("");
-    const [phoneNumber, setPhoneNumber] = React.useState("");
     const [emailAddress, setEmailAddress] = React.useState("");
     const [password, setPassword] = React.useState("");
     const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -84,19 +83,6 @@ export default function SignUpScreen() {
             return;
         }
 
-        // Validate phone number format (basic validation)
-        if (phoneNumber.trim()) {
-            // Remove all non-numeric characters for validation
-            const cleanedPhone = phoneNumber.replace(/\D/g, '');
-            if (cleanedPhone.length < 10 || cleanedPhone.length > 15) {
-                Alert.alert(
-                    'Invalid Phone Number',
-                    'Please enter a valid phone number (10-15 digits).'
-                );
-                return;
-            }
-        }
-
         setStep('credentials');
     };
 
@@ -129,8 +115,7 @@ export default function SignUpScreen() {
                 password,
                 unsafeMetadata: {
                     firstName: firstName.trim(),
-                    lastName: lastName.trim(),
-                    phoneNumber: phoneNumber.trim() || null,
+                    lastName: lastName.trim()
                 }
             });
 

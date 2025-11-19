@@ -9,30 +9,35 @@ import mongoose from 'mongoose';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Storage directory for persistent data (relative to project root)
 const STORAGE_DIR = path.join(process.cwd(), '.storage');
 
+// Ensure storage directory exists
 if (!fs.existsSync(STORAGE_DIR)) {
   fs.mkdirSync(STORAGE_DIR, { recursive: true });
   console.log('📁 Created storage directory:', STORAGE_DIR);
 }
 
-export const stores = new Map<string, any>();
+// Keep track of active stores and persisters
+const stores = new Map<string, any>();
 const persisters = new Map<string, any>();
-const mongoSyncTimeouts = new Map<string, NodeJS.Timeout>();
 
-// ✅ Global notifications store (shared by all users)
-let globalNotificationsStore: any = null;
+// MongoDB sync timeouts (for debouncing)
+const mongoSyncTimeouts = new Map<string, NodeJS.Timeout>();
 
 // Sync store to MongoDB
 async function syncToMongoDB(storeId: string, store: any): Promise<void> {
+  // Only sync shopping list stores
   if (!storeId.startsWith('shoppingListStore-')) {
     return;
   }
 
+  // Clear existing timeout
   if (mongoSyncTimeouts.has(storeId)) {
     clearTimeout(mongoSyncTimeouts.get(storeId)!);
   }
 
+  // Debounce: sync after 1 second of no changes
   mongoSyncTimeouts.set(storeId, setTimeout(async () => {
     try {
       if (mongoose.connection.readyState !== 1) {
@@ -67,74 +72,31 @@ async function syncToMongoDB(storeId: string, store: any): Promise<void> {
   }, 1000));
 }
 
-// ✅ Initialize global notifications store BEFORE any clients connect
-async function initializeGlobalNotificationsStore(): Promise<any> {
-  if (globalNotificationsStore) {
-    console.log('✅ Global notifications store already initialized');
-    return persisters.get('globalNotificationsStore');
-  }
-  
-  console.log('🆕 Initializing GLOBAL notifications store on server');
-  
-  globalNotificationsStore = createMergeableStore();
-  const filePath = path.join(STORAGE_DIR, 'globalNotificationsStore.json');
-  const persister = createFilePersister(globalNotificationsStore, filePath);
-  
-  try {
-    await persister.load();
-    console.log('✅ Loaded existing notifications from file');
-    
-    // Log what we loaded
-    const table = globalNotificationsStore.getTable('notifications');
-    const notificationIds = Object.keys(table);
-    console.log(`📊 Loaded ${notificationIds.length} notifications from disk`);
-  } catch (error) {
-    console.log('ℹ️ No existing notifications file, starting fresh');
-  }
-  
-  await persister.startAutoSave();
-  console.log('✅ Auto-save enabled for global notifications');
-  
-  stores.set('globalNotificationsStore', globalNotificationsStore);
-  persisters.set('globalNotificationsStore', persister);
-  
-  // Add listener to log when notifications are added
-  globalNotificationsStore.addTablesListener(() => {
-    const table = globalNotificationsStore.getTable('notifications');
-    const notificationIds = Object.keys(table);
-    console.log(`🔔 Global notifications store updated: ${notificationIds.length} total notifications`);
-  });
-  
-  return persister;
-}
-
 // Get or create a persistent store
 async function getStore(pathId: string): Promise<any> {
-  // ✅ Handle global notifications store
-  if (pathId === 'globalNotificationsStore') {
-    if (!persisters.has(pathId)) {
-      await initializeGlobalNotificationsStore();
-    }
-    return persisters.get(pathId);
-  }
-
-  // Handle shopping list stores
   if (persisters.has(pathId)) {
     return persisters.get(pathId);
   }
   
   console.log('🆕 Creating persistent store for:', pathId);
   
+  // Create mergeable store
   const store = createMergeableStore();
+  
+  // File path for this store
   const filePath = path.join(STORAGE_DIR, `${pathId}.json`);
+  
+  // Create file persister
   const persister = createFilePersister(store, filePath);
   
+  // Try to load existing data from file
   try {
     await persister.load();
     console.log('✅ Loaded existing data from file:', pathId);
   } catch (error) {
     console.log('ℹ️ No existing file data for:', pathId);
     
+    // Try loading from MongoDB as fallback
     if (mongoose.connection.readyState === 1 && pathId.startsWith('shoppingListStore-')) {
       const listId = pathId.replace('shoppingListStore-', '');
       const list = await ShoppingList.findOne({ listId });
@@ -142,12 +104,13 @@ async function getStore(pathId: string): Promise<any> {
       if (list && list.valuesCopy) {
         try {
           const data = JSON.parse(list.valuesCopy);
-          console.log('🔥 Loading initial data from MongoDB:', {
+          console.log('📥 Loading initial data from MongoDB:', {
             listId,
             name: data.values?.name,
             budget: data.values?.budget,
           });
           
+          // Populate store with MongoDB data
           if (data.tables) {
             Object.entries(data.tables).forEach(([tableName, table]: [string, any]) => {
               if (table && typeof table === 'object') {
@@ -165,6 +128,7 @@ async function getStore(pathId: string): Promise<any> {
             });
           }
           
+          // Save to file for next time
           await persister.save();
           console.log('✅ Saved MongoDB data to file:', pathId);
         } catch (e) {
@@ -174,9 +138,11 @@ async function getStore(pathId: string): Promise<any> {
     }
   }
   
+  // Start auto-save (saves to file on every change)
   await persister.startAutoSave();
   console.log('✅ Auto-save enabled for:', pathId);
   
+  // Also sync to MongoDB on changes (if MongoDB is available)
   if (mongoose.connection.readyState === 1) {
     store.addValuesListener(() => {
       syncToMongoDB(pathId, store);
@@ -189,15 +155,11 @@ async function getStore(pathId: string): Promise<any> {
   stores.set(pathId, store);
   persisters.set(pathId, persister);
   
+  // Return the persister (TinyBase expects this)
   return persister;
 }
 
-export async function setupSyncServer(httpServer: HttpServer) {
-  // ✅ Initialize global notifications store FIRST
-  console.log('🚀 Initializing global notifications store...');
-  await initializeGlobalNotificationsStore();
-  console.log('✅ Global notifications store ready for connections');
-  
+export function setupSyncServer(httpServer: HttpServer) {
   const wss = new WebSocketServer({ 
     noServer: true
   });
@@ -211,7 +173,7 @@ export async function setupSyncServer(httpServer: HttpServer) {
     return await getStore(pathId);
   });
 
-  // Handle upgrade manually
+  // Handle upgrade manually to capture full path including store ID
   httpServer.on('upgrade', (request, socket, head) => {
     const url = request.url || '';
     
@@ -219,9 +181,11 @@ export async function setupSyncServer(httpServer: HttpServer) {
     
     if (url.startsWith('/sync/')) {
       wss.handleUpgrade(request, socket, head, (ws) => {
+        // Extract store ID from URL
         const storeId = url.replace('/sync/', '').split('?')[0];
         console.log('🔌 Client connecting to store:', storeId);
         
+        // Let TinyBase handle the connection with the store ID as the path
         wss.emit('connection', ws, request);
       });
     } else {
@@ -230,6 +194,7 @@ export async function setupSyncServer(httpServer: HttpServer) {
     }
   });
 
+  // Optional: Add logging for connections
   wss.on('connection', (ws, req) => {
     const url = req.url || '';
     const storeId = url.replace('/sync/', '').split('?')[0];
@@ -246,15 +211,4 @@ export async function setupSyncServer(httpServer: HttpServer) {
   });
 
   return wsServer;
-}
-
-// Helper function to get store by list ID
-export function getStoreForList(listId: string): any {
-  const storeId = `shoppingListStore-${listId}`;
-  return stores.get(storeId);
-}
-
-// ✅ Get the global notifications store
-export function getGlobalNotificationsStore(): any {
-  return globalNotificationsStore;
 }

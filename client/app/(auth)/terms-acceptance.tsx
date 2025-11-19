@@ -98,7 +98,6 @@ export default function TermsAcceptanceScreen() {
           </ThemedText>
           <ThemedText style={styles.listItem}>• Shopping list creation and management</ThemedText>
           <ThemedText style={styles.listItem}>• Product recommendations based on purchase history</ThemedText>
-          <ThemedText style={styles.listItem}>• Recipe suggestions</ThemedText>
           <ThemedText style={styles.listItem}>• Expense tracking and analytics</ThemedText>
           <ThemedText style={styles.listItem}>• Push notifications and reminders</ThemedText>
           <ThemedText style={styles.listItem}>• Real-time synchronization across devices</ThemedText>
@@ -145,7 +144,6 @@ export default function TermsAcceptanceScreen() {
 
           <ThemedText style={styles.subheading}>6.2 Your Rights</ThemedText>
           <ThemedText style={styles.listItem}>• You retain ownership of the content you create</ThemedText>
-          <ThemedText style={styles.listItem}>• Recipe suggestions and product recommendations are provided for informational purposes only</ThemedText>
 
           <ThemedText style={styles.heading}>7. Third-Party Services</ThemedText>
           <ThemedText style={styles.subheading}>7.1 Integrations</ThemedText>
@@ -203,9 +201,6 @@ export default function TermsAcceptanceScreen() {
           <ThemedText style={styles.listItem}>• Improve our Service and develop new features</ThemedText>
 
           <ThemedText style={styles.heading}>4. Machine Learning and Recommendations</ThemedText>
-          <ThemedText style={styles.paragraph}>
-            We use machine learning algorithms to analyze your purchase history and identify patterns to suggest products and recipes. All processing occurs on our secure servers. Recommendations are optional and you can ignore any suggestion.
-          </ThemedText>
 
           <ThemedText style={styles.heading}>5. How We Share Your Information</ThemedText>
           <ThemedText style={styles.subheading}>5.1 With Collaborators</ThemedText>
