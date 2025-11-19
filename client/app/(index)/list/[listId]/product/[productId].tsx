@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import { View, Pressable, StyleSheet, Alert, useColorScheme, Modal, FlatList, ActivityIndicator, Text } from "react-native";
+import { View, Pressable, StyleSheet, Alert, useColorScheme, Modal, FlatList, ActivityIndicator, Text, KeyboardAvoidingView, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { ThemedText } from "@/components/ThemedText";
 import { BodyScrollView } from "@/components/ui/BodyScrollView";
@@ -16,6 +16,8 @@ import { Colors } from "@/constants/Colors";
 import { useProductPrices } from "@/hooks/useProducts";
 import { EvilIcons } from "@expo/vector-icons";
 import { exposedGhostText, borderColor } from '../../../../../constants/Colors';
+import CustomAlert from "@/components/ui/CustomAlert";
+import { ScrollView } from "react-native-gesture-handler";
 
 // Define ProductPrice type locally to match the API structure
 interface ProductPrice {
@@ -76,7 +78,7 @@ function ProductContent({
   const [selectedPrice, setSelectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
   const [category] = useShoppingListProductCell(listId, productId, "category");
   const [databaseProductId] = useShoppingListProductCell(listId, productId, "databaseProductId");
-  
+
   const createdBy = useShoppingListProductCreatedByNickname(listId, productId);
   const [createdAt] = useShoppingListProductCell(
     listId,
@@ -89,6 +91,20 @@ function ProductContent({
   const [isEditingQuantity, setIsEditingQuantity] = useState(false);
   const [showStorePicker, setShowStorePicker] = useState(false);
   const [isEditingPrice, setIsEditingPrice] = useState(false);
+
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
 
   // Fetch prices from database if product has databaseProductId
   const { prices, loading: pricesLoading } = useProductPrices(databaseProductId || null);
@@ -120,7 +136,8 @@ function ProductContent({
   return (
     <>
       <BodyScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={{ ...styles.container, paddingBottom: 200 }}
+        keyboardShouldPersistTaps="handled"
       >
         <StatusBar style="light" animated />
 
@@ -166,33 +183,33 @@ function ProductContent({
               flexDirection: 'row',
               alignItems: 'center',
               gap: 8,
-              }}>
-            <IconSymbol name="cart.fill" size={20} color="#007AFF" />
-            <ThemedText type="defaultSemiBold" style={styles.cardTitleDetail}>
-              Purchase Details
-            </ThemedText>
+            }}>
+              <IconSymbol name="cart.fill" size={20} color="#007AFF" />
+              <ThemedText type="defaultSemiBold" style={styles.cardTitleDetail}>
+                Purchase Details
+              </ThemedText>
             </View>
-            <Pressable 
-              style={styles.infoRow} 
+            <Pressable
+              style={styles.infoRow}
               onPress={() => setShowStorePicker(true)}
             >
               <View style={styles.editbutton}>
-              <Text style={[styles.edittext]}>
-                Edit
-                <EvilIcons name="pencil" size={19}  color={colors.ghost}/>
-              </Text>
+                <Text style={[styles.edittext]}>
+                  Edit
+                  <EvilIcons name="pencil" size={19} color={colors.ghost} />
+                </Text>
               </View>
             </Pressable>
           </View>
           <View style={styles.priceStoreContainer}>
             {/* Store Display */}
-            <View 
-              style={styles.infoRow} 
+            <View
+              style={styles.infoRow}
             >
               <ThemedText style={styles.infoLabel}>Store:</ThemedText>
               <View style={styles.storeValueContainer}>
-                <ThemedText 
-                  type="defaultSemiBold" 
+                <ThemedText
+                  type="defaultSemiBold"
                   style={[styles.storeName, !store && styles.placeholderText]}
                 >
                   {store || "Tap to select store"}
@@ -223,7 +240,7 @@ function ProductContent({
                       />
                     </View>
                   ) : (
-                    <View 
+                    <View
                       style={styles.priceValueContainer}
                     >
                       <ThemedText type="defaultSemiBold" style={styles.priceText}>
@@ -242,21 +259,19 @@ function ProductContent({
                 )}
               </>
             ) : (
-              <Pressable 
-                onPress={() => setShowStorePicker(true)} 
+              <View
                 style={styles.infoRow}
               >
                 <ThemedText style={styles.infoLabel}>Unit Price:</ThemedText>
                 <View style={styles.priceValueContainer}>
-                  <ThemedText 
-                    type="defaultSemiBold" 
+                  <ThemedText
+                    type="defaultSemiBold"
                     style={[styles.priceText, styles.placeholderText]}
                   >
                     Tap to add price
                   </ThemedText>
-                  <IconSymbol name="chevron.right" size={16} color="#999" />
                 </View>
-              </Pressable>
+              </View>
             )}
           </View>
         </View>
@@ -282,7 +297,7 @@ function ProductContent({
                 color={quantity <= 1 ? colors.text : "#FFF"}
               />
             </Button>
-            
+
             {isEditingQuantity ? (
               <TextInput
                 value={quantity.toString()}
@@ -315,23 +330,23 @@ function ProductContent({
         </View>
 
         {/* Notes Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <IconSymbol name="note.text" size={20} color="#5856D6" />
-              <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
-                Notes
-              </ThemedText>
-            </View>
-            {notes ? (
-              <ThemedText style={styles.notesDisplay}>
-                {notes}
-              </ThemedText>
-            ) : (
-              <ThemedText style={styles.notesPlaceholder}>
-                No notes added for this product
-              </ThemedText>
-            )}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <IconSymbol name="note.text" size={20} color="#5856D6" />
+            <ThemedText type="defaultSemiBold" style={styles.cardTitle}>
+              Notes
+            </ThemedText>
           </View>
+          {notes ? (
+            <ThemedText style={styles.notesDisplay}>
+              {notes}
+            </ThemedText>
+          ) : (
+            <ThemedText style={styles.notesPlaceholder}>
+              No notes added for this product
+            </ThemedText>
+          )}
+        </View>
 
         {/* Metadata Card */}
         <View style={styles.card}>
@@ -386,7 +401,7 @@ function ProductContent({
             </View>
           </View>
         )}
-        
+
         {/* Bottom padding */}
         <View style={{ height: 40 }} />
       </BodyScrollView>
@@ -398,18 +413,27 @@ function ProductContent({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowStorePicker(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Pressable onPress={() => setShowStorePicker(false)}>
-              <IconSymbol name="xmark" size={24} color="#007AFF" />
-            </Pressable>
-            <ThemedText type="title" style={styles.modalTitle}>
-              Select Store & Price
-            </ThemedText>
-            <View style={{ width: 24 }} />
-          </View>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 200 : 0} // adjust if you have a header
+        >
+          <ScrollView
+            contentContainerStyle={{ backgroundColor: colors.background, flexGrow: 1, padding: 16, paddingBottom: 100 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Pressable onPress={() => setShowStorePicker(false)}>
+                <IconSymbol name="xmark" size={24} color="#007AFF" />
+              </Pressable>
+              <ThemedText type="title" style={styles.modalTitle}>
+                Select Store & Price
+              </ThemedText>
+              <View style={{ width: 24 }} />
+            </View>
 
-          <View style={styles.modalContent}>
+            {/* Prices or "No Store Data Available" */}
             {databaseProductId && prices.length > 0 ? (
               <>
                 <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
@@ -432,7 +456,7 @@ function ProductContent({
                       />
                     )}
                     keyExtractor={(item) => item.id.toString()}
-                    contentContainerStyle={styles.storeList}
+                    scrollEnabled={false} // let the ScrollView handle scrolling
                   />
                 )}
               </>
@@ -448,9 +472,9 @@ function ProductContent({
               </View>
             )}
 
-            {/* Custom Price Entry */}
+            {/* Custom Price Section */}
             <View style={styles.customPriceSection}>
-              <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+              <ThemedText type="defaultSemiBold" style={styles.sectionTitleEnter}>
                 Or Enter Custom Price
               </ThemedText>
               <View style={styles.customPriceRow}>
@@ -481,7 +505,7 @@ function ProductContent({
                   if (selectedStore && price > 0) {
                     setShowStorePicker(false);
                   } else {
-                    Alert.alert("Incomplete", "Please enter both store name and price");
+                    showCustomAlert("Incomplete", "Please enter both store name and price");
                   }
                 }}
                 style={styles.saveButton}
@@ -489,26 +513,34 @@ function ProductContent({
                 Save Custom Price
               </Button>
             </View>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
+
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </>
   );
 }
 
-function StoreSelectionItem({ 
-  price, 
-  onSelect, 
+function StoreSelectionItem({
+  price,
+  onSelect,
   isSelected,
   colors
-}: { 
-  price: ProductPrice; 
+}: {
+  price: ProductPrice;
   onSelect: (price: ProductPrice) => void;
   isSelected: boolean;
   colors: typeof Colors.light;
 }) {
   const styles = createStyles(colors);
-  
+
   return (
     <Pressable
       style={[styles.storeItem, isSelected && styles.storeItemSelected]}
@@ -516,10 +548,10 @@ function StoreSelectionItem({
     >
       <View style={styles.storeItemContent}>
         <View style={styles.storeItemLeft}>
-          <IconSymbol 
-            name="storefront.fill" 
-            size={24} 
-            color={isSelected ? "#007AFF" : "#666"} 
+          <IconSymbol
+            name="storefront.fill"
+            size={24}
+            color={isSelected ? "#007AFF" : "#666"}
           />
           <View style={styles.storeItemInfo}>
             <ThemedText type="defaultSemiBold" style={styles.storeItemName}>
@@ -619,10 +651,10 @@ function createStyles(colors: typeof Colors.light) {
     cardTitle: {
       fontSize: 16,
     },
-    editbutton:{
+    editbutton: {
       flexDirection: 'row',
     },
-    edittext:{
+    edittext: {
       fontSize: 18,
       color: colors.exposedGhost
     },
@@ -823,6 +855,12 @@ function createStyles(colors: typeof Colors.light) {
       padding: 16,
     },
     sectionTitle: {
+      fontSize: 16,
+      marginBottom: 12,
+      color: colors.ghost,
+      marginTop: 12
+    },
+    sectionTitleEnter: {
       fontSize: 16,
       marginBottom: 12,
       color: colors.ghost,

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { View, StyleSheet, Alert, Pressable } from "react-native";
@@ -13,22 +13,31 @@ import { useUpdateShoppingListStatus } from "@/stores/ShoppingListsStore";
 import { useAddInventoryItemsCallback } from "@/stores/InventoryStore";
 import { useUser } from "@clerk/clerk-expo";
 import { useNotifications } from "@/hooks/useNotifications";
+import CustomAlert from "./ui/CustomAlert";
 
 interface ShopNowButtonProps {
   listId: string;
   currentStatus?: 'regular' | 'ongoing' | 'completed';
+  showCustomAlert: (title: string, message: string, buttons?: any[]) => void;
 }
 
-export default function ShopNowButton({ listId, currentStatus = 'regular' }: ShopNowButtonProps) {
+export default function ShopNowButton({ listId, currentStatus = 'regular',
+  showCustomAlert }: ShopNowButtonProps) {
   const router = useRouter();
   const { user } = useUser();
   const productIds = useShoppingListProductIds(listId);
   const updateStatusInListsStore = useUpdateShoppingListStatus();
   const updateStatusInListStore = useUpdateListStatus(listId);
   const addInventoryItems = useAddInventoryItemsCallback();
-  
+
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+
   const { trackPurchase } = useNotifications(user?.id || '');
-  
+
   const store = useShoppingListStore(listId);
 
   const productsData = useMemo(() => {
@@ -38,7 +47,7 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
 
     return productIds.map(productId => {
       const product = store.getRow("products", productId);
-      
+
       return {
         name: (product?.name as string) || '',
         quantity: (product?.quantity as number) || 0,
@@ -53,90 +62,90 @@ export default function ShopNowButton({ listId, currentStatus = 'regular' }: Sho
   }, [store, productIds]);
 
 
-const handleShopNow = () => {
-  if (productIds.length === 0) {
-    Alert.alert("Empty List", "Add some products to your list before shopping!");
-    return;
-  }
+  const handleShopNow = () => {
+    if (productIds.length === 0) {
+      showCustomAlert("Empty List", "Add some products to your list before shopping!");
+      return;
+    }
 
-  if (process.env.EXPO_OS === "ios") {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
 
-  Alert.alert(
-    "Start Shopping",
-    `Ready to shop for ${productIds.length} item(s)?`,
-    [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Start",
-        style: "default",
-        onPress: () => {
-          console.log("🛒 Starting shopping session...");
-          console.log("📦 Products before status change:", productIds.length);
-          
-          // CRITICAL FIX: Verify products exist in store before changing status
-          if (!store) {
-            console.error("❌ Store not available!");
-            Alert.alert("Error", "Unable to start shopping. Please try again.");
-            return;
-          }
+    showCustomAlert(
+      "Start Shopping",
+      `Ready to shop for ${productIds.length} item(s)?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Start",
+          style: "default",
+          onPress: () => {
+            console.log("🛒 Starting shopping session...");
+            console.log("📦 Products before status change:", productIds.length);
 
-          const currentProducts = store.getTable("products");
-          const productCount = Object.keys(currentProducts).length;
-          
-          console.log("📦 Products in store:", productCount);
-          console.log("📦 Product IDs:", Object.keys(currentProducts).join(', '));
-          
-          if (productCount === 0) {
-            console.error("❌ No products found in store!");
-            Alert.alert("Error", "No products found. Please refresh and try again.");
-            return;
-          }
-          
-          // FIX: Update ONLY the parent store, let the sync handle the individual store
-          // This prevents the dual-update race condition
-          updateStatusInListsStore(listId, 'ongoing');
-          
-          // Wait for sync to propagate
-          setTimeout(() => {
-            // Verify products are still there after status change
-            const productsAfterUpdate = store.getTable("products");
-            const countAfter = Object.keys(productsAfterUpdate).length;
-            
-            console.log("📦 Products after status change:", countAfter);
-            
-            if (countAfter === 0) {
-              console.error("🚨 PRODUCTS WERE LOST DURING STATUS UPDATE!");
-              Alert.alert(
-                "Error", 
-                "Products were lost during status update. Please don't start shopping and contact support."
-              );
-              // Try to rollback
-              updateStatusInListsStore(listId, 'regular');
+            // CRITICAL FIX: Verify products exist in store before changing status
+            if (!store) {
+              console.error("❌ Store not available!");
+              showCustomAlert("Error", "Unable to start shopping. Please try again.");
               return;
             }
-            
-            if (process.env.EXPO_OS === "ios") {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+            const currentProducts = store.getTable("products");
+            const productCount = Object.keys(currentProducts).length;
+
+            console.log("📦 Products in store:", productCount);
+            console.log("📦 Product IDs:", Object.keys(currentProducts).join(', '));
+
+            if (productCount === 0) {
+              console.error("❌ No products found in store!");
+              showCustomAlert("Error", "No products found. Please refresh and try again.");
+              return;
             }
 
-            console.log("✅ Shopping started for list:", listId);
+            // FIX: Update ONLY the parent store, let the sync handle the individual store
+            // This prevents the dual-update race condition
+            updateStatusInListsStore(listId, 'ongoing');
 
-            // Navigate to shopping guide first, then the tab will auto-switch
+            // Wait for sync to propagate
             setTimeout(() => {
-              console.log("🛒 Navigating to shopping guide for list:", listId);
-              router.push(`/(index)/list/${listId}/shopping-guide`);
-            }, 100);
-          }, 500); // Increased delay to ensure sync completes
+              // Verify products are still there after status change
+              const productsAfterUpdate = store.getTable("products");
+              const countAfter = Object.keys(productsAfterUpdate).length;
+
+              console.log("📦 Products after status change:", countAfter);
+
+              if (countAfter === 0) {
+                console.error("🚨 PRODUCTS WERE LOST DURING STATUS UPDATE!");
+                showCustomAlert(
+                  "Error",
+                  "Products were lost during status update. Please don't start shopping and contact support."
+                );
+                // Try to rollback
+                updateStatusInListsStore(listId, 'regular');
+                return;
+              }
+
+              if (process.env.EXPO_OS === "ios") {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }
+
+              console.log("✅ Shopping started for list:", listId);
+
+              // Navigate to shopping guide first, then the tab will auto-switch
+              setTimeout(() => {
+                console.log("🛒 Navigating to shopping guide for list:", listId);
+                router.push(`/(index)/list/${listId}/shopping-guide`);
+              }, 100);
+            }, 500); // Increased delay to ensure sync completes
+          },
         },
-      },
-    ]
-  );
-};
+      ]
+    );
+  };
 
   const handleViewShoppingGuide = () => {
     if (process.env.EXPO_OS === "ios") {
@@ -148,7 +157,7 @@ const handleShopNow = () => {
   };
 
   const handleCompleteShopping = async () => {
-    Alert.alert(
+    showCustomAlert(
       "Complete Shopping",
       `This will:\n• Add ${productIds.length} items to your inventory\n• Move this list to Purchase History\n\nContinue?`,
       [
@@ -171,7 +180,7 @@ const handleShopNow = () => {
               // Track purchases for low stock monitoring
               console.log("📊 Tracking purchases for low stock alerts...");
               let trackedCount = 0;
-              
+
               for (const product of productsData) {
                 if (product.databaseProductId && product.databaseProductId > 0) {
                   try {
@@ -184,7 +193,7 @@ const handleShopNow = () => {
                   }
                 }
               }
-              
+
               console.log(`✅ Tracked ${trackedCount}/${productsData.length} purchases for low stock monitoring`);
 
               // FIX: Update ONLY parent store, let sync handle individual store
@@ -194,7 +203,7 @@ const handleShopNow = () => {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               }
 
-              Alert.alert(
+              showCustomAlert(
                 "Shopping Completed!",
                 `✅ Added ${productIds.length} items to your inventory\n✅ List moved to Purchase History\n📊 Tracking ${trackedCount} items for low stock alerts`,
                 [
@@ -205,15 +214,16 @@ const handleShopNow = () => {
                   {
                     text: "View History",
                     onPress: () => {
-                      // Navigate back to lists - user will need to manually switch to History tab
-                      router.back();
+                      router.push({
+                        pathname: "/(index)/(tabs)/shopping-lists",
+                        params: { tab: "history" },
+                      });
                     },
                   },
                   {
                     text: "OK",
                     style: "cancel",
                     onPress: () => {
-                      // Just go back to the shopping lists screen
                       router.back();
                     },
                   },
@@ -223,7 +233,7 @@ const handleShopNow = () => {
               console.log("✅ Shopping completed for list:", listId);
             } catch (error) {
               console.error("❌ Error completing shopping:", error);
-              Alert.alert('Error', 'Failed to complete shopping. Please try again.');
+              showCustomAlert('Error', 'Failed to complete shopping. Please try again.');
             }
           },
         },
@@ -231,63 +241,65 @@ const handleShopNow = () => {
     );
   };
 
+
+
   const handleRestoreList = () => {
-  Alert.alert(
-    "Restore List",
-    "Move this list back to active shopping lists? All items will be marked as unpurchased.",
-    [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Restore",
-        style: "default",
-        onPress: async () => {
-          console.log("♻️ Restoring list:", listId);
-          console.log("📦 Resetting all products to unchecked...");
-
-          try {
-            // Reset all products to unchecked (isPurchased = false)
-            if (store && productIds && productIds.length > 0) {
-              // Use transaction to ensure atomic update
-              store.transaction(() => {
-                for (const productId of productIds) {
-                  try {
-                    store.setCell("products", productId, "isPurchased", false);
-                    console.log(`✅ Reset product ${productId} to unchecked`);
-                  } catch (error) {
-                    console.error(`❌ Error resetting product ${productId}:`, error);
-                  }
-                }
-              });
-              console.log(`✅ Reset ${productIds.length} products to unchecked`);
-            }
-
-            // Wait for product updates to sync
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // FIX: Update ONLY parent store, let sync handle individual store
-            updateStatusInListsStore(listId, 'regular');
-
-            if (process.env.EXPO_OS === "ios") {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-
-            // Navigate back to shopping lists on active tab
-            router.push("/(index)/(tabs)/shopping-lists");
-            // User can manually switch to active tab to see their restored list
-
-            console.log("✅ List restored successfully");
-          } catch (error) {
-            console.error("❌ Error restoring list:", error);
-            Alert.alert('Error', 'Failed to restore list. Please try again.');
-          }
+    showCustomAlert(
+      "Restore List",
+      "Move this list back to active shopping lists? All items will be marked as unpurchased.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
         },
-      },
-    ]
-  );
-};
+        {
+          text: "Restore",
+          style: "default",
+          onPress: async () => {
+            console.log("♻️ Restoring list:", listId);
+            console.log("📦 Resetting all products to unchecked...");
+
+            try {
+              // Reset all products to unchecked (isPurchased = false)
+              if (store && productIds && productIds.length > 0) {
+                // Use transaction to ensure atomic update
+                store.transaction(() => {
+                  for (const productId of productIds) {
+                    try {
+                      store.setCell("products", productId, "isPurchased", false);
+                      console.log(`✅ Reset product ${productId} to unchecked`);
+                    } catch (error) {
+                      console.error(`❌ Error resetting product ${productId}:`, error);
+                    }
+                  }
+                });
+                console.log(`✅ Reset ${productIds.length} products to unchecked`);
+              }
+
+              // Wait for product updates to sync
+              await new Promise(resolve => setTimeout(resolve, 500));
+
+              // FIX: Update ONLY parent store, let sync handle individual store
+              updateStatusInListsStore(listId, 'regular');
+
+              if (process.env.EXPO_OS === "ios") {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }
+
+              // Navigate back to shopping lists on active tab
+              router.push("/(index)/(tabs)/shopping-lists");
+              // User can manually switch to active tab to see their restored list
+
+              console.log("✅ List restored successfully");
+            } catch (error) {
+              console.error("❌ Error restoring list:", error);
+              showCustomAlert('Error', 'Failed to restore list. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (productIds.length === 0) {
     return null;
@@ -296,6 +308,7 @@ const handleShopNow = () => {
   if (currentStatus === 'completed') {
     console.log("📋 Rendering COMPLETED buttons");
     return (
+
       <View style={styles.container}>
         <Pressable onPress={handleRestoreList} style={styles.restoreButton}>
           <IconSymbol name="arrow.counterclockwise" size={20} color="#007AFF" />
@@ -303,6 +316,13 @@ const handleShopNow = () => {
             Restore List
           </ThemedText>
         </Pressable>
+        <CustomAlert
+          visible={customAlertVisible}
+          title={customAlertTitle}
+          message={customAlertMessage}
+          buttons={customAlertButtons}
+          onClose={() => setCustomAlertVisible(false)}
+        />
       </View>
     );
   }
@@ -316,6 +336,13 @@ const handleShopNow = () => {
           <ThemedText style={styles.guideText}>
             View Shopping Guide & Map
           </ThemedText>
+          <CustomAlert
+            visible={customAlertVisible}
+            title={customAlertTitle}
+            message={customAlertMessage}
+            buttons={customAlertButtons}
+            onClose={() => setCustomAlertVisible(false)}
+          />
         </Pressable>
 
         <Pressable onPress={handleCompleteShopping} style={styles.completeButton}>
@@ -324,6 +351,13 @@ const handleShopNow = () => {
             Complete Shopping
           </ThemedText>
         </Pressable>
+        <CustomAlert
+          visible={customAlertVisible}
+          title={customAlertTitle}
+          message={customAlertMessage}
+          buttons={customAlertButtons}
+          onClose={() => setCustomAlertVisible(false)}
+        />
       </View>
     );
   }
@@ -336,8 +370,16 @@ const handleShopNow = () => {
           Shop Now ({productIds.length})
         </ThemedText>
       </Pressable>
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </View>
   );
+
 }
 
 const styles = StyleSheet.create({

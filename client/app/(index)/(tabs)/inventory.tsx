@@ -20,6 +20,7 @@ import TextInput from '@/components/ui/text-input';
 import { Colors } from '@/constants/Colors'
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import CustomAlert from "@/components/ui/CustomAlert";
 
 const STORAGE_LOCATIONS = getStorageDisplayInfo();
 
@@ -108,6 +109,20 @@ function InventoryItem({ itemId, storage, showStorage = false }: { itemId: strin
   const [storageLocation, setStorageLocation] = useInventoryItemCell(itemId, "storageLocation");
   const deleteItem = useDelInventoryItemCallback(itemId);
 
+    const [customAlertVisible, setCustomAlertVisible] = useState(false);
+    const [customAlertTitle, setCustomAlertTitle] = useState('');
+    const [customAlertMessage, setCustomAlertMessage] = useState('');
+    const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+  
+    const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+      setCustomAlertTitle(title);
+      setCustomAlertMessage(message);
+      setCustomAlertButtons(
+        buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+      );
+      setCustomAlertVisible(true);
+    };
+
     //color scheme and styles
     const scheme = useColorScheme();
     const colors = Colors[scheme ?? 'light'];
@@ -122,7 +137,7 @@ function InventoryItem({ itemId, storage, showStorage = false }: { itemId: strin
   });
 
   const handleDelete = useCallback(() => {
-    Alert.alert(
+    showCustomAlert(
       "Delete Item",
       `Are you sure you want to delete "${name}" from your inventory?`,
       [
@@ -310,6 +325,20 @@ export default function InventoryScreen() {
   const deleteAllItems = useDelAllInventoryItemsCallback();
   const insets = useSafeAreaInsets();
 
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+    const [customAlertTitle, setCustomAlertTitle] = useState('');
+    const [customAlertMessage, setCustomAlertMessage] = useState('');
+    const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+  
+    const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+      setCustomAlertTitle(title);
+      setCustomAlertMessage(message);
+      setCustomAlertButtons(
+        buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+      );
+      setCustomAlertVisible(true);
+    };
+
   // Refs for TextInputs to maintain focus
   const searchInputRef = useRef<any>(null);
 
@@ -389,7 +418,7 @@ export default function InventoryScreen() {
         ? 'matching your search' 
         : 'in your inventory';
 
-    Alert.alert(
+    showCustomAlert(
       "Delete All Items",
       `Are you sure you want to delete all ${itemsToDelete.length} item${itemsToDelete.length !== 1 ? 's' : ''} ${locationText}? This action cannot be undone.`,
       [
@@ -621,6 +650,13 @@ export default function InventoryScreen() {
             );
           }}
         />
+        <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
       </View>
   );
 }

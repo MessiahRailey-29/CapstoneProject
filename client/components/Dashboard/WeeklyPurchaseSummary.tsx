@@ -6,6 +6,7 @@ import { useWeeklyPurchaseAnalytics } from '@/hooks/useWeeklyPurchaseAnalytics';
 import { Colors, exposedGhostText } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatCurrency } from "@/utils/formatCurrency";
 
 export function WeeklyPurchaseSummary() {
   const weeklyData = useWeeklyPurchaseAnalytics();
@@ -68,7 +69,7 @@ export function WeeklyPurchaseSummary() {
         >
           <ThemedText style={styles.summaryLabel}>Total Spent</ThemedText>
           <ThemedText style={styles.summaryValue}>
-            ₱{weeklyData.totalWeeklySpent.toFixed(2)}
+            ₱{formatCurrency(weeklyData.totalWeeklySpent)}
           </ThemedText>
           <ThemedText style={styles.summarySubtext}>
             {weeklyData.weeklyItemCount} items
@@ -83,7 +84,7 @@ export function WeeklyPurchaseSummary() {
         >
           <ThemedText style={styles.summaryLabel}>Daily Avg</ThemedText>
           <ThemedText style={styles.summaryValue}>
-            ₱{averageDailySpend.toFixed(2)}
+            ₱{formatCurrency(averageDailySpend)}
           </ThemedText>
           <ThemedText style={styles.summarySubtext}>
             per day
@@ -103,7 +104,7 @@ export function WeeklyPurchaseSummary() {
             <ThemedText style={styles.insightLabel}>Top Category</ThemedText>
             <ThemedText style={styles.insightValue}>{topCategory.category}</ThemedText>
             <ThemedText style={styles.insightSubtext}>
-              ₱{topCategory.total.toFixed(2)} ({topCategory.percentage.toFixed(0)}%)
+              ₱{formatCurrency(topCategory.total)} ({topCategory.percentage.toFixed(0)}%)
             </ThemedText>
           </LinearGradient>
 
@@ -116,7 +117,7 @@ export function WeeklyPurchaseSummary() {
             <ThemedText style={styles.insightLabel}>Top Store</ThemedText>
             <ThemedText style={styles.insightValue}>{topStore.store}</ThemedText>
             <ThemedText style={styles.insightSubtext}>
-              ₱{topStore.total.toFixed(2)} ({topStore.percentage.toFixed(0)}%)
+              ₱{formatCurrency(topStore.total)}({topStore.percentage.toFixed(0)}%)
             </ThemedText>
           </LinearGradient>
         </View>
@@ -126,8 +127,8 @@ export function WeeklyPurchaseSummary() {
       {weeklyData.categoryBreakdown.length > 0 && (
         <View style={styles.breakdownSection}>
           <ThemedText style={styles.breakdownTitle}>Category Breakdown</ThemedText>
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.breakdownScroll}
           >
@@ -135,7 +136,7 @@ export function WeeklyPurchaseSummary() {
               <View key={index} style={styles.categoryCard}>
                 <View style={[styles.categoryDot, { backgroundColor: category.color }]} />
                 <ThemedText style={styles.categoryName}>{category.category}</ThemedText>
-                <ThemedText style={styles.categoryAmount}>₱{category.total.toFixed(2)}</ThemedText>
+                <ThemedText style={styles.categoryAmount}>  ₱{formatCurrency(category.total)} </ThemedText>
                 <ThemedText style={styles.categoryCount}>{category.count} items</ThemedText>
               </View>
             ))}
@@ -151,7 +152,7 @@ export function WeeklyPurchaseSummary() {
             {weeklyData.dailySpending.map((day, index) => (
               <View key={index} style={styles.dayCard}>
                 <ThemedText style={styles.dayName}>{day.day}</ThemedText>
-                <ThemedText style={styles.dayAmount}>₱{day.total.toFixed(0)}</ThemedText>
+                <ThemedText style={styles.dayAmount}>  ₱{formatCurrency(day.total)} </ThemedText>
                 <ThemedText style={styles.dayCount}>{day.count} items</ThemedText>
               </View>
             ))}
@@ -204,9 +205,9 @@ function createStyles(colors: typeof Colors.light) {
     emptyText: {
       color: '#ffffff',
       textAlign: 'center',
-      textShadowColor:'#000',
-      textShadowOffset:{ width: 0, height: 1 },
-      textShadowRadius:2,
+      textShadowColor: '#000',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
     },
     summaryRow: {
       flexDirection: 'row',

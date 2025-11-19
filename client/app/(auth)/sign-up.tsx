@@ -11,12 +11,38 @@ import { ErrorDisplay } from '@/components/ui/ErrorDisplay';
 import { PasswordStrengthMeter, calculatePasswordStrength } from '@/components/ui/PasswordStrengthMeter';
 import { storeVerificationCode, checkVerificationCodeExpiry, clearVerificationCode } from '@/utils/securityUtils';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CustomAlert from '@/components/ui/CustomAlert';
+
+interface AlertButton {
+    text: string;
+    onPress?: () => void;
+    style?: "default" | "cancel" | "destructive";
+}
+
+
+
 
 export default function SignUpScreen() {
     const { signUp, setActive, isLoaded } = useSignUp();
     const router = useRouter();
 
     const insets = useSafeAreaInsets();
+
+    const [alertVisible, setAlertVisible] = React.useState(false);
+    const [alertTitle, setAlertTitle] = React.useState("");
+    const [alertMessage, setAlertMessage] = React.useState("");
+    const [alertButtons, setAlertButtons] = React.useState([]);
+
+    const showAlert = (title: string, message: string, buttons?: AlertButton[]) => {
+        setAlertTitle(title);
+        setAlertMessage(message);
+        setAlertButtons(buttons ?? [{ text: "OK", style: "default", onPress: () => { } }]);
+        setAlertVisible(true);
+    };
+
+    const closeAlert = () => {
+        setAlertVisible(false);
+    };
 
     // Step management
     const [step, setStep] = React.useState<'name' | 'credentials' | 'verification'>('name');
@@ -62,10 +88,10 @@ export default function SignUpScreen() {
             if (timeLeft <= 0) {
                 setRemainingTime('Code expired');
                 clearInterval(interval);
-                Alert.alert(
-                    'Code Expired',
-                    'Your verification code has expired. Please request a new one.',
-                    [{ text: 'OK' }]
+                showAlert(
+                    "Code Expired",
+                    "Your verification code has expired. Please request a new one.",
+                    [{ text: "OK", onPress: () => { } }]
                 );
             } else {
                 const minutes = Math.floor(timeLeft / 60000);
@@ -79,7 +105,7 @@ export default function SignUpScreen() {
 
     const handleNameContinue = () => {
         if (!firstName.trim() || !lastName.trim()) {
-            Alert.alert('Required Fields', 'Please enter both your first and last name.');
+            showAlert('Required Fields', 'Please enter both your first and last name.');
             return;
         }
 
@@ -97,10 +123,10 @@ export default function SignUpScreen() {
         // Check password strength
         const strength = calculatePasswordStrength(password);
         if (!strength.isStrong) {
-            Alert.alert(
+            showAlert(
                 'Weak Password',
                 'Your password does not meet the security requirements. Please create a stronger password.',
-                [{ text: 'OK' }]
+                [{ text: "OK" }]
             );
             return;
         }
@@ -148,10 +174,13 @@ export default function SignUpScreen() {
             // Check if verification code has expired
             const expiryCheck = await checkVerificationCodeExpiry(emailAddress, 'signup');
             if (expiryCheck.expired) {
-                Alert.alert(
+                showAlert(
                     'Code Expired',
                     'Your verification code has expired. Please request a new one.',
-                    [{ text: 'OK' }]
+                    [
+                        { text: "Resend", onPress: onSignUpPress },
+                        { text: "Cancel", style: "cancel" }
+                    ]
                 );
                 setIsLoading(false);
                 return;
@@ -301,20 +330,20 @@ export default function SignUpScreen() {
     // Step 3: Credentials (email and password)
     return (
         <KeyboardAvoidingView
-        style={{flex: 1}}
-        behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null }
-        keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 100 : 0}>
-            <BodyScrollView 
-            contentContainerStyle={{ padding: 16 }}
-            keyboardShouldPersistTaps="handled"
-            contentInsetAdjustmentBehavior="automatic">
+            style={{ flex: 1 }}
+            behavior={process.env.EXPO_OS !== 'ios' ? "padding" : null}
+            keyboardVerticalOffset={process.env.EXPO_OS !== 'ios' ? insets.top + 100 : 0}>
+            <BodyScrollView
+                contentContainerStyle={{ padding: 16 }}
+                keyboardShouldPersistTaps="handled"
+                contentInsetAdjustmentBehavior="automatic">
                 <View style={styles.header}>
                     <ThemedText style={styles.headerTitle}>
                         Hi {firstName}! 👋
                     </ThemedText>
                     <ThemedText style={styles.headerSubtitle}>
                         Now, let's set up your account credentials
-                </ThemedText>
+                    </ThemedText>
                 </View>
 
                 <View style={styles.stepIndicator}>
@@ -332,60 +361,68 @@ export default function SignUpScreen() {
                     </ThemedText>
                 </View>
 
-            <TextInput
-                label="Email"
-                autoCapitalize="none"
-                value={emailAddress}
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                onChangeText={(email) => setEmailAddress(email)}
-            />
+                <TextInput
+                    label="Email"
+                    autoCapitalize="none"
+                    value={emailAddress}
+                    placeholder="Enter your email"
+                    keyboardType="email-address"
+                    onChangeText={(email) => setEmailAddress(email)}
+                />
 
-            <TextInput
-                value={password}
-                label="Password"
-                placeholder="Enter your password"
-                secureTextEntry={true}
-                onChangeText={(password) => setPassword(password)}
-            />
+                <TextInput
+                    value={password}
+                    label="Password"
+                    placeholder="Enter your password"
+                    secureTextEntry={true}
+                    onChangeText={(password) => setPassword(password)}
+                />
 
-            {password && <PasswordStrengthMeter password={password} />}
+                {password && <PasswordStrengthMeter password={password} />}
 
-            <TextInput
-                value={confirmPassword}
-                label="Confirm Password"
-                placeholder="Re-enter your password"
-                secureTextEntry={true}
-                onChangeText={(password) => setConfirmPassword(password)}
-                error={passwordError}
-            />
+                <TextInput
+                    value={confirmPassword}
+                    label="Confirm Password"
+                    placeholder="Re-enter your password"
+                    secureTextEntry={true}
+                    onChangeText={(password) => setConfirmPassword(password)}
+                    error={passwordError}
+                />
 
-            <ErrorDisplay errors={errors} />
+                <ErrorDisplay errors={errors} />
 
-            <Button
-                onPress={onSignUpPress}
-                disabled={!emailAddress || !password || !confirmPassword || !!passwordError || isLoading}
-                loading={isLoading}
-            >
-                Create Account
-            </Button>
-
-            <View style={styles.linkContainer}>
                 <Button
-                    variant="ghost"
-                    onPress={() => setStep('name')}
-                    disabled={isLoading}
+                    onPress={onSignUpPress}
+                    disabled={!emailAddress || !password || !confirmPassword || !!passwordError || isLoading}
+                    loading={isLoading}
                 >
-                    ← Back to Name
+                    Create Account
                 </Button>
-            </View>
 
-            <View style={styles.securityNote}>
-                <ThemedText style={styles.securityNoteText}>
-                    By creating an account, you agree to our Terms of Service and Privacy Policy
-                </ThemedText>
-            </View>
-        </BodyScrollView>
+                <View style={styles.linkContainer}>
+                    <Button
+                        variant="ghost"
+                        onPress={() => setStep('name')}
+                        disabled={isLoading}
+                    >
+                        ← Back to Name
+                    </Button>
+                </View>
+
+                <View style={styles.securityNote}>
+                    <ThemedText style={styles.securityNoteText}>
+                        By creating an account, you agree to our Terms of Service and Privacy Policy
+                    </ThemedText>
+                </View>
+            </BodyScrollView>
+
+            <CustomAlert
+                visible={alertVisible}
+                title={alertTitle}
+                message={alertMessage}
+                onClose={closeAlert}
+                buttons={alertButtons}
+            />
         </KeyboardAvoidingView>
     );
 }

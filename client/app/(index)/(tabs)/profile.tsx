@@ -6,11 +6,13 @@ import { appleRed } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
 import { Alert, View, StyleSheet, TouchableOpacity, Image, useColorScheme, Text, Modal, TextInput } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useResetExpenseData } from '@/hooks/useResetExpenseData';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Entypo, EvilIcons, Feather, FontAwesome, FontAwesome5, Fontisto, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import CustomAlert, { AlertButton } from '@/components/ui/CustomAlert';
 
 export default function ProfileScreen() {
     const { signOut } = useClerk();
@@ -31,6 +33,27 @@ export default function ProfileScreen() {
     const [passwordAction, setPasswordAction] = React.useState<'reset' | 'delete' | null>(null);
     const [isVerifyingPassword, setIsVerifyingPassword] = React.useState(false);
 
+    const [customAlertVisible, setCustomAlertVisible] = useState(false);
+    const [customAlertTitle, setCustomAlertTitle] = useState('');
+    const [customAlertMessage, setCustomAlertMessage] = useState('');
+    const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+    const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+        setCustomAlertTitle(title);
+        setCustomAlertMessage(message);
+        setCustomAlertButtons(
+            buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+        );
+        setCustomAlertVisible(true);
+    };
+
+    
+    // Password confirmation states
+    const [showPasswordConfirm, setShowPasswordConfirm] = React.useState(false);
+    const [confirmPassword, setConfirmPassword] = React.useState('');
+    const [passwordAction, setPasswordAction] = React.useState<'reset' | 'delete' | null>(null);
+    const [isVerifyingPassword, setIsVerifyingPassword] = React.useState(false);
+
     // Load profile picture from Clerk's imageUrl
     React.useEffect(() => {
         if (user?.imageUrl) {
@@ -42,35 +65,35 @@ export default function ProfileScreen() {
         try {
             if (!user) {
                 console.error('❌ No user found');
-                Alert.alert('Error', 'No user found. Please try logging out and back in.');
+                showCustomAlert('Error', 'No user found. Please try logging out and back in.');
                 return;
             }
-            
+
             setIsUploadingImage(true);
             console.log('📸 Uploading profile picture...');
-            
+
             const filename = uri.split('/').pop() || 'profile.jpg';
             const match = /\.(\w+)$/.exec(filename);
             const type = match ? `image/${match[1]}` : `image/jpeg`;
-            
+
             const file = {
                 uri: uri,
                 type: type,
                 name: filename,
             } as any;
-            
+
             await user.setProfileImage({ file });
-            
+
             console.log('✅ Profile picture uploaded successfully');
-            
+
             await user.reload();
             setProfilePicture(user.imageUrl);
-            
-            Alert.alert('Success', 'Profile picture updated!');
+
+            showCustomAlert('Success', 'Profile picture updated!');
         } catch (error: any) {
             console.error('❌ Error saving profile picture:', error);
             console.error('Error details:', JSON.stringify(error, null, 2));
-            Alert.alert('Error', `Failed to save profile picture: ${error.message || 'Unknown error'}`);
+            showCustomAlert('Error', `Failed to save profile picture: ${error.message || 'Unknown error'}`);
         } finally {
             setIsUploadingImage(false);
         }
@@ -79,9 +102,9 @@ export default function ProfileScreen() {
     const pickImage = async () => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            
+
             if (status !== 'granted') {
-                Alert.alert('Permission needed', 'Please allow access to your photos to change your profile picture.');
+                showCustomAlert('Permission needed', 'Please allow access to your photos to change your profile picture.');
                 return;
             }
 
@@ -98,16 +121,16 @@ export default function ProfileScreen() {
             }
         } catch (error) {
             console.error('Error picking image:', error);
-            Alert.alert('Error', 'Failed to pick image');
+            showCustomAlert('Error', 'Failed to pick image');
         }
     };
 
     const takePhoto = async () => {
         try {
             const { status } = await ImagePicker.requestCameraPermissionsAsync();
-            
+
             if (status !== 'granted') {
-                Alert.alert('Permission needed', 'Please allow access to your camera to take a photo.');
+                showCustomAlert('Permission needed', 'Please allow access to your camera to take a photo.');
                 return;
             }
 
@@ -123,7 +146,7 @@ export default function ProfileScreen() {
             }
         } catch (error) {
             console.error('Error taking photo:', error);
-            Alert.alert('Error', 'Failed to take photo');
+            showCustomAlert('Error', 'Failed to take photo');
         }
     };
 
@@ -132,14 +155,14 @@ export default function ProfileScreen() {
             if (user) {
                 await user.setProfileImage({ file: null });
                 await user.reload();
-                
+
                 setProfilePicture(null);
                 setShowAvatarOptions(false);
-                Alert.alert('Success', 'Profile picture removed');
+                showCustomAlert('Success', 'Profile picture removed');
             }
         } catch (error) {
             console.error('Error removing profile picture:', error);
-            Alert.alert('Error', 'Failed to remove profile picture');
+            showCustomAlert('Error', 'Failed to remove profile picture');
         }
     };
 
@@ -155,12 +178,12 @@ export default function ProfileScreen() {
     const saveName = async () => {
         try {
             if (!user) {
-                Alert.alert('Error', 'No user found');
+                showCustomAlert('Error', 'No user found');
                 return;
             }
 
             if (!editedFirstName.trim() || !editedLastName.trim()) {
-                Alert.alert('Error', 'Please enter both first and last name');
+                showCustomAlert('Error', 'Please enter both first and last name');
                 return;
             }
 
@@ -176,10 +199,10 @@ export default function ProfileScreen() {
 
             await user.reload();
             setShowNameEdit(false);
-            Alert.alert('Success', 'Profile updated successfully!');
+            showCustomAlert('Success', 'Profile updated successfully!');
         } catch (error: any) {
             console.error('Error saving profile:', error);
-            Alert.alert('Error', `Failed to update profile: ${error.message || 'Unknown error'}`);
+            showCustomAlert('Error', `Failed to update profile: ${error.message || 'Unknown error'}`);
         } finally {
             setIsSavingName(false);
         }
@@ -246,7 +269,7 @@ export default function ProfileScreen() {
 
     const HandleDeleteAccount = async () => {
         try {
-            Alert.alert(
+            showCustomAlert(
                 "Delete account",
                 "Are you sure you want to delete your account? This action cannot be undone.",
                 [
@@ -265,24 +288,52 @@ export default function ProfileScreen() {
                 ]
             );
         } catch (error) {
-            Alert.alert("Error", "Failed to delete account");
+            showCustomAlert("Error", "Failed to delete account");
             console.error(error);
         }
     };
+
+    const HandleResetExpences = async () => {
+        showCustomAlert(
+            "Reset Expense Data",
+            "Are you sure you want to delete all expense data? This action cannot be undone.",
+            [
+                {
+                    text: "Cancel",
+                    style: "cancel",
+                },
+                {
+                    text: "Reset",
+                    onPress: async () => {
+                        try {
+                            await resetAllExpenseData();
+                            showCustomAlert("Success", "All expense data has been reset");
+                        } catch (error) {
+                            showCustomAlert("Error", "Failed to reset expense data");
+                            console.error(error);
+                        }
+                    },
+                    style: "destructive",
+                },
+            ]
+        );
+    }
 
     // Get user initials for avatar
     const getInitials = () => {
         const metaFirstName = user?.unsafeMetadata?.firstName as string;
         const metaLastName = user?.unsafeMetadata?.lastName as string;
-        
+
         if (metaFirstName && metaLastName) {
             return `${metaFirstName[0]}${metaLastName[0]}`.toUpperCase();
         }
+
+        // Fallback to Clerk's built-in fields
         
         if (user?.firstName && user?.lastName) {
             return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
         }
-        
+
         const name = user?.fullName || user?.firstName || user?.emailAddresses[0]?.emailAddress;
         if (!name) return '?';
         const parts = name.split(' ');
@@ -303,37 +354,39 @@ export default function ProfileScreen() {
     const getFullName = () => {
         const metaFirstName = user?.unsafeMetadata?.firstName as string;
         const metaLastName = user?.unsafeMetadata?.lastName as string;
-        
+
         if (metaFirstName && metaLastName) {
             return `${metaFirstName} ${metaLastName}`;
         }
+
+        // Fallback to Clerk's built-in fields
         
         if (user?.firstName && user?.lastName) {
             return `${user.firstName} ${user.lastName}`;
         }
         return user?.fullName || user?.firstName || 'User';
     };
-    
+
     const insets = useSafeAreaInsets();
     const theme = useColorScheme();
     const colors = Colors[theme ?? 'light'];
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     return (
-        <BodyScrollView contentContainerStyle={{backgroundColor: colors.mainBackground, paddingBottom: insets.bottom + 130}}>
+        <BodyScrollView contentContainerStyle={{ backgroundColor: colors.mainBackground, paddingBottom: insets.bottom + 130 }}>
             {/* Enhanced Profile Card */}
             <View style={styles.profileCard}>
                 <View style={styles.profileHeader}>
                     {/* Avatar */}
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.avatarContainer}
                         onPress={() => setShowAvatarOptions(true)}
                         disabled={isUploadingImage}
                     >
                         <View style={styles.avatar}>
                             {profilePicture ? (
-                                <Image 
-                                    source={{ uri: profilePicture }} 
+                                <Image
+                                    source={{ uri: profilePicture }}
                                     style={styles.avatarImage}
                                 />
                             ) : (
@@ -353,17 +406,28 @@ export default function ProfileScreen() {
                     {/* User Info */}
                     <View style={styles.userInfo}>
                         <View style={styles.nameContainer}>
-                            <ThemedText style={styles.fullName}>
-                                {getFullName()}
-                            </ThemedText>
-                            <TouchableOpacity 
+
+                            <TouchableOpacity
                                 style={styles.editNameButton}
                                 onPress={openNameEdit}
                             >
-                                <ThemedText style={styles.editIcon}>✏️</ThemedText>
+                                <View style={styles.row}>
+                                    <ThemedText style={styles.fullName}>
+                                        {getFullName()}
+                                    </ThemedText>
+
+                                    <FontAwesome
+                                        name="pencil"
+                                        size={20}
+                                        color={colors.exposedGhost}
+                                        style={{
+                                            marginLeft: 8,
+                                        }}
+                                    />
+                                </View>
                             </TouchableOpacity>
                         </View>
-                        
+
                         <ThemedText style={styles.userEmail}>
                             {user?.emailAddresses[0]?.emailAddress}
                         </ThemedText>
@@ -386,8 +450,8 @@ export default function ProfileScreen() {
                     style={styles.settingItem}
                     onPress={() => router.push('/(index)/biometric-settings' as any)}
                 >
-                    <View style={[styles.settingIcon, { backgroundColor: '#E0F2FF' }]}>
-                        <ThemedText style={styles.iconText}>🔒</ThemedText>
+                    <View style={[styles.settingIcon, { backgroundColor: '#ebf7ffff' }]}>
+                        <Entypo name="fingerprint" size={30} color={'#22c55e'} />
                     </View>
                     <View style={styles.settingContent}>
                         <ThemedText style={styles.settingLabel}>Biometric Login</ThemedText>
@@ -401,8 +465,8 @@ export default function ProfileScreen() {
                     style={styles.settingItem}
                     onPress={() => router.push('/(index)/notification-settings')}
                 >
-                    <View style={[styles.settingIcon, { backgroundColor: '#FFF3E0' }]}>
-                        <ThemedText style={styles.iconText}>🔔</ThemedText>
+                    <View style={[styles.settingIcon, { backgroundColor: '#fff0d8ff' }]}>
+                        <MaterialIcons name="edit-notifications" size={36} color={'#f59e0b'} />
                     </View>
                     <View style={styles.settingContent}>
                         <ThemedText style={styles.settingLabel}>Notifications</ThemedText>
@@ -417,7 +481,7 @@ export default function ProfileScreen() {
                     onPress={() => router.push('/(index)/duplicate-settings' as any)}
                 >
                     <View style={[styles.settingIcon, { backgroundColor: '#E3F2FD' }]}>
-                        <ThemedText style={styles.iconText}>🔄</ThemedText>
+                        <MaterialCommunityIcons name="content-duplicate" size={30} color={'#ff5b1aff'} />
                     </View>
                     <View style={styles.settingContent}>
                         <ThemedText style={styles.settingLabel}>Duplicate Detection</ThemedText>
@@ -440,8 +504,8 @@ export default function ProfileScreen() {
                         router.replace("/(auth)/intro");
                     }}
                 >
-                    <View style={[styles.settingIcon, { backgroundColor: '#FFF9E6' }]}>
-                        <ThemedText style={styles.iconText}>🚪</ThemedText>
+                    <View style={[styles.settingIcon, { backgroundColor: '#ffedb3ff' }]}>
+                        <FontAwesome5 name="sign-out-alt" size={30} color={'#ef4444'} />
                     </View>
                     <View style={styles.settingContent}>
                         <ThemedText style={styles.settingLabel}>Sign Out</ThemedText>
@@ -457,11 +521,14 @@ export default function ProfileScreen() {
                         openPasswordConfirmation('delete');
                     }}
                 >
-                    <View style={[styles.settingIcon, { backgroundColor: '#FFEBEE' }]}>
-                        <ThemedText style={styles.iconText}>⚠️</ThemedText>
+                    <View style={[styles.settingIcon, { backgroundColor: '#ffd3d3ff' }]}>
+                        <FontAwesome name="user-circle-o" size={30} color="black" />
+                        <View style={styles.deleteBadge}>
+                            <Feather name="delete" size={10} color="white" />
+                        </View>
                     </View>
                     <View style={styles.settingContent}>
-                        <ThemedText style={[styles.settingLabel, { color: appleRed }]}>Delete Account</ThemedText>
+                        <ThemedText style={[styles.settingLabel, { color: '#ff5b5bff' }]}>Delete Account</ThemedText>
                         <ThemedText style={styles.settingDescription}>Permanently remove your account</ThemedText>
                     </View>
                 </TouchableOpacity>
@@ -474,11 +541,15 @@ export default function ProfileScreen() {
                         openPasswordConfirmation('reset');
                     }}
                 >
-                    <View style={[styles.settingIcon, { backgroundColor: '#FFF3E0' }]}>
-                        <ThemedText style={styles.iconText}>🗑️</ThemedText>
+                    <View style={[styles.settingIcon, { backgroundColor: "#fffccdff" }]}>
+                        <Fontisto name="wallet" size={24} color="#22c55e" />
+
+                        <View style={styles.deleteBadge}>
+                            <Feather name="delete" size={10} color="white" />
+                        </View>
                     </View>
                     <View style={styles.settingContent}>
-                        <ThemedText style={[styles.settingLabel, { color: '#FF9800' }]}>Reset Expense Data</ThemedText>
+                        <ThemedText style={[styles.settingLabel, { color: '#ff9901ff' }]}>Reset Expense Data</ThemedText>
                         <ThemedText style={styles.settingDescription}>Delete all expense records</ThemedText>
                     </View>
                 </TouchableOpacity>
@@ -498,19 +569,19 @@ export default function ProfileScreen() {
                 animationType="fade"
                 onRequestClose={() => setShowAvatarOptions(false)}
             >
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.modalOverlay}
                     activeOpacity={1}
                     onPress={() => setShowAvatarOptions(false)}
                 >
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         activeOpacity={1}
                         onPress={(e) => e.stopPropagation()}
                     >
                         <View style={styles.avatarModalContent}>
                             <ThemedText style={styles.modalTitle}>Profile Picture</ThemedText>
-                            
-                            <TouchableOpacity 
+
+                            <TouchableOpacity
                                 style={styles.avatarOption}
                                 onPress={pickImage}
                             >
@@ -518,7 +589,7 @@ export default function ProfileScreen() {
                                 <ThemedText style={styles.avatarOptionText}>Choose from Library</ThemedText>
                             </TouchableOpacity>
 
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.avatarOption}
                                 onPress={takePhoto}
                             >
@@ -527,7 +598,7 @@ export default function ProfileScreen() {
                             </TouchableOpacity>
 
                             {profilePicture && (
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={[styles.avatarOption, styles.removeOption]}
                                     onPress={removeProfilePicture}
                                 >
@@ -554,12 +625,12 @@ export default function ProfileScreen() {
                 animationType="fade"
                 onRequestClose={() => setShowNameEdit(false)}
             >
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.modalOverlay}
                     activeOpacity={1}
                     onPress={() => setShowNameEdit(false)}
                 >
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         activeOpacity={1}
                         onPress={(e) => e.stopPropagation()}
                     >
@@ -589,7 +660,7 @@ export default function ProfileScreen() {
                                     autoCapitalize="words"
                                 />
                             </View>
-                            
+
                             <View style={styles.modalButtonContainer}>
                                 <TouchableOpacity
                                     style={[styles.modalButton, styles.cancelButton, { flex: 1, marginRight: 8 }]}
@@ -681,6 +752,13 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </TouchableOpacity>
             </Modal>
+            <CustomAlert
+                visible={customAlertVisible}
+                title={customAlertTitle}
+                message={customAlertMessage}
+                buttons={customAlertButtons}
+                onClose={() => setCustomAlertVisible(false)}
+            />
         </BodyScrollView>
     );
 }
@@ -786,8 +864,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         lineHeight: 40,
     },
     editNameButton: {
-        marginLeft: 8,
-        padding: 4,
+        alignContent:'center'
     },
     editIcon: {
         fontSize: 20,
@@ -1015,5 +1092,21 @@ const createStyles = (colors: any) => StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: '#fff',
+    },
+    deleteBadge: {
+        position: "absolute",
+        right: 6,
+        bottom: 7,
+        backgroundColor: "red",
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    row: {
+        flexDirection: "row",
+        alignItems: "center",
+
     },
 });

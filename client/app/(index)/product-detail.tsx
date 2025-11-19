@@ -18,10 +18,10 @@ export default function ProductDetailScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<{ price: number; store: string } | null>(null);
 
-    //colors and schemes
-    const theme = useColorScheme();
-    const colors = Colors[theme ?? 'light'];
-    const styles = createStyles(colors);
+  //colors and schemes
+  const theme = useColorScheme();
+  const colors = Colors[theme ?? 'light'];
+  const styles = createStyles(colors);
 
   useEffect(() => {
     loadProduct();
@@ -31,7 +31,7 @@ export default function ProductDetailScreen() {
     try {
       const fetchedProduct = await productsApi.getProduct(parseInt(productId));
       setProduct(fetchedProduct);
-      
+
       // Set default price if available
       if (prices.length > 0) {
         setSelectedPrice({ price: prices[0].price, store: prices[0].store });
@@ -73,11 +73,11 @@ export default function ProductDetailScreen() {
 
   return (
     <>
-      <Stack.Screen 
+      <Stack.Screen
         options={{
           headerTitle: product.name,
           headerLargeTitle: false,
-        }} 
+        }}
       />
       <BodyScrollView contentContainerStyle={styles.container}>
         <View style={styles.productInfo}>
@@ -93,7 +93,7 @@ export default function ProductDetailScreen() {
           <ThemedText type="subtitle" style={styles.sectionTitle}>
             Prices
           </ThemedText>
-          
+
           {prices.length > 0 ? (
             prices.map((price) => (
               <Pressable
@@ -146,59 +146,60 @@ export default function ProductDetailScreen() {
 
 function createStyles(colors: any) {
   return StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: colors.mainBackground,
-    flex: 1
-  },
-  centerContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 100,
-  },
-  productInfo: {
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  productName: {
-    marginBottom: 8,
-    color: colors.text
-  },
-  category: {
-    color: 'gray',
-  },
-  pricesSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    marginBottom: 16,
-  },
-  priceItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: colors.background,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  priceItemSelected: {
-    backgroundColor: '#e3f2fd20',
-    borderColor: '#007AFF',
-  },
-  priceValue: {
-    color: '#007AFF',
-  },
-  noPrices: {
-    textAlign: 'center',
-    color: 'gray',
-    fontStyle: 'italic',
-  },
-  actions: {
-    marginTop: 24,
-  },
-});
+    container: {
+      padding: 16,
+      backgroundColor: colors.mainBackground,
+      flex: 1
+    },
+    centerContent: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 100,
+    },
+    productInfo: {
+      marginTop: 8,
+      marginBottom: 24,
+    },
+    productName: {
+      marginBottom: 8,
+      color: colors.text,
+      lineHeight: 32
+    },
+    category: {
+      color: 'gray',
+    },
+    pricesSection: {
+      marginBottom: 24,
+    },
+    sectionTitle: {
+      marginBottom: 16,
+    },
+    priceItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      marginBottom: 8,
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    priceItemSelected: {
+      backgroundColor: '#e3f2fd20',
+      borderColor: '#007AFF',
+    },
+    priceValue: {
+      color: '#007AFF',
+    },
+    noPrices: {
+      textAlign: 'center',
+      color: 'gray',
+      fontStyle: 'italic',
+    },
+    actions: {
+      marginTop: 24,
+    },
+  });
 }

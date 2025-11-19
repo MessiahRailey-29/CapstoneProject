@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { Colors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatCurrency } from "@/utils/formatCurrency";
 
 interface DayWithLists {
   dayName: string;
@@ -25,6 +26,7 @@ export function WeeklyShoppingListSummary() {
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
 
+
   const weekRange = `${weeklyData.weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weeklyData.weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
   // Organize lists by day of the week
@@ -37,7 +39,7 @@ export function WeeklyShoppingListSummary() {
     for (let i = 0; i < 7; i++) {
       const currentDate = new Date(weeklyData.weekStart);
       currentDate.setDate(weeklyData.weekStart.getDate() + i);
-      
+
       const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'short' });
       const dayNumber = currentDate.getDate();
       const isToday = currentDate.getTime() === today.getTime();
@@ -99,7 +101,7 @@ export function WeeklyShoppingListSummary() {
         >
           <ThemedText style={styles.summaryLabel}>Weekly Budget</ThemedText>
           <ThemedText style={styles.summaryValue}>
-            ₱{weeklyData.totalWeeklyBudget.toFixed(2)}
+            ₱{formatCurrency(weeklyData.totalWeeklyBudget)}
           </ThemedText>
           <ThemedText style={styles.summarySubtext}>
             {weeklyData.weeklyListCount} {weeklyData.weeklyListCount === 1 ? 'list' : 'lists'}
@@ -114,10 +116,12 @@ export function WeeklyShoppingListSummary() {
         >
           <ThemedText style={styles.summaryLabel}>Projected Total</ThemedText>
           <ThemedText style={[styles.summaryValue, isOverBudget && styles.overBudgetText]}>
-            ₱{weeklyData.totalWeeklyProjected.toFixed(2)}
+            ₱{formatCurrency(weeklyData.totalWeeklyProjected)}
           </ThemedText>
           <ThemedText style={[styles.summarySubtext, isOverBudget && styles.overBudgetText]}>
-            {isOverBudget ? `₱${budgetDifference.toFixed(2)} over` : `₱${Math.abs(budgetDifference).toFixed(2)} under`}
+            {isOverBudget
+              ? `₱${formatCurrency(budgetDifference)} over`
+              : `₱${formatCurrency(Math.abs(budgetDifference))} under`}
           </ThemedText>
         </LinearGradient>
       </View>
@@ -150,8 +154,8 @@ export function WeeklyShoppingListSummary() {
           </Pressable>
         </View>
       ) : (
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.weekContainer}
         >
@@ -159,8 +163,8 @@ export function WeeklyShoppingListSummary() {
             <View key={index} style={styles.dayColumn}>
               {/* Day Header */}
               <LinearGradient
-                colors={day.isToday 
-                  ? ['#6366f1', '#8b5cf6'] 
+                colors={day.isToday
+                  ? ['#6366f1', '#8b5cf6']
                   : ['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.1)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -221,7 +225,7 @@ export function WeeklyShoppingListSummary() {
                           <View style={styles.statRow}>
                             <ThemedText style={styles.statLabel}>Budget:</ThemedText>
                             <ThemedText style={styles.statValue}>
-                              ₱{list.budget.toFixed(0)}
+                              ₱{formatCurrency(list.budget)}
                             </ThemedText>
                           </View>
 
@@ -231,7 +235,7 @@ export function WeeklyShoppingListSummary() {
                               styles.statValue,
                               list.overBudget && styles.statValueOverBudget,
                             ]}>
-                              ₱{list.projectedTotal.toFixed(0)}
+                              ₱{formatCurrency(list.projectedTotal)}
                             </ThemedText>
                           </View>
 

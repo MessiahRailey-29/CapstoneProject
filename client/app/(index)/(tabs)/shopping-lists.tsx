@@ -11,7 +11,7 @@ import {
   useDelAllShoppingListsCallback
 } from "@/stores/ShoppingListsStore";
 import { useShoppingListProductIds } from "@/stores/ShoppingListStore";
-import { Stack, useRouter, useFocusEffect } from "expo-router";
+import { Stack, useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Pressable, StyleSheet, View, FlatList, Animated, Alert, useColorScheme, Modal } from 'react-native';
 import React, { useMemo, useState, useRef, useCallback } from "react";
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import QuickAddFab from "@/components/AddShoppingListFaB";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CustomAlert from "@/components/ui/CustomAlert";
 
 type TabType = 'active' | 'ongoing' | 'history';
 type SortOption = 'name' | 'date' | 'items' | 'budget';
@@ -52,6 +53,20 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId, isHistory =
   const shoppingDate = listData?.shoppingDate || null;
   const completedAt = listData?.completedAt || null;
 
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
+
   const swipeableRef = useRef<Swipeable>(null);
 
   const handlePress = useCallback(() => {
@@ -59,7 +74,7 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId, isHistory =
   }, [listId, router]);
 
   const handleDelete = useCallback(() => {
-    Alert.alert(
+    showCustomAlert(
       "Delete List",
       `Are you sure you want to delete "${name}"? This action cannot be undone.`,
       [
@@ -227,6 +242,36 @@ export default function HomeScreen() {
   const colors = Colors[theme ?? 'light'];
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  const params = useLocalSearchParams<{ tab?: "active" | "ongoing" | "history" }>();
+
+  const [customAlertVisible, setCustomAlertVisible] = useState(false);
+  const [customAlertTitle, setCustomAlertTitle] = useState('');
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+
+  const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+    setCustomAlertTitle(title);
+    setCustomAlertMessage(message);
+    setCustomAlertButtons(
+      buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+    );
+    setCustomAlertVisible(true);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasLoadedTab.current) {
+        const paramTab = params.tab;
+        if (paramTab && ["active", "ongoing", "history"].includes(paramTab)) {
+          setActiveTab(paramTab);
+        } else {
+          // fallback to AsyncStorage logic...
+        }
+        hasLoadedTab.current = true;
+      }
+    }, [params.tab])
+  );
+
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [sortBy, setSortBy] = useState<SortOption>('date');
   const [filterBy, setFilterBy] = useState<FilterOption>('all');
@@ -259,13 +304,13 @@ export default function HomeScreen() {
 
   // 🔧 CRITICAL FIX: Load tab only ONCE on initial mount
   const hasLoadedTab = useRef(false);
-  
+
   useFocusEffect(
     useCallback(() => {
       // Only load from storage on the very first focus
       if (!hasLoadedTab.current) {
         console.log('👀 Initial screen focus - loading saved tab');
-        
+
         AsyncStorage.getItem(TAB_STORAGE_KEY)
           .then((savedTab) => {
             if (savedTab && (savedTab === 'active' || savedTab === 'ongoing' || savedTab === 'history')) {
@@ -323,17 +368,17 @@ export default function HomeScreen() {
   }, [shoppingListIds, shoppingListsValues]);
 
   const handleDeleteAll = useCallback(() => {
-    const currentLists = activeTab === 'active' ? regularLists : 
-                         activeTab === 'ongoing' ? ongoingLists : 
-                         historyLists;
-    
+    const currentLists = activeTab === 'active' ? regularLists :
+      activeTab === 'ongoing' ? ongoingLists :
+        historyLists;
+
     if (currentLists.length === 0) return;
 
-    const tabName = activeTab === 'active' ? 'Active' : 
-                    activeTab === 'ongoing' ? 'Ongoing' : 
-                    'Purchase History';
+    const tabName = activeTab === 'active' ? 'Active' :
+      activeTab === 'ongoing' ? 'Ongoing' :
+        'Purchase History';
 
-    Alert.alert(
+    showCustomAlert(
       `Delete All ${tabName} Lists`,
       `Are you sure you want to delete all ${currentLists.length} ${tabName.toLowerCase()} list${currentLists.length !== 1 ? 's' : ''}? This action cannot be undone.`,
       [
@@ -613,9 +658,9 @@ export default function HomeScreen() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack.Screen/>
+      <Stack.Screen />
 
-      <QuickAddFab onPress={handleAddList}/>
+      <QuickAddFab onPress={handleAddList} />
 
       <View style={styles.container}>
         <View style={styles.tabBar}>
@@ -687,20 +732,20 @@ export default function HomeScreen() {
         {((activeTab === 'active' && regularLists.length > 0) ||
           (activeTab === 'ongoing' && ongoingLists.length > 0) ||
           (activeTab === 'history' && historyLists.length > 0)) && (
-          <View style={styles.deleteAllContainer}>
-            <Pressable
-              style={styles.deleteAllButton}
-              onPress={handleDeleteAll}
-            >
-              <IconSymbol name="trash" size={18} color="#FF3B30" />
-              <ThemedText style={styles.deleteAllButtonText}>
-                Delete All ({activeTab === 'active' ? regularLists.length : 
-                            activeTab === 'ongoing' ? ongoingLists.length : 
-                            historyLists.length})
-              </ThemedText>
-            </Pressable>
-          </View>
-        )}
+            <View style={styles.deleteAllContainer}>
+              <Pressable
+                style={styles.deleteAllButton}
+                onPress={handleDeleteAll}
+              >
+                <IconSymbol name="trash" size={18} color="#FF3B30" />
+                <ThemedText style={styles.deleteAllButtonText}>
+                  Delete All ({activeTab === 'active' ? regularLists.length :
+                    activeTab === 'ongoing' ? ongoingLists.length :
+                      historyLists.length})
+                </ThemedText>
+              </Pressable>
+            </View>
+          )}
 
         {currentTabData.length === 0 ? (
           renderEmptyList()
@@ -709,7 +754,7 @@ export default function HomeScreen() {
             data={currentTabData}
             renderItem={renderItem}
             keyExtractor={(item) => item}
-            contentContainerStyle={[styles.listContainer, {paddingBottom: insets.bottom + 130}]}
+            contentContainerStyle={[styles.listContainer, { paddingBottom: insets.bottom + 130 }]}
             contentInsetAdjustmentBehavior="automatic"
           />
         )}
@@ -730,7 +775,7 @@ function createStyles(colors: typeof Colors.light) {
     tabBar: {
       backgroundColor: colors.background,
       flexDirection: 'row',
-      alignContent:'center',
+      alignContent: 'center',
       paddingHorizontal: 16,
       paddingTop: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,

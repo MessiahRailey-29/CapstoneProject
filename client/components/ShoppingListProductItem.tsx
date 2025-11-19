@@ -20,6 +20,7 @@ import { useListNotifications } from "@/utils/notifyCollaborators";
 import { ThemedText } from "./ThemedText";
 import { IconSymbol } from "./ui/IconSymbol";
 import { Colors } from "@/constants/Colors"
+import { formatCurrency } from "@/utils/formatCurrency";
 
 export default function ShoppingListProductItem({
   listId,
@@ -256,7 +257,7 @@ export default function ShoppingListProductItem({
                         isPurchased && styles.strikethrough
                       ]}
                     >
-                      ₱{selectedPrice.toFixed(2)} / {units}
+                      ₱{formatCurrency(selectedPrice)} / {units}
                     </ThemedText>
                     
                     {quantity > 1 && (
@@ -267,7 +268,7 @@ export default function ShoppingListProductItem({
                           isPurchased && styles.strikethrough
                         ]}
                       >
-                        ₱{totalPrice.toFixed(2)} total
+                        ₱{formatCurrency(totalPrice)} total
                       </ThemedText>
                     )}
                   </View>
