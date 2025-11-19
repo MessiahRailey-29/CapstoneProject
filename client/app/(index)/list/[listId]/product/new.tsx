@@ -16,6 +16,7 @@ import DuplicateActionModal from '@/components/DuplicateActionModal';
 import { ProductSummary } from '@/services/DuplicateDetectionService';
 import { useShoppingListStore, useShoppingListProductIds } from '@/stores/ShoppingListStore';
 import CustomAlert from "@/components/ui/CustomAlert";
+import { useInventoryItems } from '@/stores/InventoryStore';
 
 interface SelectedStoreInfo {
   store: string;
@@ -70,6 +71,7 @@ export default function NewItemScreen() {
   // Enhanced duplicate detection setup
   const store = useShoppingListStore(listId);
   const productIds = useShoppingListProductIds(listId) || [];
+  const inventoryItems = useInventoryItems();
 
   // Get current list products for duplicate checking
   const currentListProducts: ProductSummary[] = useMemo(() => {
@@ -120,14 +122,21 @@ export default function NewItemScreen() {
     setShowStoreSelection(false);
   }, [selectedProduct]);
 
+  // Check inventory for duplicates
+  const checkInventoryForDuplicates = useCallback((productName: string) => {
+    const normalizedName = productName.trim().toLowerCase();
+    return inventoryItems.find(item =>
+      item.name.trim().toLowerCase() === normalizedName
+    );
+  }, [inventoryItems]);
+
   const handleAddAllToList = useCallback(async () => {
     if (!name.trim() && queuedProducts.length === 0) return;
 
-    setAddingAnother(true);
-
-    const productsToAdd = [...queuedProducts];
+    // Check inventory for duplicates before proceeding
+    const productsToCheck = [...queuedProducts];
     if (name.trim()) {
-      productsToAdd.push({
+      productsToCheck.push({
         id: Date.now().toString(),
         name: name.trim(),
         quantity,
@@ -138,6 +147,58 @@ export default function NewItemScreen() {
         category: selectedProduct?.category,
       });
     }
+
+    // Find inventory duplicates
+    const inventoryDuplicates = productsToCheck
+      .map(product => {
+        const duplicate = checkInventoryForDuplicates(product.name);
+        return duplicate ? { product, inventoryItem: duplicate } : null;
+      })
+      .filter(Boolean);
+
+    // If duplicates found in inventory, show alert
+    if (inventoryDuplicates.length > 0) {
+      const duplicateList = inventoryDuplicates
+        .map(d => `• ${d!.product.name} (already have ${d!.inventoryItem.quantity} ${d!.inventoryItem.units} in inventory)`)
+        .join('\n');
+
+      showCustomAlert(
+        "Items Already in Inventory",
+        `The following items already exist in your inventory:\n\n${duplicateList}\n\nDo you still want to add them to your shopping list?`,
+        [
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => {
+              console.log('User chose to discard items already in inventory');
+              setAddingAnother(false);
+            },
+          },
+          {
+            text: "Add Anyway",
+            style: "default",
+            onPress: () => {
+              console.log('User chose to add items despite being in inventory');
+              proceedWithAddingProducts(productsToCheck);
+            },
+          },
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => setAddingAnother(false),
+          },
+        ]
+      );
+      return;
+    }
+
+    // No inventory duplicates, proceed normally
+    proceedWithAddingProducts(productsToCheck);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, quantity, notes, selectedStoreInfo, selectedProduct, queuedProducts, checkInventoryForDuplicates, showCustomAlert]);
+
+  const proceedWithAddingProducts = useCallback(async (productsToAdd: QueuedProduct[]) => {
+    setAddingAnother(true);
 
     let addedCount = 0;
     let duplicateCount = 0;
@@ -271,7 +332,7 @@ export default function NewItemScreen() {
 
     setAddingAnother(false);
     router.back();
-  }, [name, quantity, notes, selectedStoreInfo, selectedProduct, queuedProducts, addShoppingListProduct, router, checkForDuplicate, currentListProducts, store]);
+  }, [addShoppingListProduct, router, checkForDuplicate, currentListProducts, store, showCustomAlert]);
 
   const handleCancel = useCallback(() => {
     const hasUnsavedData = name.trim() !== "" || queuedProducts.length > 0;
