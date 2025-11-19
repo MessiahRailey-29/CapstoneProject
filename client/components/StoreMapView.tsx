@@ -265,6 +265,13 @@ export default function StoreMapView({
             lineCap: 'round'
           }).addTo(map);
           
+          // Show route info
+          const distance = (route.distance / 1000).toFixed(1);
+          const duration = (route.duration / 60).toFixed(0);
+          
+          routeInfoText.innerHTML = \`📍 \${distance} km • ⏱️ \${duration} min\`;
+          routeInfo.style.display = 'block';
+          
           console.log('✅ Route loaded:', distance, 'km', duration, 'min');
         } else {
           console.error('❌ OSRM error:', data.code);
