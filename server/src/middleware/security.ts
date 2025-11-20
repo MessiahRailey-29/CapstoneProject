@@ -146,8 +146,13 @@ export function applySecurityMiddleware(app: Express) {
   // Apply CORS
   app.use(configureCors());
 
-  // Apply general rate limiting
-  app.use(generalRateLimit);
+  // Apply general rate limiting (only in production)
+  if (process.env.NODE_ENV === 'production') {
+    app.use(generalRateLimit);
+    console.log('✅ Rate limiting enabled (production mode)');
+  } else {
+    console.log('⚠️ Rate limiting disabled (development mode)');
+  }
 
   console.log('✅ Security middleware configured');
 }
