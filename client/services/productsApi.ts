@@ -5,6 +5,7 @@ export interface DatabaseProduct {
   id: number;
   name: string;
   category: string;
+  unit: string;
 }
 
 export interface ProductPrice {

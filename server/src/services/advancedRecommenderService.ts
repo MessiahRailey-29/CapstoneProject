@@ -48,6 +48,8 @@ export class AdvancedRecommenderService {
         return {
           productId: product.id,
           productName: product.name,
+          category: product.category,
+          unit: product.unit,
           confidence: assoc.confidenceScore,
           coOccurrenceCount: assoc.coOccurrenceCount,
         };
@@ -165,6 +167,7 @@ export class AdvancedRecommenderService {
           productId: product.id,
           productName: product.name,
           category: product.category,
+          unit: product.unit,
           score,
           store: priceInfo?.store || 'Multiple stores',
           price: priceInfo?.minPrice || 0,
@@ -230,6 +233,8 @@ export class AdvancedRecommenderService {
       return {
         productId: item._id,
         productName: product?.name || 'Unknown',
+        category: product?.category || 'Unknown',
+        unit: product?.unit || 'Unknown',
         lowestPrice: item.lowestPrice,
         highestPrice: item.highestPrice,
         bestStore: bestPriceInfo?.store || 'Unknown',
@@ -346,6 +351,7 @@ export class AdvancedRecommenderService {
           productId: product.id,
           productName: product.name,
           category: product.category,
+          unit: product.unit,
           frequency: item.frequency,
           reason: `You often buy this for ${timeContext}${isWeekend ? ' on weekends' : ''}${locationSuffix}`,
           store: priceInfo?.store || 'Multiple stores',
@@ -402,6 +408,7 @@ export class AdvancedRecommenderService {
           productId: product.id,
           productName: product.name,
           category: product.category,
+          unit: product.unit,
           localPopularity: item.purchaseCount,
           uniqueUsers: item.uniqueUsers,
           score: 0.7,
