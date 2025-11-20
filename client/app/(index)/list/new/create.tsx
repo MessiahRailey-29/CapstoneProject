@@ -132,7 +132,7 @@ export default function CreateListScreen() {
 
     if (selectedDate) {
       try {
-        await scheduleShoppingReminder(listId, selectedDate);
+        await scheduleShoppingReminder(listId, selectedDate, listName, selectedEmoji);
       } catch (error) {
         console.error("Failed to schedule reminder:", error);
       }
@@ -209,7 +209,7 @@ export default function CreateListScreen() {
       );
 
       if (listId && testDate) {
-        await scheduleShoppingReminder(listId, testDate);
+        await scheduleShoppingReminder(listId, testDate, name, testEmojis[index]);
       }
     }
 

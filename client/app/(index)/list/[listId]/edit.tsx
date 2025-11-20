@@ -196,7 +196,7 @@ export default function EditScreen() {
               [{ text: 'OK' }]
             );
           } else {
-            const reminderScheduled = await scheduleShoppingReminder(listId, shoppingDate);
+            const reminderScheduled = await scheduleShoppingReminder(listId, shoppingDate, name, emoji);
             if (reminderScheduled) {
               console.log('🔔 Shopping reminder scheduled (not sent) for', shoppingDate);
 

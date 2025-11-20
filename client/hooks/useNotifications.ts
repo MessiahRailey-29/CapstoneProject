@@ -295,25 +295,46 @@ export function useNotifications(userId: string, getToken: () => Promise<string 
   }, [userId, getToken]);
 
   // Schedule shopping reminder
-  const scheduleShoppingReminder = useCallback(async (listId: string, scheduledDate: Date) => {
-    try {
-      const response = await postWithAuth(
-        `/api/notifications/${userId}/schedule-reminder`,
-        { listId, scheduledDate: scheduledDate.toISOString() },
-        getToken
-      );
-      const data = await response.json();
-
-      if (data.success && data.notification) {
-        await fetchNotifications();
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('❌ Error scheduling reminder:', error);
+const scheduleShoppingReminder = useCallback(async (
+  listId: string, 
+  scheduledDate: Date,
+  listName?: string,
+  emoji?: string
+) => {
+  try {
+    console.log('📅 Scheduling reminder:', { listId, scheduledDate, listName, emoji });
+    
+    const response = await postWithAuth(
+      `/api/notifications/${userId}/schedule-reminder`,
+      { 
+        listId, 
+        scheduledDate: scheduledDate.toISOString(),
+        listName: listName || 'Shopping List',  // ← Add this
+        emoji: emoji || '🛒'                     // ← Add this
+      },
+      getToken
+    );
+    
+    // Check if response is ok before parsing
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Server error:', response.status, errorText);
       return false;
     }
-  }, [userId, fetchNotifications, getToken]);
+    
+    const data = await response.json();
+    console.log('📬 Server response:', data);
+
+    if (data.success) {
+      await fetchNotifications();
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('❌ Error scheduling reminder:', error);
+    return false;
+  }
+}, [userId, fetchNotifications, getToken]);
 
   // Cancel shopping reminder
   const cancelShoppingReminder = useCallback(async (listId: string) => {

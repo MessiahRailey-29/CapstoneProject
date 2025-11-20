@@ -1,170 +1,158 @@
-// server/src/middleware/auth.ts
-import { Request, Response, NextFunction } from 'express';
-import { clerkClient } from '@clerk/clerk-sdk-node';
+// server/src/middleware/security.ts
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import cors from 'cors';
+import { Express } from 'express';
 
-// Extend Express Request type to include userId
-declare global {
-  namespace Express {
-    interface Request {
-      userId?: string;
-      auth?: {
-        userId: string;
-      };
-    }
-  }
+/**
+ * Configure Helmet for security headers
+ * Protects against common web vulnerabilities
+ */
+export const helmetConfig = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+    },
+  },
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true,
+  },
+  frameguard: {
+    action: 'deny',
+  },
+  noSniff: true,
+  xssFilter: true,
+  hidePoweredBy: true,
+});
+
+/**
+ * Configure CORS
+ * In production, replace with your actual client domains
+ */
+export function configureCors() {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : [
+        'http://localhost:3000',
+        'http://localhost:8081',
+        'http://localhost:19006',
+        'exp://localhost:8081',
+      ];
+
+  return cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Check if origin is in allowed list or matches Expo development pattern
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.startsWith('exp://') ||
+        origin.startsWith('http://localhost') ||
+        origin.startsWith('http://127.0.0.1') ||
+        (process.env.NODE_ENV === 'development' && origin.includes('192.168'))
+      ) {
+        callback(null, true);
+      } else {
+        console.warn(`⚠️ Blocked CORS request from unauthorized origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-api-key'],
+  });
 }
 
 /**
- * Clerk JWT Authentication Middleware
- * Verifies the Clerk session token from the Authorization header
- * Attaches userId to req.userId and req.auth
+ * Rate Limiting Middleware
+ * Prevents brute force and DoS attacks
+ * More permissive in development, strict in production
  */
-export async function authenticateUser(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    // Extract token from Authorization header
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized',
-        message: 'Missing or invalid authorization header. Please provide a valid Bearer token.',
-      });
-    }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-
-    // Verify the session token with Clerk
-    const session = await clerkClient.sessions.verifySession(token, token);
-
-    if (!session || !session.userId) {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized',
-        message: 'Invalid or expired session token.',
-      });
-    }
-
-    // Attach userId to request for downstream use
-    req.userId = session.userId;
-    req.auth = { userId: session.userId };
-
-    console.log(`✅ Authenticated user: ${session.userId}`);
-    next();
-  } catch (error: any) {
-    console.error('❌ Authentication error:', error.message);
-
-    return res.status(401).json({
+export const generalRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 1000 in dev, 100 in production
+  message: {
+    success: false,
+    error: 'Too many requests',
+    message: 'Too many requests from this IP, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    console.warn(`⚠️ Rate limit exceeded for IP: ${req.ip}`);
+    res.status(429).json({
       success: false,
-      error: 'Unauthorized',
-      message: 'Failed to authenticate. Please log in again.',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      error: 'Too many requests',
+      message: 'Too many requests from this IP, please try again later.',
     });
-  }
-}
+  },
+});
 
 /**
- * Authorization Middleware
- * Verifies that the authenticated user matches the userId in the request params
- * MUST be used after authenticateUser middleware
+ * Stricter rate limit for authentication endpoints
  */
-export function authorizeUser(req: Request, res: Response, next: NextFunction) {
-  const authenticatedUserId = req.userId;
-  const requestedUserId = req.params.userId;
-
-  if (!authenticatedUserId) {
-    return res.status(401).json({
-      success: false,
-      error: 'Unauthorized',
-      message: 'Authentication required. Please log in.',
-    });
-  }
-
-  if (requestedUserId && authenticatedUserId !== requestedUserId) {
-    console.warn(
-      `⚠️ Authorization failed: User ${authenticatedUserId} attempted to access resources for ${requestedUserId}`
-    );
-
-    return res.status(403).json({
-      success: false,
-      error: 'Forbidden',
-      message: 'You do not have permission to access this resource.',
-    });
-  }
-
-  console.log(`✅ Authorized user: ${authenticatedUserId}`);
-  next();
-}
+export const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit to 10 login attempts per windowMs
+  message: {
+    success: false,
+    error: 'Too many authentication attempts',
+    message: 'Too many login attempts, please try again later.',
+  },
+  skipSuccessfulRequests: true,
+});
 
 /**
- * Admin API Key Authentication Middleware
- * Protects admin endpoints with an API key
+ * Admin endpoint rate limiting
  */
-export function authenticateAdmin(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  const apiKey = req.headers['x-admin-api-key'];
-  const validApiKey = process.env.ADMIN_API_KEY;
-
-  if (!validApiKey) {
-    console.error('❌ ADMIN_API_KEY not configured in environment variables!');
-    return res.status(500).json({
-      success: false,
-      error: 'Server configuration error',
-      message: 'Admin API key not configured.',
-    });
-  }
-
-  if (!apiKey || apiKey !== validApiKey) {
-    console.warn(`⚠️ Unauthorized admin access attempt from ${req.ip}`);
-
-    return res.status(403).json({
-      success: false,
-      error: 'Forbidden',
-      message: 'Invalid or missing admin API key.',
-    });
-  }
-
-  console.log(`✅ Admin authenticated from ${req.ip}`);
-  next();
-}
+export const adminRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // Limit admin operations
+  message: {
+    success: false,
+    error: 'Too many admin requests',
+    message: 'Admin rate limit exceeded.',
+  },
+});
 
 /**
- * Optional Authentication Middleware
- * Authenticates if token is present but doesn't require it
- * Useful for endpoints that behave differently for authenticated vs anonymous users
+ * WebSocket rate limiting (for sync endpoints)
  */
-export async function optionalAuth(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  const authHeader = req.headers.authorization;
+export const wsRateLimit = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // Max 30 sync operations per minute
+  message: {
+    success: false,
+    error: 'Too many sync requests',
+    message: 'Sync rate limit exceeded.',
+  },
+});
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // No token provided, continue without authentication
-    return next();
+/**
+ * Apply all security middleware to Express app
+ */
+export function applySecurityMiddleware(app: Express) {
+  // Apply Helmet for security headers
+  app.use(helmetConfig);
+
+  // Apply CORS
+  app.use(configureCors());
+
+  // Apply general rate limiting (only in production)
+  if (process.env.NODE_ENV === 'production') {
+    app.use(generalRateLimit);
+    console.log('✅ Rate limiting enabled (production mode)');
+  } else {
+    console.log('⚠️ Rate limiting disabled (development mode)');
   }
 
-  try {
-    const token = authHeader.substring(7);
-    const session = await clerkClient.sessions.verifySession(token, token);
-
-    if (session && session.userId) {
-      req.userId = session.userId;
-      req.auth = { userId: session.userId };
-      console.log(`✅ Optional auth: User ${session.userId} authenticated`);
-    }
-  } catch (error) {
-    // Invalid token, but we don't fail the request
-    console.log('ℹ️ Optional auth: Invalid token provided, continuing as anonymous');
-  }
-
-  next();
+  console.log('✅ Security middleware configured');
 }
