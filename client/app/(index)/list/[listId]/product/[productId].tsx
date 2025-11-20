@@ -78,6 +78,7 @@ function ProductContent({
   const [selectedPrice, setSelectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
   const [category] = useShoppingListProductCell(listId, productId, "category");
   const [databaseProductId] = useShoppingListProductCell(listId, productId, "databaseProductId");
+  const [productUnit] = useShoppingListProductCell(listId, productId, "productUnit");
 
   const createdBy = useShoppingListProductCreatedByNickname(listId, productId);
   const [createdAt] = useShoppingListProductCell(
@@ -162,7 +163,7 @@ function ProductContent({
                 ) : (
                   <Pressable onPress={() => setIsEditingName(true)}>
                     <ThemedText type="title" style={styles.productName}>
-                      {name}
+                      {name} {productUnit && `(${productUnit})`}
                     </ThemedText>
                   </Pressable>
                 )}
@@ -437,7 +438,7 @@ function ProductContent({
             {databaseProductId && prices.length > 0 ? (
               <>
                 <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                  Available Stores for {name}
+                  Available Stores for {name} {productUnit && `(${productUnit})`}
                 </ThemedText>
                 {pricesLoading ? (
                   <View style={styles.loadingContainer}>

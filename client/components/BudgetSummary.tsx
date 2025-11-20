@@ -59,6 +59,7 @@ export default function BudgetSummary({
     const [selectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
     const [productQuantity] = useShoppingListProductCell(listId, productId, "quantity");
     const [name] = useShoppingListProductCell(listId, productId, "name");
+    const [productUnit] = useShoppingListProductCell(listId, productId, "productUnit");
 
 
 
@@ -76,7 +77,8 @@ export default function BudgetSummary({
       name: name || 'Unknown Product',
       cost: selectedPrice * productQuantity,
       quantity: productQuantity,
-      price: selectedPrice
+      price: selectedPrice,
+      productUnit: productUnit || ''
     };
   }).filter(Boolean); // Remove null entries
 
@@ -260,13 +262,13 @@ export default function BudgetSummary({
             .map((item, index) => (
               <View key={item.productId} style={styles.breakdownItem}>
                 <Text style=
-                {styles.productName} 
-                numberOfLines={1} 
+                {styles.productName}
+                numberOfLines={1}
                 ellipsizeMode="tail"
                 adjustsFontSizeToFit={true}
-                minimumFontScale={0.7} 
+                minimumFontScale={0.7}
                 >
-                  {item.name} (×{item.quantity})
+                  {item.name} {item.productUnit && `(${item.productUnit})`} ×{item.quantity}
                 </Text>
                 <Text style={styles.productCost}>
                   {currency}{formatCurrency(item.cost)}

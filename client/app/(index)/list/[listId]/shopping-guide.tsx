@@ -106,7 +106,9 @@ function StoreCard({
           {products.slice(0, 3).map((product, idx) => (
             <View key={idx} style={styles.productRow}>
               <View style={styles.productDot} />
-              <Text style={styles.productName} numberOfLines={1}>{product.name}</Text>
+              <Text style={styles.productName} numberOfLines={1}>
+                {product.name} {product.productUnit && `(${product.productUnit})`}
+              </Text>
               <Text style={styles.productPrice}>
                 ₱{product.price.toFixed(2)} × {product.quantity}
               </Text>
@@ -175,7 +177,7 @@ export default function ShoppingGuideScreen() {
 
     return productIds.map(productId => {
       const product = store.getRow("products", productId);
-      
+
       return {
         id: productId,
         name: (product?.name as string) || '',
@@ -185,6 +187,7 @@ export default function ShoppingGuideScreen() {
         selectedStore: (product?.selectedStore as string) || '',
         selectedPrice: (product?.selectedPrice as number) || 0,
         databaseProductId: (product?.databaseProductId as number) || 0,
+        productUnit: (product?.productUnit as string) || '',
         notes: (product?.notes as string) || '',
       };
     });

@@ -344,6 +344,7 @@ export interface ProductsByStore {
     price: number;
     quantity: number;
     units: string;
+    productUnit?: string;
   }>;
   totalPrice: number;
   productCount: number;
@@ -357,6 +358,7 @@ export function groupProductsByStore(
     selectedPrice: number;
     quantity: number;
     units: string;
+    productUnit?: string;
   }>
 ): ProductsByStore[] {
   const storeMap = new Map<string, ProductsByStore>();
@@ -381,6 +383,7 @@ export function groupProductsByStore(
         price: product.selectedPrice,
         quantity: product.quantity,
         units: product.units,
+        productUnit: product.productUnit,
       });
       storeData.totalPrice += product.selectedPrice * product.quantity;
       storeData.productCount++;
