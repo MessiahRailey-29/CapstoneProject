@@ -5,8 +5,8 @@ import {
   ProductSeasonality,
   ProductTrends,
   LocationProductStats,
-} from '../models/ml';
-import { Product, Price } from '../models';
+} from '../models/ml.js';
+import { Product, Price } from '../models/index.js';
 
 interface Recommendation {
   productId: number;

@@ -1,6 +1,6 @@
 // server/src/services/advancedRecommenderService.ts
-import { PurchaseHistory, ProductAssociations, LocationProductStats, UserProfile } from '../models/ml';
-import { Product, Price } from '../models';
+import { PurchaseHistory, ProductAssociations, LocationProductStats, UserProfile } from '../models/ml.js';
+import { Product, Price } from '../models/index.js';
 
 // Helper function to extract city from location string
 function extractCity(location: string): string {
