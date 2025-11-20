@@ -280,9 +280,9 @@ function createStyles(colors: any) {
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: 16,
-      backgroundColor: '#fff',
+      backgroundColor: colors.background,
       borderBottomWidth: 1,
-      borderBottomColor: '#e5e5e5',
+      borderBottomColor: colors.borderColor,
     },
     headerTitle: {
       fontSize: 18,
