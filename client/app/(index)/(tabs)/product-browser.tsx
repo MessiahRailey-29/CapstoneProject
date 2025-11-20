@@ -68,15 +68,15 @@ const CATEGORY_CONFIG: Record<string, { icon: string; color: string; gradient: s
     description: 'Bread, pastries & bakery'
   },
   'Household': {
-    icon: '🧼',
+    icon: '🧺',
     color: '#87CEEB',
     gradient: ['#87CEEB', '#A5DCF0'],
     description: 'Cleaning & home essentials'
   },
   'Snacks': {
     icon: '🍿',
-    color: '#DDA0DD',
-    gradient: ['#DDA0DD', '#E8BBE8'],
+    color: '#ddb8a0',
+    gradient: ['#ddb8a0', '#fac7a5'],
     description: 'Chips, crackers & treats'
   },
   'Other': {
@@ -84,6 +84,72 @@ const CATEGORY_CONFIG: Record<string, { icon: string; color: string; gradient: s
     color: '#C0C0C0',
     gradient: ['#C0C0C0', '#D8D8D8'],
     description: 'Other products & items'
+  },
+  'Fish & Seafood':{
+    icon: '🐟',
+    color: '#DDA0DD',
+    gradient: ['#DDA0DD', '#E8BBE8'],
+    description: 'Fish, crabs, shrimps, and shellfish'
+  },
+  'Baby Products':{
+    icon: '👶🏻',
+    color: '#e3c78f',
+    gradient: ['#e3c78f', '#ffebc4'],
+    description: 'Baby products, items, and food'
+  },
+  'Eggs':{
+    icon: '🥚',
+    color: '#b88829',
+    gradient: ['#b88829', '#e7decd'],
+    description: 'Brown and white eggs'
+  },
+  'Condiments & Sauces':{
+    icon: '🧂',
+    color: '#b82929',
+    gradient: ['#b82929', '#e7cdcd'],
+    description: 'Ketchup, mustard, salt, and more'
+  },
+  'Personal Care':{
+    icon: '🧼',
+    color: '#29b854',
+    gradient: ['#29b854', '#dee7cd'],
+    description: 'Soap, toothpaste, deodorant, and more'
+  },
+  'Bread & Bakery':{
+    icon: '🍞',
+    color: '#dca836',
+    gradient: ['#dca836', '#ffdb8f'],
+    description: 'Bread & bakery products'
+  },
+  'Frozen Goods':{
+    icon: '🧊',
+    color: '#3683dc',
+    gradient: ['#3683dc', '#8fdaff'],
+    description: 'Ready to cook frozen products'
+  },
+  'Rice & Grains':{
+    icon: '🌾',
+    color: '#d1dc36',
+    gradient: ['#d1dc36', '#f7ffc7'],
+    description: 'Essential shelf-stable grains used in everyday cooking'
+  },
+  'Cooking Oil':{
+    icon: '🛢️',
+    color: '#e0c438',
+    gradient: ['#e0c438', '#fff9c7'],
+    description: 'Vegetable, olive, or other oils for cooking and frying.'
+  },
+  'Candy & Sweets':{
+    icon: '🍬',
+    color: '#c43a3a',
+    gradient: ['#c43a3a', '#ffeec7'],
+    description: 'Candies for everyone.'
+  },
+  'Pasta':{
+    icon: '🍝',
+    color: '#c4c43a',
+    gradient: ['#c4c43a', '#ffc7c7'],
+    description: 'Dry pasta varieties like spaghetti, penne, and macaroni.'
   },
 };
 

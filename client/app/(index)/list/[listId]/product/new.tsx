@@ -959,7 +959,7 @@ function QueuedProductCard({
           }}
           style={styles.queuedProductRemove}
         >
-          <IconSymbol name="xmark.circle.fill" color="#FF3B30" size={24} />
+          <ThemedText style={{ fontSize: 24 }}>❌</ThemedText>
         </Pressable>
       </View>
     </Pressable>
@@ -1097,8 +1097,9 @@ function createStyles(colors: typeof Colors.light) {
     },
     queuedProductContent: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'space-between',
+      gap: 8,
     },
     queuedProductMain: {
       flex: 1,
@@ -1135,6 +1136,8 @@ function createStyles(colors: typeof Colors.light) {
     },
     queuedProductRemove: {
       padding: 4,
+      marginLeft: 8,
+      alignSelf: 'center',
     },
     editingContainer: {
       gap: 12,

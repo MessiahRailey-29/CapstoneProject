@@ -9,6 +9,7 @@ import { Animated, StyleSheet, View } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import Button from "@/components/ui/button";
 import { useJoinShoppingListCallback } from "@/stores/ShoppingListsStore";
+import CustomAlert from "@/components/ui/CustomAlert";
 
 const FRAME_SIZE = 260;
 const LINE_HEIGHT = 3;
@@ -25,7 +26,7 @@ export default function ScanQRCode() {
   const [qrCodeDetected, setQrCodeDetected] = useState<string>("");
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const scanAnim = useRef(new Animated.Value(0)).current;
+  const scanAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
@@ -80,16 +81,9 @@ export default function ScanQRCode() {
     const listId = extractListId(qrCodeUrl);
     if (!listId) return;
 
+    if (qrCodeDetected === listId) return;
+
     setQrCodeDetected(listId);
-
-    if (timeoutRef.current !== null) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    timeoutRef.current = setTimeout(() => {
-      setQrCodeDetected("");
-      timeoutRef.current = null;
-    }, 1000);
   };
 
   const handleConfirmJoinList = () => {
@@ -103,9 +97,9 @@ export default function ScanQRCode() {
     });
   };
 
-    const translateY = scanAnim.interpolate({
-  inputRange: [0, 1],
-  outputRange: [15, FRAME_SIZE - LINE_HEIGHT - 15],
+  const translateY = scanAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [15, FRAME_SIZE - LINE_HEIGHT - 15],
   });
 
   return (
@@ -135,19 +129,29 @@ export default function ScanQRCode() {
           />
         </View>
 
-        {qrCodeDetected ? (
-          <View style={styles.detectedContainer}>
-            <ThemedText style={styles.detectedText} type="title">
-              🥳 QR code detected!!!
-            </ThemedText>
-            <Button onPress={handleConfirmJoinList} variant="ghost">
-              Join list
-            </Button>
-          </View>
-        ) : (
-          <ThemedText style={styles.instructionText} type="defaultSemiBold">
-            Point the camera at a valid Shopping List QR Code
-          </ThemedText>
+        <ThemedText style={styles.instructionText} type="defaultSemiBold">
+          Point the camera at a valid Shopping List QR Code
+        </ThemedText>
+
+        {qrCodeDetected && (
+          <CustomAlert
+            visible={!!qrCodeDetected}
+            title="🥳 QR Code Detected!"
+            message={`Join shopping list: ${qrCodeDetected}?`}
+            buttons={[
+              {
+                text: "Cancel",
+                type: "cancel",
+                onPress: () => setQrCodeDetected(""),
+              },
+              {
+                text: "Join",
+                type: "default",
+                onPress: handleConfirmJoinList,
+              },
+            ]}
+            onClose={() => setQrCodeDetected("")}
+          />
         )}
       </View>
     </CameraView>
@@ -214,11 +218,11 @@ const styles = StyleSheet.create({
   },
 
   scanArea: {
-  width: FRAME_SIZE,
-  height: FRAME_SIZE,
-  overflow: "hidden",
-  position: "relative",
-},
+    width: FRAME_SIZE,
+    height: FRAME_SIZE,
+    overflow: "hidden",
+    position: "relative",
+  },
   corner: {
     position: "absolute",
     width: 60,
@@ -255,11 +259,11 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 20,
   },
   scanningLine: {
-  alignSelf: 'center',
-  top: 0,
-  left: 0,
-  width: "95%",
-  height: LINE_HEIGHT,
-  backgroundColor: "rgba(0,255,0,0.9)",
-},
+    alignSelf: 'center',
+    top: 0,
+    left: 0,
+    width: "95%",
+    height: LINE_HEIGHT,
+    backgroundColor: "rgba(0,255,0,0.9)",
+  },
 });

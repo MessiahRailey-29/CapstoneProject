@@ -140,6 +140,13 @@ function ShoppingListItem({
         )}
       </View>
       <IconSymbol name="plus.circle" size={24} color="#007AFF" />
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </Pressable>
   );
 }

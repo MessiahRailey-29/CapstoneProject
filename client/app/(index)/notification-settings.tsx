@@ -15,6 +15,7 @@ import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
 
 
 export default function NotificationSettingsScreen() {
@@ -30,6 +31,9 @@ export default function NotificationSettingsScreen() {
   const { getToken } = useAuth();
   const { settings, updateSettings, expoPushToken, loading } = useNotifications(user?.id || '', getToken);
 
+  const {categoryIcon} = useLocalSearchParams() as { 
+      categoryIcon: string;
+    };
 
   const hasInitialized = useRef(false);
 
@@ -170,16 +174,6 @@ export default function NotificationSettingsScreen() {
     await updateSettings({ reminderTiming: newReminderTiming });
   };
 
-  const daysOfWeek = [
-    { label: 'Sun', value: 0 },
-    { label: 'Mon', value: 1 },
-    { label: 'Tue', value: 2 },
-    { label: 'Wed', value: 3 },
-    { label: 'Thu', value: 4 },
-    { label: 'Fri', value: 5 },
-    { label: 'Sat', value: 6 },
-  ];
-
   if (loading && !settings) {
     return (
       <View style={styles.loadingContainer}>
@@ -298,23 +292,6 @@ export default function NotificationSettingsScreen() {
               ios_backgroundColor="#d1d1d6"
             />
           </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <ThemedText style={styles.settingLabel}>👥 Shared List Updates</ThemedText>
-              <ThemedText style={styles.settingDescription}>
-                Get notified when shared lists are updated
-              </ThemedText>
-            </View>
-            <Switch
-              value={localSettings.preferences.sharedListUpdates}
-              onValueChange={() => handlePreferenceToggle('sharedListUpdates')}
-              disabled={!localSettings.enabled}
-              trackColor={{ false: '#d1d1d6', true: '#34C759' }}
-              thumbColor="#fff"
-              ios_backgroundColor="#d1d1d6"
-            />
-          </View>
         </View>
 
         {/* Reminder Timing */}
@@ -352,36 +329,6 @@ export default function NotificationSettingsScreen() {
               >
                 <ThemedText style={styles.stepperButtonText}>+</ThemedText>
               </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.daysContainer}>
-            <ThemedText style={styles.settingLabel}>Preferred Shopping Days</ThemedText>
-            <ThemedText style={styles.settingDescription}>
-              Select days you typically shop
-            </ThemedText>
-            <View style={styles.daysGrid}>
-              {daysOfWeek.map((day) => (
-                <TouchableOpacity
-                  key={day.value}
-                  style={[
-                    styles.dayButton,
-                    (localSettings.reminderTiming.daysOfWeek || []).includes(day.value) &&
-                    styles.dayButtonActive,
-                  ]}
-                  onPress={() => handleDayOfWeekToggle(day.value)}
-                >
-                  <ThemedText
-                    style={[
-                      styles.dayButtonText,
-                      (localSettings.reminderTiming.daysOfWeek || []).includes(day.value) &&
-                      styles.dayButtonTextActive,
-                    ]}
-                  >
-                    {day.label}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
             </View>
           </View>
         </View>

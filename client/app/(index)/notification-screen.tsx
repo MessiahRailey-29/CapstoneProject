@@ -280,7 +280,7 @@ function createStyles(colors: any) {
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: 16,
-      backgroundColor: '#fff',
+      backgroundColor: colors.background,
       borderBottomWidth: 1,
       borderBottomColor: '#e5e5e5',
     },
@@ -331,7 +331,7 @@ function createStyles(colors: any) {
     notificationIcon: {
       fontSize: 28,
       marginRight: 12,
-      lineHeight: 32
+      lineHeight: 29
     },
     notificationTextContainer: {
       flex: 1,
@@ -392,7 +392,7 @@ function createStyles(colors: any) {
     emptyIcon: {
       fontSize: 64,
       marginBottom: 16,
-      lineHeight: 60
+      lineHeight: 70
     },
     emptyTitle: {
       fontSize: 22,

@@ -11,11 +11,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 
 function ProductItem({ 
+  icon,
   product, 
   categoryColor,
   onPress 
-}: { 
+}: {
   product: DatabaseProduct;
+  icon: string;
   categoryColor: string;
   onPress: () => void;
 }) {
@@ -33,7 +35,7 @@ function ProductItem({
       ]}
     >
       <View style={[styles.productIconContainer, { backgroundColor: categoryColor + '20' }]}>
-        <Text style={styles.productIcon}>📦</Text>
+        <Text style={styles.productIcon}>{icon}</Text>
       </View>
       
       <View style={styles.productInfo}>
@@ -120,6 +122,7 @@ export default function CategoryProductsScreen() {
           renderItem={({ item }) => (
             <ProductItem 
               product={item}
+              icon={categoryIcon}
               categoryColor={categoryColor}
               onPress={() => handleProductPress(item)}
             />

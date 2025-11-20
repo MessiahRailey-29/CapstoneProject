@@ -228,6 +228,13 @@ const ShoppingListItem: React.FC<ShoppingListItemProps> = ({ listId, isHistory =
           </View>
         )}
       </Pressable>
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </Swipeable>
   );
 }
@@ -762,6 +769,13 @@ export default function HomeScreen() {
 
       <SortModal />
       <FilterModal />
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </GestureHandlerRootView>
   );
 }
