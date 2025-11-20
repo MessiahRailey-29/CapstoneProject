@@ -2,7 +2,6 @@
 import express from 'express';
 import { Notification, NotificationSettings, ShoppingSchedule, LowStockTracking } from '../models/notification';
 import { sendPushNotification } from '../services/pushNotificationService';
-import { authenticateUser, authorizeUser, authenticateAdmin } from '../middleware/auth.js';
 import {
   validateParams,
   validateBody,
@@ -22,8 +21,6 @@ const router = express.Router();
 // Get user's notifications
 router.get(
   '/:userId',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   async (req, res) => {
   try {
@@ -56,8 +53,6 @@ router.get(
 // Get user's notification settings
 router.get(
   '/:userId/settings',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   async (req, res) => {
   try {
@@ -103,8 +98,6 @@ router.get(
 // Update notification settings
 router.put(
   '/:userId/settings',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   validateBody(notificationSettingsUpdateSchema),
   async (req, res) => {
@@ -134,8 +127,6 @@ router.put(
 // Register push token
 router.post(
   '/:userId/push-token',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   validateBody(pushTokenSchema),
   async (req, res) => {
@@ -165,7 +156,6 @@ router.post(
 // Mark notification as read
 router.patch(
   '/:notificationId/read',
-  authenticateUser,
   validateParams(notificationIdSchema),
   async (req, res) => {
   try {
@@ -193,8 +183,6 @@ router.patch(
 // Mark all as read
 router.patch(
   '/:userId/read-all',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   async (req, res) => {
   try {
@@ -220,7 +208,6 @@ router.patch(
 // Delete notification
 router.delete(
   '/:notificationId',
-  authenticateUser,
   validateParams(notificationIdSchema),
   async (req, res) => {
   try {
@@ -243,8 +230,6 @@ router.delete(
 // Schedule shopping reminder
 router.post(
   '/:userId/schedule-reminder',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   validateBody(scheduleReminderSchema),
   async (req, res) => {
@@ -294,8 +279,6 @@ router.post(
 // Cancel reminder
 router.post(
   '/:userId/cancel-reminder',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   async (req, res) => {
   try {
@@ -323,8 +306,6 @@ router.post(
 // Create duplicate warning with push notification
 router.post(
   '/:userId/duplicate-warning',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   validateBody(duplicateWarningSchema),
   async (req, res) => {
@@ -390,8 +371,6 @@ router.post(
 // Track purchase for low stock monitoring
 router.post(
   '/:userId/track-purchase',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   validateBody(trackPurchaseSchema),
   async (req, res) => {
@@ -447,8 +426,6 @@ router.post(
 // Create shared list update notification with push notification
 router.post(
   '/:userId/shared-list-update',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   validateBody(sharedListUpdateSchema),
   async (req, res) => {
@@ -531,8 +508,6 @@ router.post(
 // 🧪 TEST PUSH: Send a test push notification
 router.post(
   '/:userId/test-push',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   async (req, res) => {
   try {
@@ -630,8 +605,6 @@ router.post(
 // 🔍 DEBUG ENDPOINT: Check notification settings and push token
 router.get(
   '/:userId/debug',
-  authenticateUser,
-  authorizeUser,
   validateParams(userIdSchema),
   async (req, res) => {
   try {
@@ -675,7 +648,6 @@ router.get(
 router.post(
   '/admin/trigger-reminders',
   adminRateLimit,
-  authenticateAdmin,
   async (req, res) => {
   try {
     console.log('🔔 MANUAL TRIGGER: Forcing shopping reminder check...');
