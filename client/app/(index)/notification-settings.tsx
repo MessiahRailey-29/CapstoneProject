@@ -281,23 +281,6 @@ export default function NotificationSettingsScreen() {
               ios_backgroundColor="#d1d1d6"
             />
           </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <ThemedText style={styles.settingLabel}>💰 Price Drops</ThemedText>
-              <ThemedText style={styles.settingDescription}>
-                Notify when items you buy go on sale
-              </ThemedText>
-            </View>
-            <Switch
-              value={localSettings.preferences.priceDrops}
-              onValueChange={() => handlePreferenceToggle('priceDrops')}
-              disabled={!localSettings.enabled}
-              trackColor={{ false: '#d1d1d6', true: '#34C759' }}
-              thumbColor="#fff"
-              ios_backgroundColor="#d1d1d6"
-            />
-          </View>
         </View>
 
         {/* Reminder Timing */}
