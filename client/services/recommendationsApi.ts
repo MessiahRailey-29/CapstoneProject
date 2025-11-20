@@ -1,5 +1,5 @@
 // client/services/recommendationsApi.ts
-const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+const API_URL = 'https://capstoneproject-ii8z.onrender.com';
 
 console.log('🔗 API URL:', API_URL); // Debug log
 

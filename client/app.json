@@ -76,7 +76,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": "http://192.168.1.142:3000",
+      "apiUrl": "https://capstoneproject-ii8z.onrender.com",
       "eas": {
         "projectId": "7bfe348f-3215-4eec-a3d7-2407d4ed839b"
       }
