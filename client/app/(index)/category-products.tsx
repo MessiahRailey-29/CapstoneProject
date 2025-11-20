@@ -37,7 +37,7 @@ function ProductItem({
       </View>
       
       <View style={styles.productInfo}>
-        <ThemedText style={styles.productName}>{product.name}</ThemedText>
+        <ThemedText style={styles.productName}>{product.name} {product.unit && `(${product.unit})`}</ThemedText>
         <Text style={styles.productId}>Product ID: {product.id}</Text>
       </View>
 

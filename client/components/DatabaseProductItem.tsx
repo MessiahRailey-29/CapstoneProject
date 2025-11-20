@@ -49,11 +49,11 @@ export default function DatabaseProductItem({
           </View>
 
           {/* Product Info */}
-          <ThemedText 
-            style={styles.gridName} 
+          <ThemedText
+            style={styles.gridName}
             numberOfLines={2}
           >
-            {product.name}
+            {product.name} {product.unit && `(${product.unit})`}
           </ThemedText>
 
           {/* Category Badge */}
@@ -83,7 +83,7 @@ export default function DatabaseProductItem({
         {/* Product Info */}
         <View style={styles.listInfo}>
           <ThemedText style={styles.listName} numberOfLines={2}>
-            {product.name}
+            {product.name} {product.unit && `(${product.unit})`}
           </ThemedText>
           <View style={styles.listCategoryContainer}>
             <View style={[styles.listCategoryBadge, { backgroundColor: categoryInfo.color }]}>
