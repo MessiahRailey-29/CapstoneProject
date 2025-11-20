@@ -17,7 +17,7 @@ import { useAddShoppingListCallback } from "@/stores/ShoppingListsStore";
 import DatePickerButton from "@/components/DatePickerButton";
 import BudgetInput from "@/components/BudgetInput";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser, useAuth } from "@clerk/clerk-expo";
 import { Colors } from "@/constants/Colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import CustomAlert from "@/components/ui/CustomAlert";
@@ -76,7 +76,8 @@ export default function CreateListScreen() {
 
   // notifications
   const { user } = useUser();
-  const { scheduleShoppingReminder } = useNotifications(user?.id || "");
+  const { getToken } = useAuth();
+  const { scheduleShoppingReminder } = useNotifications(user?.id || "", getToken);
 
   const navigateToListWithProduct = (
     listId: string,

@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Text, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useUser } from '@clerk/clerk-expo';
+import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Colors } from '@/constants/Colors';
 
@@ -15,15 +15,16 @@ interface NotificationBellProps {
 export function NotificationBell({ style }: NotificationBellProps) {
   const router = useRouter();
   const { user } = useUser();
+  const { getToken } = useAuth();
 
-  
+
     //color scheme and styles
     const scheme = useColorScheme();
     const colors = Colors[scheme ?? 'light'];
     const styles = useMemo(() => createStyles(colors), [colors]);
 
   const userId = useMemo(() => user?.id || '', [user?.id]);
-  const { unreadCount } = useNotifications(userId);
+  const { unreadCount } = useNotifications(userId, getToken);
 
   const handlePress = () => {
     router.push('/(index)/notification-screen');

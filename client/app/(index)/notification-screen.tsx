@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
-import { useUser } from '@clerk/clerk-expo';
+import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useShoppingListData } from '@/stores/ShoppingListsStore';
 import { Colors } from '@/constants/Colors';
@@ -141,6 +141,7 @@ function NotificationItem({
 export default function NotificationsScreen() {
   const router = useRouter();
   const { user } = useUser();
+  const { getToken } = useAuth();
   const userId = useMemo(() => user?.id || '', [user?.id]);
 
   const scheme = useColorScheme();
@@ -171,7 +172,7 @@ export default function NotificationsScreen() {
     deleteNotification,
     clearAllNotifications,
     fetchNotifications,
-  } = useNotifications(userId);
+  } = useNotifications(userId, getToken);
 
   const [refreshing, setRefreshing] = useState(false);
 

@@ -2,12 +2,14 @@
 import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNotifications } from '../hooks/useNotifications';
+import { useAuth } from '@clerk/clerk-expo';
 
 interface NotificationCenterProps {
   userId: string;
 }
 
 export function NotificationCenter({ userId }: NotificationCenterProps) {
+  const { getToken } = useAuth();
   const {
     notifications,
     unreadCount,
@@ -15,7 +17,7 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     markAsRead,
     deleteNotification,
     markAllAsRead,
-  } = useNotifications(userId);
+  } = useNotifications(userId, getToken);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {

@@ -3,25 +3,26 @@ import { useCallback } from 'react';
 import { useAddShoppingListProductCallback } from '@/stores/ShoppingListStore';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useShoppingListData } from '@/stores/ShoppingListsStore';
-import { useUser } from '@clerk/clerk-expo';
+import { useUser, useAuth } from '@clerk/clerk-expo';
 
 /**
  * ✅ FIXED VERSION - Now properly notifies collaborators about:
  * 1. Added items ✅
- * 2. Duplicate warnings ✅ 
+ * 2. Duplicate warnings ✅
  * 3. Any product changes in shared lists ✅
- * 
+ *
  * Helper hook that wraps useAddShoppingListProductCallback with notification support
  * This makes it easy to add products with automatic notifications to collaborators
- * 
+ *
  * Usage:
  * const addProduct = useAddProductWithNotifications(listId);
  * const productId = await addProduct(name, quantity, units, notes, ...);
  */
 export function useAddProductWithNotifications(listId: string) {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const addProduct = useAddShoppingListProductCallback(listId);
-  const { createDuplicateWarning } = useNotifications(user?.id || '');
+  const { createDuplicateWarning } = useNotifications(user?.id || '', getToken);
   
   // 🔥 FIX: Get list data to check if it's a shared list
   const listData = useShoppingListData(listId);
