@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "expo-router";
 import { Colors } from "@/constants/Colors";
 import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function IntroScreen() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function IntroScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? 'light'];
   const styles = createStyles(colors);
+
+  const insets = useSafeAreaInsets();
 
   return (
     <LinearGradient 
@@ -34,7 +37,7 @@ export default function IntroScreen() {
       </View>
 
       {/* Main Actions */}
-      <View style={styles.actions}>
+      <View style={[styles.actions,{paddingBottom: insets.bottom + 130}]}>
         <Button style={styles.buttonPrimary} onPress={() => router.push("/(auth)/sign-up")}>
           Create an Account
         </Button>
