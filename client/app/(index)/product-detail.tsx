@@ -82,7 +82,7 @@ export default function ProductDetailScreen() {
       <BodyScrollView contentContainerStyle={styles.container}>
         <View style={styles.productInfo}>
           <ThemedText type="title" style={styles.productName}>
-            {product.name}
+            {product.name} {product.unit && `(${product.unit})`}
           </ThemedText>
           <ThemedText type="defaultSemiBold" style={styles.category}>
             Category: {product.category}
