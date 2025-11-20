@@ -1,8 +1,8 @@
 // server/src/routes/index.ts
 import { Router } from 'express';
-import { Product, Price, ShoppingList } from '../models';
-import syncRoutes from './sync';
-import recommendationsRoutes from './recommendations';
+import { Product, Price, ShoppingList } from '../models/index.js';
+import syncRoutes from './sync.js';
+import recommendationsRoutes from './recommendations.js';
 import mongoose from 'mongoose';
 
 const router = Router();

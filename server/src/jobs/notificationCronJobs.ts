@@ -1,7 +1,7 @@
 // server/src/jobs/notificationCronJobs.ts
 import cron from 'node-cron';
-import { Notification, NotificationSettings, ShoppingSchedule, LowStockTracking } from '../models/notification';
-import { sendPushNotification } from '../services/pushNotificationService';
+import { Notification, NotificationSettings, ShoppingSchedule, LowStockTracking } from '../models/notification.js';
+import { sendPushNotification } from '../services/pushNotificationService.js';
 /**
  * Shopping Reminder Cron Job
  * Runs every hour to check for reminders based on user's configured hoursBefore setting
