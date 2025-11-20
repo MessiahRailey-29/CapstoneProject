@@ -38,22 +38,24 @@ export async function authenticateUser(
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Verify the session token with Clerk
-    const session = await clerkClient.sessions.verifySession(token, token);
+    // Verify the JWT token with Clerk
+    const payload = await clerkClient.verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+    });
 
-    if (!session || !session.userId) {
+    if (!payload || !payload.sub) {
       return res.status(401).json({
         success: false,
         error: 'Unauthorized',
-        message: 'Invalid or expired session token.',
+        message: 'Invalid or expired token.',
       });
     }
 
-    // Attach userId to request for downstream use
-    req.userId = session.userId;
-    req.auth = { userId: session.userId };
+    // Attach userId to request for downstream use (sub is the userId in Clerk JWTs)
+    req.userId = payload.sub;
+    req.auth = { userId: payload.sub };
 
-    console.log(`✅ Authenticated user: ${session.userId}`);
+    console.log(`✅ Authenticated user: ${payload.sub}`);
     next();
   } catch (error: any) {
     console.error('❌ Authentication error:', error.message);
@@ -154,12 +156,14 @@ export async function optionalAuth(
 
   try {
     const token = authHeader.substring(7);
-    const session = await clerkClient.sessions.verifySession(token, token);
+    const payload = await clerkClient.verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+    });
 
-    if (session && session.userId) {
-      req.userId = session.userId;
-      req.auth = { userId: session.userId };
-      console.log(`✅ Optional auth: User ${session.userId} authenticated`);
+    if (payload && payload.sub) {
+      req.userId = payload.sub;
+      req.auth = { userId: payload.sub };
+      console.log(`✅ Optional auth: User ${payload.sub} authenticated`);
     }
   } catch (error) {
     // Invalid token, but we don't fail the request
