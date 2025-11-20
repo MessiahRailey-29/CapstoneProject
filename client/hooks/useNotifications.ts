@@ -4,10 +4,14 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform, AppState } from 'react-native';
 import Constants from 'expo-constants';
-
-// Get API URL from app.json extra config, with fallback
-// Get API URL from environment variables
-const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.replace('/api', '') || 'http://192.168.1.142:3000';
+import {
+  API_URL,
+  getWithAuth,
+  postWithAuth,
+  putWithAuth,
+  patchWithAuth,
+  deleteWithAuth
+} from '@/utils/api';
 
 console.log('📡 API_URL configured as:', API_URL);
 
@@ -53,13 +57,13 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export function useNotifications(userId: string) {
+export function useNotifications(userId: string, getToken: () => Promise<string | null>) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [expoPushToken, setExpoPushToken] = useState<string>('');
-  
+
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
@@ -109,11 +113,11 @@ export function useNotifications(userId: string) {
 
       // Send token to server
       console.log('📤 Sending push token to server...');
-      const response = await fetch(`${API_URL}/api/notifications/${userId}/push-token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pushToken: token }),
-      });
+      const response = await postWithAuth(
+        `/api/notifications/${userId}/push-token`,
+        { pushToken: token },
+        getToken
+      );
 
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}: ${await response.text()}`);
@@ -148,18 +152,19 @@ export function useNotifications(userId: string) {
       console.log('⚠️ Skipping fetch - no userId');
       return;
     }
-    
+
     setLoading(true);
     try {
       console.log('📥 Fetching notifications for user:', userId);
-      const response = await fetch(
-        `${API_URL}/api/notifications/${userId}?limit=50&unreadOnly=${unreadOnly}`
+      const response = await getWithAuth(
+        `/api/notifications/${userId}?limit=50&unreadOnly=${unreadOnly}`,
+        getToken
       );
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch notifications: ${response.status}`);
       }
-      
+
       const data = await response.json();
 
       if (data.success) {
@@ -174,7 +179,7 @@ export function useNotifications(userId: string) {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, getToken]);
 
   // Fetch settings
   const fetchSettings = useCallback(async () => {
@@ -182,15 +187,18 @@ export function useNotifications(userId: string) {
       console.log('⚠️ Skipping settings fetch - no userId');
       return;
     }
-    
+
     try {
       console.log('⚙️ Fetching notification settings...');
-      const response = await fetch(`${API_URL}/api/notifications/${userId}/settings`);
-      
+      const response = await getWithAuth(
+        `/api/notifications/${userId}/settings`,
+        getToken
+      );
+
       if (!response.ok) {
         throw new Error(`Failed to fetch settings: ${response.status}`);
       }
-      
+
       const data = await response.json();
 
       if (data.success) {
@@ -203,14 +211,15 @@ export function useNotifications(userId: string) {
     } catch (error) {
       console.error('❌ Error fetching settings:', error);
     }
-  }, [userId]);
+  }, [userId, getToken]);
 
   // Mark as read
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
-      const response = await fetch(
-        `${API_URL}/api/notifications/${notificationId}/read`,
-        { method: 'PATCH' }
+      const response = await patchWithAuth(
+        `/api/notifications/${notificationId}/read`,
+        undefined,
+        getToken
       );
       const data = await response.json();
 
@@ -223,14 +232,15 @@ export function useNotifications(userId: string) {
     } catch (error) {
       console.error('❌ Error marking as read:', error);
     }
-  }, []);
+  }, [getToken]);
 
   // Mark all as read
   const markAllAsRead = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${API_URL}/api/notifications/${userId}/read-all`,
-        { method: 'PATCH' }
+      const response = await patchWithAuth(
+        `/api/notifications/${userId}/read-all`,
+        undefined,
+        getToken
       );
       const data = await response.json();
 
@@ -243,14 +253,14 @@ export function useNotifications(userId: string) {
     } catch (error) {
       console.error('❌ Error marking all as read:', error);
     }
-  }, [userId]);
+  }, [userId, getToken]);
 
   // Delete notification
   const deleteNotification = useCallback(async (notificationId: string) => {
     try {
-      const response = await fetch(
-        `${API_URL}/api/notifications/${notificationId}`,
-        { method: 'DELETE' }
+      const response = await deleteWithAuth(
+        `/api/notifications/${notificationId}`,
+        getToken
       );
       const data = await response.json();
 
@@ -264,18 +274,15 @@ export function useNotifications(userId: string) {
     } catch (error) {
       console.error('❌ Error deleting notification:', error);
     }
-  }, [notifications]);
+  }, [notifications, getToken]);
 
   // Update settings
   const updateSettings = useCallback(async (updates: Partial<NotificationSettings>) => {
     try {
-      const response = await fetch(
-        `${API_URL}/api/notifications/${userId}/settings`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates),
-        }
+      const response = await putWithAuth(
+        `/api/notifications/${userId}/settings`,
+        updates,
+        getToken
       );
       const data = await response.json();
 
@@ -285,18 +292,15 @@ export function useNotifications(userId: string) {
     } catch (error) {
       console.error('❌ Error updating settings:', error);
     }
-  }, [userId]);
+  }, [userId, getToken]);
 
   // Schedule shopping reminder
   const scheduleShoppingReminder = useCallback(async (listId: string, scheduledDate: Date) => {
     try {
-      const response = await fetch(
-        `${API_URL}/api/notifications/${userId}/schedule-reminder`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ listId, scheduledDate: scheduledDate.toISOString() }),
-        }
+      const response = await postWithAuth(
+        `/api/notifications/${userId}/schedule-reminder`,
+        { listId, scheduledDate: scheduledDate.toISOString() },
+        getToken
       );
       const data = await response.json();
 
@@ -309,18 +313,15 @@ export function useNotifications(userId: string) {
       console.error('❌ Error scheduling reminder:', error);
       return false;
     }
-  }, [userId, fetchNotifications]);
+  }, [userId, fetchNotifications, getToken]);
 
   // Cancel shopping reminder
   const cancelShoppingReminder = useCallback(async (listId: string) => {
     try {
-      const response = await fetch(
-        `${API_URL}/api/notifications/${userId}/cancel-reminder`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ listId }),
-        }
+      const response = await postWithAuth(
+        `/api/notifications/${userId}/cancel-reminder`,
+        { listId },
+        getToken
       );
       const data = await response.json();
 
@@ -333,18 +334,15 @@ export function useNotifications(userId: string) {
       console.error('❌ Error cancelling reminder:', error);
       return false;
     }
-  }, [userId, fetchNotifications]);
+  }, [userId, fetchNotifications, getToken]);
 
   // Create duplicate warning
   const createDuplicateWarning = useCallback(async (productName: string, listId: string) => {
     try {
-      const response = await fetch(
-        `${API_URL}/api/notifications/${userId}/duplicate-warning`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productName, listId }),
-        }
+      const response = await postWithAuth(
+        `/api/notifications/${userId}/duplicate-warning`,
+        { productName, listId },
+        getToken
       );
       const data = await response.json();
 
@@ -357,21 +355,18 @@ export function useNotifications(userId: string) {
       console.error('❌ Error creating duplicate warning:', error);
       return false;
     }
-  }, [userId, fetchNotifications]);
+  }, [userId, fetchNotifications, getToken]);
 
   // Track purchase for low stock
   const trackPurchase = useCallback(async (productId: number, productName: string) => {
     try {
-      const response = await fetch(
-        `${API_URL}/api/notifications/${userId}/track-purchase`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId, productName }),
-        }
+      const response = await postWithAuth(
+        `/api/notifications/${userId}/track-purchase`,
+        { productId, productName },
+        getToken
       );
       const data = await response.json();
-      
+
       if (data.success) {
         console.log(`✅ Tracked purchase: ${productName}`);
         return true;
@@ -381,7 +376,7 @@ export function useNotifications(userId: string) {
       console.error('❌ Error tracking purchase:', error);
       return false;
     }
-  }, [userId]);
+  }, [userId, getToken]);
 
   // Clear all notifications
   const clearAllNotifications = useCallback(async () => {

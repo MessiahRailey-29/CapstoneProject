@@ -10,7 +10,7 @@ import { useListCreation } from "@/context/ListCreationContext";
 import { useShoppingListValue } from "@/stores/ShoppingListStore";
 import { StatusBar } from "expo-status-bar";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser, useAuth } from "@clerk/clerk-expo";
 import { Colors } from "@/constants/Colors";
 import { useShoppingListData } from "@/stores/ShoppingListsStore";
 import CustomAlert from "@/components/ui/CustomAlert";
@@ -21,7 +21,8 @@ export default function EditScreen() {
 
   // 🔔 Get notification functions
   const { user } = useUser();
-  const { scheduleShoppingReminder, cancelShoppingReminder } = useNotifications(user?.id || '');
+  const { getToken } = useAuth();
+  const { scheduleShoppingReminder, cancelShoppingReminder } = useNotifications(user?.id || '', getToken);
 
 
   //color schemes and styles

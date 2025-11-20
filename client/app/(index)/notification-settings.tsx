@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
-import { useUser } from '@clerk/clerk-expo';
+import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,14 +20,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function NotificationSettingsScreen() {
 
   const insets = useSafeAreaInsets();
-  
+
   // color scheme for styles
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors, insets);
 
   const { user } = useUser();
-  const { settings, updateSettings, expoPushToken, loading } = useNotifications(user?.id || '');
+  const { getToken } = useAuth();
+  const { settings, updateSettings, expoPushToken, loading } = useNotifications(user?.id || '', getToken);
 
 
   const hasInitialized = useRef(false);

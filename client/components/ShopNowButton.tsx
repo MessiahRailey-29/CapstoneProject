@@ -10,7 +10,7 @@ import {
   useShoppingListStore,
 } from "@/stores/ShoppingListStore";
 import { useUpdateShoppingListStatus } from "@/stores/ShoppingListsStore";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser, useAuth } from "@clerk/clerk-expo";
 import { useNotifications } from "@/hooks/useNotifications";
 import CustomAlert from "./ui/CustomAlert";
 import { useAddInventoryWithDuplicateCheck } from "@/hooks/useAddInventoryWithDuplicateCheck";
@@ -25,6 +25,7 @@ export default function ShopNowButton({ listId, currentStatus = 'regular',
   showCustomAlert }: ShopNowButtonProps) {
   const router = useRouter();
   const { user } = useUser();
+  const { getToken } = useAuth();
   const productIds = useShoppingListProductIds(listId);
   const updateStatusInListsStore = useUpdateShoppingListStatus();
   const updateStatusInListStore = useUpdateListStatus(listId);
@@ -36,7 +37,7 @@ export default function ShopNowButton({ listId, currentStatus = 'regular',
   const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
 
 
-  const { trackPurchase } = useNotifications(user?.id || '');
+  const { trackPurchase } = useNotifications(user?.id || '', getToken);
 
   const store = useShoppingListStore(listId);
 
