@@ -1,7 +1,7 @@
 // server/src/routes/recommendations.ts
 import { Router } from 'express';
-import { RecommenderService } from '../services/recommenderService';
-import { AdvancedRecommenderService } from '../services/advancedRecommenderService';
+import { RecommenderService } from '../services/recommenderService.js';
+import { AdvancedRecommenderService } from '../services/advancedRecommenderService.js';
 
 const router = Router();
 const recommender = new RecommenderService();

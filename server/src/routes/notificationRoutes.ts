@@ -1,7 +1,7 @@
 // server/src/routes/notificationRoutes.ts
 import express from 'express';
-import { Notification, NotificationSettings, ShoppingSchedule, LowStockTracking } from '../models/notification';
-import { sendPushNotification } from '../services/pushNotificationService';
+import { Notification, NotificationSettings, ShoppingSchedule, LowStockTracking } from '../models/notification.js';
+import { sendPushNotification } from '../services/pushNotificationService.js';
 import {
   validateParams,
   validateBody,

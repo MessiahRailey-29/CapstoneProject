@@ -4,7 +4,7 @@ import { WebSocketServer } from 'ws';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
 import { createMergeableStore } from 'tinybase';
 import { createFilePersister } from 'tinybase/persisters/persister-file';
-import { ShoppingList } from './models';
+import { ShoppingList } from './models/index.js';
 import mongoose from 'mongoose';
 import * as fs from 'fs';
 import * as path from 'path';
