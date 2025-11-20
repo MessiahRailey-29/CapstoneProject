@@ -74,10 +74,11 @@ export function configureCors() {
 /**
  * Rate Limiting Middleware
  * Prevents brute force and DoS attacks
+ * More permissive in development, strict in production
  */
 export const generalRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 1000 in dev, 100 in production
   message: {
     success: false,
     error: 'Too many requests',
@@ -145,8 +146,13 @@ export function applySecurityMiddleware(app: Express) {
   // Apply CORS
   app.use(configureCors());
 
-  // Apply general rate limiting
-  app.use(generalRateLimit);
+  // Apply general rate limiting (only in production)
+  if (process.env.NODE_ENV === 'production') {
+    app.use(generalRateLimit);
+    console.log('✅ Rate limiting enabled (production mode)');
+  } else {
+    console.log('⚠️ Rate limiting disabled (development mode)');
+  }
 
   console.log('✅ Security middleware configured');
 }

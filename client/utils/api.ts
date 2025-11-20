@@ -1,116 +1,86 @@
 // utils/api.ts
-import { useAuth } from '@clerk/clerk-expo';
-
 const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.replace('/api', '') || 'http://192.168.1.142:3000';
 
 /**
- * Make an authenticated API request with Clerk JWT token
+ * Make an API request (no authentication required)
  */
-export async function fetchWithAuth(
+async function apiFetch(
   endpoint: string,
-  options: RequestInit = {},
-  getToken: () => Promise<string | null>
+  options: RequestInit = {}
 ): Promise<Response> {
-  try {
-    // Get Clerk session token
-    const token = await getToken();
+  const headers = {
+    ...options.headers,
+    'Content-Type': 'application/json',
+  };
 
-    if (!token) {
-      throw new Error('No authentication token available. Please sign in.');
-    }
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
 
-    // Add Authorization header with Bearer token
-    const headers = {
-      ...options.headers,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    };
-
-    // Make the request
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
-
-    return response;
-  } catch (error) {
-    console.error('❌ API request failed:', error);
-    throw error;
-  }
+  return response;
 }
 
 /**
- * Helper to make GET requests with authentication
+ * Helper to make GET requests
  */
 export async function getWithAuth(
   endpoint: string,
-  getToken: () => Promise<string | null>
+  _getToken?: () => Promise<string | null> // Keep parameter for compatibility but don't use it
 ): Promise<Response> {
-  return fetchWithAuth(endpoint, { method: 'GET' }, getToken);
+  return apiFetch(endpoint, { method: 'GET' });
 }
 
 /**
- * Helper to make POST requests with authentication
+ * Helper to make POST requests
  */
 export async function postWithAuth(
   endpoint: string,
   body: any,
-  getToken: () => Promise<string | null>
+  _getToken?: () => Promise<string | null> // Keep parameter for compatibility but don't use it
 ): Promise<Response> {
-  return fetchWithAuth(
-    endpoint,
-    {
-      method: 'POST',
-      body: JSON.stringify(body),
-    },
-    getToken
-  );
+  return apiFetch(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 /**
- * Helper to make PUT requests with authentication
+ * Helper to make PUT requests
  */
 export async function putWithAuth(
   endpoint: string,
   body: any,
-  getToken: () => Promise<string | null>
+  _getToken?: () => Promise<string | null> // Keep parameter for compatibility but don't use it
 ): Promise<Response> {
-  return fetchWithAuth(
-    endpoint,
-    {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    },
-    getToken
-  );
+  return apiFetch(endpoint, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
 }
 
 /**
- * Helper to make PATCH requests with authentication
+ * Helper to make PATCH requests
  */
 export async function patchWithAuth(
   endpoint: string,
   body?: any,
-  getToken?: () => Promise<string | null>
+  _getToken?: () => Promise<string | null> // Keep parameter for compatibility but don't use it
 ): Promise<Response> {
-  return fetchWithAuth(
-    endpoint,
-    {
-      method: 'PATCH',
-      body: body ? JSON.stringify(body) : undefined,
-    },
-    getToken!
-  );
+  return apiFetch(endpoint, {
+    method: 'PATCH',
+    body: body ? JSON.stringify(body) : undefined,
+  });
 }
 
 /**
- * Helper to make DELETE requests with authentication
+ * Helper to make DELETE requests
  */
 export async function deleteWithAuth(
   endpoint: string,
-  getToken: () => Promise<string | null>
+  _getToken?: () => Promise<string | null> // Keep parameter for compatibility but don't use it
 ): Promise<Response> {
-  return fetchWithAuth(endpoint, { method: 'DELETE' }, getToken);
+  return apiFetch(endpoint, { method: 'DELETE' });
 }
 
 export { API_URL };
