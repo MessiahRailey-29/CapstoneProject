@@ -2,11 +2,30 @@
 import express from 'express';
 import { Notification, NotificationSettings, ShoppingSchedule, LowStockTracking } from '../models/notification';
 import { sendPushNotification } from '../services/pushNotificationService';
+import { authenticateUser, authorizeUser, authenticateAdmin } from '../middleware/auth.js';
+import {
+  validateParams,
+  validateBody,
+  userIdSchema,
+  notificationIdSchema,
+  pushTokenSchema,
+  scheduleReminderSchema,
+  duplicateWarningSchema,
+  trackPurchaseSchema,
+  sharedListUpdateSchema,
+  notificationSettingsUpdateSchema,
+} from '../middleware/validation.js';
+import { adminRateLimit } from '../middleware/security.js';
 
 const router = express.Router();
 
 // Get user's notifications
-router.get('/:userId', async (req, res) => {
+router.get(
+  '/:userId',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
     const { limit = '50', unreadOnly = 'false' } = req.query;
@@ -35,7 +54,12 @@ router.get('/:userId', async (req, res) => {
 });
 
 // Get user's notification settings
-router.get('/:userId/settings', async (req, res) => {
+router.get(
+  '/:userId/settings',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -77,7 +101,13 @@ router.get('/:userId/settings', async (req, res) => {
 });
 
 // Update notification settings
-router.put('/:userId/settings', async (req, res) => {
+router.put(
+  '/:userId/settings',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  validateBody(notificationSettingsUpdateSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
     const updates = req.body;
@@ -102,7 +132,13 @@ router.put('/:userId/settings', async (req, res) => {
 });
 
 // Register push token
-router.post('/:userId/push-token', async (req, res) => {
+router.post(
+  '/:userId/push-token',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  validateBody(pushTokenSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
     const { pushToken } = req.body;
@@ -127,7 +163,11 @@ router.post('/:userId/push-token', async (req, res) => {
 });
 
 // Mark notification as read
-router.patch('/:notificationId/read', async (req, res) => {
+router.patch(
+  '/:notificationId/read',
+  authenticateUser,
+  validateParams(notificationIdSchema),
+  async (req, res) => {
   try {
     const { notificationId } = req.params;
 
@@ -151,7 +191,12 @@ router.patch('/:notificationId/read', async (req, res) => {
 });
 
 // Mark all as read
-router.patch('/:userId/read-all', async (req, res) => {
+router.patch(
+  '/:userId/read-all',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -173,7 +218,11 @@ router.patch('/:userId/read-all', async (req, res) => {
 });
 
 // Delete notification
-router.delete('/:notificationId', async (req, res) => {
+router.delete(
+  '/:notificationId',
+  authenticateUser,
+  validateParams(notificationIdSchema),
+  async (req, res) => {
   try {
     const { notificationId } = req.params;
 
@@ -192,7 +241,13 @@ router.delete('/:notificationId', async (req, res) => {
 });
 
 // Schedule shopping reminder
-router.post('/:userId/schedule-reminder', async (req, res) => {
+router.post(
+  '/:userId/schedule-reminder',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  validateBody(scheduleReminderSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
     const { listId, listName, emoji, scheduledDate } = req.body;
@@ -237,7 +292,12 @@ router.post('/:userId/schedule-reminder', async (req, res) => {
 });
 
 // Cancel reminder
-router.post('/:userId/cancel-reminder', async (req, res) => {
+router.post(
+  '/:userId/cancel-reminder',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
     const { listId } = req.body;
@@ -261,7 +321,13 @@ router.post('/:userId/cancel-reminder', async (req, res) => {
 });
 
 // Create duplicate warning with push notification
-router.post('/:userId/duplicate-warning', async (req, res) => {
+router.post(
+  '/:userId/duplicate-warning',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  validateBody(duplicateWarningSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
     const { productName, listId } = req.body;
@@ -322,7 +388,13 @@ router.post('/:userId/duplicate-warning', async (req, res) => {
 });
 
 // Track purchase for low stock monitoring
-router.post('/:userId/track-purchase', async (req, res) => {
+router.post(
+  '/:userId/track-purchase',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  validateBody(trackPurchaseSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
     const { productId, productName } = req.body;
@@ -373,7 +445,13 @@ router.post('/:userId/track-purchase', async (req, res) => {
 });
 
 // Create shared list update notification with push notification
-router.post('/:userId/shared-list-update', async (req, res) => {
+router.post(
+  '/:userId/shared-list-update',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  validateBody(sharedListUpdateSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
     const { listId, listName, emoji, message, action, itemName, updatedBy } = req.body;
@@ -451,7 +529,12 @@ router.post('/:userId/shared-list-update', async (req, res) => {
 });
 
 // 🧪 TEST PUSH: Send a test push notification
-router.post('/:userId/test-push', async (req, res) => {
+router.post(
+  '/:userId/test-push',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -545,7 +628,12 @@ router.post('/:userId/test-push', async (req, res) => {
 });
 
 // 🔍 DEBUG ENDPOINT: Check notification settings and push token
-router.get('/:userId/debug', async (req, res) => {
+router.get(
+  '/:userId/debug',
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
+  async (req, res) => {
   try {
     const { userId } = req.params;
     console.log('🔍 DEBUG: Checking notification setup for user:', userId);
@@ -584,7 +672,11 @@ router.get('/:userId/debug', async (req, res) => {
 });
 
 // 🎯 MANUAL TRIGGER: Force check for reminders NOW (for testing)
-router.post('/admin/trigger-reminders', async (req, res) => {
+router.post(
+  '/admin/trigger-reminders',
+  adminRateLimit,
+  authenticateAdmin,
+  async (req, res) => {
   try {
     console.log('🔔 MANUAL TRIGGER: Forcing shopping reminder check...');
     const { checkShoppingReminders } = await import('../jobs/notificationCronJobs.js');

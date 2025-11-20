@@ -1,10 +1,11 @@
 // server/src/index.ts
 import express from 'express';
-import cors from 'cors';
 import { createServer } from 'http';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import * as admin from 'firebase-admin';
+import { applySecurityMiddleware } from './middleware/security.js';
+import { sanitizeRequest } from './middleware/validation.js';
 
 // Load environment variables FIRST
 dotenv.config();
@@ -59,13 +60,23 @@ const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// =========================
+// SECURITY MIDDLEWARE
+// =========================
 
-// Add request logging middleware
+// Apply security middleware (Helmet, CORS, rate limiting)
+applySecurityMiddleware(app);
+
+// Parse JSON with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Sanitize requests to prevent NoSQL injection
+app.use(sanitizeRequest);
+
+// Request logging middleware
 app.use((req, res, next) => {
-  console.log(`🔥 ${req.method} ${req.url}`);
+  console.log(`🔥 ${req.method} ${req.url} - IP: ${req.ip}`);
   next();
 });
 
