@@ -1,6 +1,5 @@
 // server/src/middleware/auth.ts
 import { Request, Response, NextFunction } from 'express';
-import { clerkClient } from '@clerk/clerk-sdk-node';
 
 // Extend Express Request type to include userId
 declare global {
@@ -11,61 +10,6 @@ declare global {
         userId: string;
       };
     }
-  }
-}
-
-/**
- * Clerk JWT Authentication Middleware
- * Verifies the Clerk session token from the Authorization header
- * Attaches userId to req.userId and req.auth
- */
-export async function authenticateUser(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    // Extract token from Authorization header
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized',
-        message: 'Missing or invalid authorization header. Please provide a valid Bearer token.',
-      });
-    }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-
-    // Verify the JWT token with Clerk
-    const payload = await clerkClient.verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY,
-    });
-
-    if (!payload || !payload.sub) {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized',
-        message: 'Invalid or expired token.',
-      });
-    }
-
-    // Attach userId to request for downstream use (sub is the userId in Clerk JWTs)
-    req.userId = payload.sub;
-    req.auth = { userId: payload.sub };
-
-    console.log(`✅ Authenticated user: ${payload.sub}`);
-    next();
-  } catch (error: any) {
-    console.error('❌ Authentication error:', error.message);
-
-    return res.status(401).json({
-      success: false,
-      error: 'Unauthorized',
-      message: 'Failed to authenticate. Please log in again.',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-    });
   }
 }
 
@@ -154,21 +98,6 @@ export async function optionalAuth(
     return next();
   }
 
-  try {
-    const token = authHeader.substring(7);
-    const payload = await clerkClient.verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY,
-    });
-
-    if (payload && payload.sub) {
-      req.userId = payload.sub;
-      req.auth = { userId: payload.sub };
-      console.log(`✅ Optional auth: User ${payload.sub} authenticated`);
-    }
-  } catch (error) {
-    // Invalid token, but we don't fail the request
-    console.log('ℹ️ Optional auth: Invalid token provided, continuing as anonymous');
-  }
 
   next();
 }

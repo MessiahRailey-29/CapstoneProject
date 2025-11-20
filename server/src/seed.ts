@@ -1548,20 +1548,20 @@ async function seed() {
 
     await connectDB(mongoUri);
 
-    console.log('🗑️  Clearing existing data...');
+    console.log('ðŸ—‘ï¸  Clearing existing data...');
     await Product.deleteMany({});
     await Price.deleteMany({});
 
-    console.log('📦 Inserting products...');
+    console.log('ðŸ“¦ Inserting products...');
     await Product.insertMany(products);
-    console.log(`✅ Inserted ${products.length} products`);
+    console.log(`âœ… Inserted ${products.length} products`);
 
-    console.log('💰 Inserting prices...');
+    console.log('ðŸ’° Inserting prices...');
     await Price.insertMany(prices);
-    console.log(`✅ Inserted ${prices.length} prices`);
+    console.log(`âœ… Inserted ${prices.length} prices`);
 
-    console.log('\n🎉 Seed completed successfully!');
-    console.log(`\n📊 Summary:`);
+    console.log('\nðŸŽ‰ Seed completed successfully!');
+    console.log(`\nðŸ“Š Summary:`);
     console.log(`   Products: ${products.length}`);
     console.log(`   Prices: ${prices.length}`);
     console.log(`   Stores covered: SM, Puregold, Robinson's, WalterMart, Public Markets`);
@@ -1573,7 +1573,7 @@ async function seed() {
     
     process.exit(0);
   } catch (error) {
-    console.error('❌ Seed failed:', error);
+    console.error('âŒ Seed failed:', error);
     process.exit(1);
   }
 }
