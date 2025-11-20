@@ -18,7 +18,7 @@ export const recommendationsApi = {
   // Get recommendations
   async getRecommendations(userId: string, limit: number = 10): Promise<Recommendation[]> {
     try {
-      const url = `${API_URL}/recommendations?userId=${userId}&limit=${limit}`;
+      const url = `${API_URL}/api/recommendations?userId=${userId}&limit=${limit}`;
       
       // 🔍 DEBUG: Log everything
       console.log('=== DEBUG INFO ===');
@@ -57,7 +57,7 @@ export const recommendationsApi = {
     price?: number
   ): Promise<void> {
     try {
-      await fetch(`${API_URL}/recommendations/track`, {
+      await fetch(`${API_URL}/api/recommendations/track`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, productId, listId, quantity, store, price }),
@@ -71,7 +71,7 @@ export const recommendationsApi = {
   async getFrequentlyBoughtTogether(productIds: number[]): Promise<any[]> {
     try {
       const response = await fetch(
-        `${API_URL}/recommendations/frequently-bought-together`,
+        `${API_URL}/api/recommendations/frequently-bought-together`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -90,7 +90,7 @@ export const recommendationsApi = {
   async getPriceSavings(productIds: number[]): Promise<any[]> {
     try {
       const response = await fetch(
-        `${API_URL}/recommendations/price-savings`,
+        `${API_URL}/api/recommendations/price-savings`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -109,7 +109,7 @@ export const recommendationsApi = {
   async getTimeBasedRecommendations(userId: string): Promise<any> {
     try {
       const response = await fetch(
-        `${API_URL}/recommendations/time-based?userId=${userId}`
+        `${API_URL}/api/recommendations/time-based?userId=${userId}`
       );
       if (!response.ok) throw new Error('Failed to fetch');
       return await response.json();
