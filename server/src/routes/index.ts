@@ -4,6 +4,8 @@ import { Product, Price, ShoppingList } from '../models';
 import syncRoutes from './sync';
 import recommendationsRoutes from './recommendations';
 import mongoose from 'mongoose';
+import { authenticateUser, authorizeUser, optionalAuth } from '../middleware/auth.js';
+import { validateParams, userIdSchema, listIdSchema } from '../middleware/validation.js';
 
 const router = Router();
 
@@ -26,8 +28,8 @@ router.use(syncRoutes);
 
 
 // ===== Routes that NEED DB check =====
-// Products Routes
-router.get('/products', checkDB, async (req, res) => {
+// Products Routes (optional auth - can be viewed by anyone but may customize for authenticated users)
+router.get('/products', checkDB, optionalAuth, async (req, res) => {
   try {
     const products = await Product.find().sort({ name: 1 });
     console.log(`✅ Fetched ${products.length} products`);
@@ -67,6 +69,9 @@ router.get('/products/:id/prices', checkDB, async (req, res) => {
 router.get(
   '/lists/:userId',
   checkDB,
+  authenticateUser,
+  authorizeUser,
+  validateParams(userIdSchema),
   async (req, res) => {
   try {
     const lists = await ShoppingList.find({ userId: req.params.userId })
@@ -82,6 +87,8 @@ router.get(
 router.get(
   '/lists/:userId/:listId',
   checkDB,
+  authenticateUser,
+  authorizeUser,
   async (req, res) => {
   try {
     const list = await ShoppingList.findOne({ 
@@ -102,6 +109,7 @@ router.get(
 router.post(
   '/lists',
   checkDB,
+  authenticateUser,
   async (req, res) => {
   try {
     const list = new ShoppingList(req.body);
@@ -116,6 +124,7 @@ router.post(
 router.put(
   '/lists/:listId',
   checkDB,
+  authenticateUser,
   async (req, res) => {
   try {
     const list = await ShoppingList.findOneAndUpdate(
@@ -137,6 +146,7 @@ router.put(
 router.delete(
   '/lists/:listId',
   checkDB,
+  authenticateUser,
   async (req, res) => {
   try {
     const list = await ShoppingList.findOneAndDelete({ 
