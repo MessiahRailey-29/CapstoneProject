@@ -132,7 +132,7 @@ export default function ProductDetailScreen() {
           visible={modalVisible}
           onClose={() => setModalVisible(false)}
           productId={product.id}
-          productName={product.name}
+          productName={`${product.name}${product.unit ? ` (${product.unit})` : ''}`}
           price={selectedPrice.price}
           store={selectedPrice.store}
           onSuccess={() => {

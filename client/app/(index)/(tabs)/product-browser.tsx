@@ -170,7 +170,7 @@ function ProductCardWithPrices({
         <Text style={styles.productIcon}>{categoryConfig.icon}</Text>
         <View style={styles.productInfo}>
           <ThemedText style={styles.productName} numberOfLines={2}>
-            {product.name}
+            {product.name} {product.unit && `(${product.unit})`}
           </ThemedText>
           <Text style={styles.productCategory}>{product.category}</Text>
         </View>

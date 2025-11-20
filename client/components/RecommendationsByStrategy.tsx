@@ -229,9 +229,9 @@ function ProductCard({ recommendation, accentColor, onPress }: ProductCardProps)
     >
       <View style={styles.cardHeader}>
         <ThemedText style={styles.cardName} numberOfLines={2}>
-          {recommendation.productName}
+          {recommendation.productName} {recommendation.unit && `(${recommendation.unit})`}
         </ThemedText>
-        
+
       </View>
 
       <ThemedText style={styles.category}>{recommendation.category}</ThemedText>
