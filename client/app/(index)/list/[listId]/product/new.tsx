@@ -32,6 +32,7 @@ interface QueuedProduct {
   price?: number;
   databaseProductId?: number;
   category?: string;
+  unit?: string;
 }
 
 export default function NewItemScreen() {
@@ -208,7 +209,8 @@ export default function NewItemScreen() {
           product.store || "",
           product.price || 0,
           product.databaseProductId || 0,
-          product.category || ""
+          product.category || "",
+          product.unit || ""
         );
 
         console.log(`📝 Product ID returned: ${productId}`);
@@ -315,6 +317,7 @@ export default function NewItemScreen() {
       price: selectedStoreInfo?.price,
       databaseProductId: selectedProduct?.id,
       category: selectedProduct?.category,
+      unit: selectedProduct?.unit,
     };
 
     setQueuedProducts(prev => [...prev, newProduct]);
@@ -923,7 +926,7 @@ function QueuedProductCard({
       <View style={styles.queuedProductContent}>
         <View style={styles.queuedProductMain}>
           <ThemedText type="defaultSemiBold" style={styles.queuedProductName}>
-            {product.name}
+            {product.name} {product.unit && `(${product.unit})`}
           </ThemedText>
           <View style={styles.queuedProductDetails}>
             <ThemedText style={styles.queuedProductDetail}>

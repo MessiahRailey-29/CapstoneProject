@@ -80,14 +80,15 @@ export const useAddShoppingListProductCallback = (listId: string) => {
   
   return useCallback(
     async (
-      name: string, 
-      quantity: number, 
-      units: string, 
+      name: string,
+      quantity: number,
+      units: string,
       notes: string,
       selectedStore?: string,
       selectedPrice?: number,
       databaseProductId?: number,
       category?: string,
+      productUnit?: string,
       createDuplicateWarning?: (productName: string, listId: string) => Promise<boolean>
     ) => {
       const id = randomUUID();
@@ -139,6 +140,7 @@ export const useAddShoppingListProductCallback = (listId: string) => {
           selectedPrice: selectedPrice || 0,
           databaseProductId: databaseProductId || 0,
           category: category || "",
+          productUnit: productUnit || "",
           isPurchased: false,
           createdBy: userId,
           createdAt: now,

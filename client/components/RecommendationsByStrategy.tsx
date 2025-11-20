@@ -8,7 +8,7 @@ import { Colors } from '@/constants/Colors'
 
 interface RecommendationsByStrategyProps {
   recommendations: Recommendation[];
-  onProductSelect: (productId: number, productName: string, price: number, store: string) => void;
+  onProductSelect: (productId: number, productName: string, price: number, store: string, unit?: string) => void;
   loading?: boolean;
 }
 
@@ -195,7 +195,7 @@ function RecommendationSection({
             recommendation={item}
             accentColor={color}
             onPress={() =>
-              onProductSelect(item.productId, item.productName, item.price, item.store)
+              onProductSelect(item.productId, item.productName, item.price, item.store, item.unit)
             }
           />
         )}

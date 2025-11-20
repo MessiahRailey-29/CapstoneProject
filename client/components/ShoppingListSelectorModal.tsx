@@ -22,6 +22,7 @@ interface ShoppingListSelectorModalProps {
   productName: string;
   price: number;
   store: string;
+  productUnit?: string;
   onSuccess?: () => void;
 }
 
@@ -33,6 +34,7 @@ function ShoppingListItem({
   productName,
   price,
   storeName,
+  productUnit,
   onSuccess,
   onClose,
 }: {
@@ -42,6 +44,7 @@ function ShoppingListItem({
   productName: string;
   price: number;
   storeName: string;
+  productUnit?: string;
   onSuccess?: () => void;
   onClose: () => void;
 }) {
@@ -80,7 +83,8 @@ function ShoppingListItem({
         storeName, // selectedStore
         price, // selectedPrice
         productId, // databaseProductId
-        '' // category
+        '', // category
+        productUnit || '' // productUnit
       );
 
       // 🔔 If productAddedId is null, duplicate was found and notification was created
@@ -151,6 +155,7 @@ export default function ShoppingListSelectorModal({
   productName,
   price,
   store,
+  productUnit,
   onSuccess,
 }: ShoppingListSelectorModalProps) {
   const router = useRouter();
@@ -267,6 +272,7 @@ export default function ShoppingListSelectorModal({
                     productName={productName}
                     price={price}
                     storeName={store}
+                    productUnit={productUnit}
                     onSuccess={onSuccess}
                     onClose={onClose}
                   />

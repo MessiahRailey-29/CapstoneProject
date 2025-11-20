@@ -46,10 +46,11 @@ export default function ShoppingListProductItem({
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
-  
+
   const [selectedStore] = useShoppingListProductCell(listId, productId, "selectedStore");
   const [selectedPrice] = useShoppingListProductCell(listId, productId, "selectedPrice");
   const [category] = useShoppingListProductCell(listId, productId, "category");
+  const [productUnit] = useShoppingListProductCell(listId, productId, "productUnit");
 
   const listData = useShoppingListData(listId);
   
@@ -200,7 +201,7 @@ export default function ShoppingListProductItem({
                 isPurchased && styles.strikethrough
               ]}
             >
-              {name}
+              {name} {productUnit && `(${productUnit})`}
             </ThemedText>
             
             <View style={styles.productDetails}>

@@ -57,6 +57,7 @@ export default function Homepage() {
     productName: string;
     price: number;
     store: string;
+    unit?: string;
   } | null>(null);
 
   // Get ML recommendations
@@ -80,8 +81,8 @@ export default function Homepage() {
 
   // Handle product selection → open modal instead of directly adding
   const handleProductSelect = useCallback(
-    (productId: number, productName: string, price: number, store: string) => {
-      setSelectedProduct({ productId, productName, price, store });
+    (productId: number, productName: string, price: number, store: string, unit?: string) => {
+      setSelectedProduct({ productId, productName, price, store, unit });
       setModalVisible(true);
     },
     []
@@ -242,6 +243,7 @@ export default function Homepage() {
           productName={selectedProduct.productName}
           price={selectedProduct.price}
           store={selectedProduct.store}
+          productUnit={selectedProduct.unit}
           onSuccess={handleAddSuccess}
         />
       )}

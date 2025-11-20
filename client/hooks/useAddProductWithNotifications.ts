@@ -36,7 +36,8 @@ export function useAddProductWithNotifications(listId: string) {
       selectedStore?: string,
       selectedPrice?: number,
       databaseProductId?: number,
-      category?: string
+      category?: string,
+      productUnit?: string
     ) => {
       // Call the original add product function with duplicate warning support
       const productId = await addProduct(
@@ -48,6 +49,7 @@ export function useAddProductWithNotifications(listId: string) {
         selectedPrice,
         databaseProductId,
         category,
+        productUnit,
         createDuplicateWarning // Automatically pass notification function
       );
 
