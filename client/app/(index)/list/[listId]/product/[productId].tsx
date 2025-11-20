@@ -571,6 +571,7 @@ function StoreSelectionItem({
           )}
         </View>
       </View>
+      
     </Pressable>
   );
 }

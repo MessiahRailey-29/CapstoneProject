@@ -7,6 +7,7 @@ export interface Recommendation {
   productId: number;
   productName: string;
   category: string;
+  unit: string;
   score: number;
   reasons: string[];
   store: string;

@@ -92,7 +92,7 @@ function RecommendationItem({ recommendation, onPress }: RecommendationItemProps
     >
       <View style={styles.itemHeader}>
         <ThemedText style={styles.itemName} numberOfLines={2}>
-          {recommendation.productName}
+          {recommendation.productName} {recommendation.unit && `(${recommendation.unit})`}
         </ThemedText>
         <View
           style={[

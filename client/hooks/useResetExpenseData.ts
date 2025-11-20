@@ -1,9 +1,10 @@
 // hooks/useResetExpenseData.ts
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import * as UiReact from "tinybase/ui-react/with-schemas";
 import { NoValuesSchema } from "tinybase/with-schemas";
 import { useUser } from '@clerk/clerk-expo';
+import CustomAlert from '@/components/ui/CustomAlert';
 
 const PURCHASE_HISTORY_STORE_ID_PREFIX = "purchaseHistoryStore-";
 
@@ -32,8 +33,22 @@ export const useResetExpenseData = () => {
   const storeId = PURCHASE_HISTORY_STORE_ID_PREFIX + user?.id;
   const store = useStore(storeId);
 
+    const [customAlertVisible, setCustomAlertVisible] = useState(false);
+    const [customAlertTitle, setCustomAlertTitle] = useState('');
+    const [customAlertMessage, setCustomAlertMessage] = useState('');
+    const [customAlertButtons, setCustomAlertButtons] = useState<any[]>([]);
+  
+    const showCustomAlert = (title: string, message: string, buttons?: any[]) => {
+      setCustomAlertTitle(title);
+      setCustomAlertMessage(message);
+      setCustomAlertButtons(
+        buttons || [{ text: 'OK', onPress: () => setCustomAlertVisible(false) }]
+      );
+      setCustomAlertVisible(true);
+    };
+
   const resetAllExpenseData = useCallback(() => {
-    Alert.alert(
+    showCustomAlert(
       "Reset All Expense Data",
       "This will permanently delete:\n\n• All purchase history\n• Monthly spending trends\n• Category breakdowns\n• Expense cards data\n\nYour shopping lists will NOT be affected.\n\nThis action cannot be undone. Are you sure?",
       [
@@ -57,14 +72,14 @@ export const useResetExpenseData = () => {
               
               console.log(`✅ Reset ${rowIds.length} purchase records`);
               
-              Alert.alert(
+              showCustomAlert(
                 "Success",
                 "All expense data has been cleared successfully. Your shopping lists remain intact.",
                 [{ text: "OK" }]
               );
             } catch (error) {
               console.error('❌ Error resetting expense data:', error);
-              Alert.alert(
+              showCustomAlert(
                 "Error",
                 "Failed to reset expense data. Please try again.",
                 [{ text: "OK" }]

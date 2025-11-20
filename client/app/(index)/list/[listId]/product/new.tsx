@@ -1007,7 +1007,7 @@ function ProductSuggestionItem({
       <View style={styles.suggestionContent}>
         <View style={styles.suggestionMain}>
           <ThemedText type="defaultSemiBold" style={styles.suggestionName}>
-            {highlightText(product.name, searchQuery)}
+            {highlightText(product.name, searchQuery)} {product.unit && `(${product.unit})`}
           </ThemedText>
           <ThemedText type="default" style={styles.suggestionCategory}>
             {product.category}

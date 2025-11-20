@@ -12,6 +12,7 @@ interface Recommendation {
   productId: number;
   productName: string;
   category: string;
+  unit: string;
   score: number;
   reasons: string[];
   store: string;
@@ -106,6 +107,7 @@ export class RecommenderService {
           productId: product.id,
           productName: product.name,
           category: product.category,
+          unit: product.unit,
           score: frequencyScore * 0.6 + recencyScore * 0.4,
           reasons: [
             `You buy this often (${item.purchaseCount}x)`,
@@ -158,6 +160,7 @@ export class RecommenderService {
           productId: product.id,
           productName: product.name,
           category: product.category,
+          unit: product.unit,
           score: item.seasonalityScore,
           reasons: [`Perfect for ${seasonName}`, 'Seasonal favorite'],
           store: priceInfo?.store || 'Multiple stores',
@@ -210,6 +213,7 @@ export class RecommenderService {
           productId: product.id,
           productName: product.name,
           category: product.category,
+          unit: product.unit,
           score: Math.min(item.uniqueUsers / 20, 1),
           reasons: [
             `Popular in ${userCity}`,
@@ -317,6 +321,7 @@ export class RecommenderService {
           productId: product.id,
           productName: product.name,
           category: product.category,
+          unit: product.unit,
           score: Math.min(item.peerCount / similarUsers.length, 1),
           reasons: [
             `Shoppers like you${locationSuffix} love this`,
@@ -398,6 +403,7 @@ export class RecommenderService {
           productId: product.id,
           productName: product.name,
           category: product.category,
+          unit: product.unit,
           score: Math.min(item.recentPurchases / 50, 1),
           reasons: [
             'Trending this week in Batangas',
