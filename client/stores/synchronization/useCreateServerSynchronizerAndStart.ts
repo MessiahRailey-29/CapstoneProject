@@ -29,8 +29,8 @@ export const useCreateServerSynchronizerAndStart = <
       const synchronizer = await createWsSynchronizer(
         store,
         new ReconnectingWebSocket(wsUrl, [], {
-          maxReconnectionDelay: 1000,
-          connectionTimeout: 1000,
+          maxReconnectionDelay: 10000,
+          connectionTimeout: 30000,
         })
       );
 

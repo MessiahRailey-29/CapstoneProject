@@ -160,42 +160,7 @@ export default function ShopNowButton({ listId, currentStatus = 'regular',
   const handleCompleteShopping = async () => {
     // Check for duplicates first
     const duplicates = checkForDuplicates(productsData);
-
-    if (duplicates.length > 0) {
-      // Show duplicate warning with choice
-      const duplicateList = duplicates
-        .map(d => `• ${d.newItem.name} (already have ${d.existingItem.quantity} ${d.existingItem.units})`)
-        .join('\n');
-
-      showCustomAlert(
-        "Duplicate Items Found",
-        `The following items already exist in your inventory:\n\n${duplicateList}\n\nWhat would you like to do?`,
-        [
-          {
-            text: "Discard Duplicates",
-            style: "default",
-            onPress: () => {
-              // Add only non-duplicates
-              console.log(`🗑️ Discarding ${duplicates.length} duplicate items`);
-              completeShoppingWithItems(false);
-            },
-          },
-          {
-            text: "Add Anyway",
-            style: "default",
-            onPress: () => {
-              // Add all items including duplicates
-              console.log(`✅ Adding all items including ${duplicates.length} duplicates`);
-              completeShoppingWithItems(true);
-            },
-          },
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-        ]
-      );
-    } else {
+    {
       // No duplicates, proceed normally
       showCustomAlert(
         "Complete Shopping",
