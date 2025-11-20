@@ -85,6 +85,72 @@ const CATEGORY_CONFIG: Record<string, { icon: string; color: string; gradient: s
     gradient: ['#C0C0C0', '#D8D8D8'],
     description: 'Other products & items'
   },
+  'Fish & Seafood':{
+    icon: '🐟',
+    color: '#DDA0DD',
+    gradient: ['#DDA0DD', '#ffd0ff'],
+    description: 'Fish, shrimps, shellfish, and more.'
+    },
+  'Baby Products':{
+    icon: '👶🏻',
+    color: '#e3c78f',
+    gradient: ['#e3c78f', '#ffefce'],
+    description: 'Baby foods and items.'
+  },
+  'Eggs':{
+    icon: '🥚',
+    color: '#b88829',
+    gradient: ['#b88829', '#fff1d5'],
+    description: 'Brown and white eggs.'
+  },
+  'Condiments & Sauces':{
+    icon: '🧂',
+    color: '#b82929',
+    gradient: ['#b82929', '#ffa8a8'],
+    description: 'Ketchup, salt, mustard, and more.'
+  },
+  'Personal Care':{
+    icon: '🧼',
+    color: '#29b854',
+    gradient: ['#29b854', '#96d8ff'],
+    description: 'Soap, shampoo, cleansers, and more.'
+  },
+  'Bread & Bakery':{
+    icon: '🍞',
+    color: '#dca836',
+    gradient: ['#dca836', '#ffe6b0'],
+    description: 'Wheat bread, loaf bread, and more.'
+  },
+  'Frozen Goods':{
+    icon: '🧊',
+    color: '#3683dc',
+    gradient: ['#3683dc', '#add3ff'],
+    description: 'Ready to cook frozen products'
+  },
+  'Rice & Grains':{
+    icon: '🌾',
+    color: '#d1dc36',
+    gradient: ['#d1dc36', '#7dffb1'],
+    description: 'Rice, brown rice, and more.'
+  },
+  'Cooking Oil':{
+    icon: '🛢️',
+    color: '#e0c438',
+    gradient: ['#e0c438', '#ffeac7'],
+    description: 'Vegetable, palm, olive, and more.'
+  },
+  'Candy & Sweets':{
+    icon: '🍬',
+    color: '#c43a3a',
+    gradient: ['#c43a3a', '#D8D8D8'],
+    description: 'Candies for everyone.'
+  },
+  'Pasta':{
+    icon: '🍝',
+    color: '#c4c43a',
+    gradient: ['#c4c43a', '#ef6a6a'],
+    description: 'Penne, macaroni, and spagetti'
+  }
 };
 
 interface CategoryData {

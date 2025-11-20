@@ -18,6 +18,17 @@ const CATEGORY_CONFIG: Record<string, { icon: string; color: string }> = {
   'Household': { icon: '🧼', color: '#87CEEB' },
   'Snacks': { icon: '🍿', color: '#DDA0DD' },
   'Other': { icon: '📦', color: '#C0C0C0' },
+  'Fish & Seafood':{ icon: '🐟', color: '#DDA0DD'},
+  'Baby Products':{ icon: '👶🏻', color: '#e3c78f'},
+  'Eggs':{ icon: '🥚', color: '#b88829'},
+  'Condiments & Sauces':{ icon: '🧂', color: '#b82929'},
+  'Personal Care':{ icon: '🧼', color: '#29b854'},
+  'Bread & Bakery':{ icon: '🍞', color: '#dca836'},
+  'Frozen Goods':{ icon: '🧊', color: '#3683dc'},
+  'Rice & Grains':{ icon: '🌾', color: '#d1dc36'},
+  'Cooking Oil':{ icon: '🛢️', color: '#e0c438'},
+  'Candy & Sweets':{ icon: '🍬', color: '#c43a3a'},
+  'Pasta':{ icon: '🍝', color: '#c4c43a',}
 };
 
 interface DatabaseProductItemProps {
@@ -49,11 +60,11 @@ export default function DatabaseProductItem({
           </View>
 
           {/* Product Info */}
-          <ThemedText
-            style={styles.gridName}
+          <ThemedText 
+            style={styles.gridName} 
             numberOfLines={2}
           >
-            {product.name} {product.unit && `(${product.unit})`}
+            {product.name}
           </ThemedText>
 
           {/* Category Badge */}
@@ -83,7 +94,7 @@ export default function DatabaseProductItem({
         {/* Product Info */}
         <View style={styles.listInfo}>
           <ThemedText style={styles.listName} numberOfLines={2}>
-            {product.name} {product.unit && `(${product.unit})`}
+            {product.name}
           </ThemedText>
           <View style={styles.listCategoryContainer}>
             <View style={[styles.listCategoryBadge, { backgroundColor: categoryInfo.color }]}>

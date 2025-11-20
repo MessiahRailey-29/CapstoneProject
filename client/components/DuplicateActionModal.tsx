@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import Button from '@/components/ui/button';
 import { Colors } from '@/constants/Colors';
 import { StyleProp, ViewStyle } from "react-native";
+import { Feather } from '@expo/vector-icons';
 
 export type DuplicateActionType = 'merge' | 'discard' | 'add-anyway' | 'cancel';
 
@@ -194,7 +195,7 @@ export default function DuplicateActionModal({
                   style={styles.actionButton}
                 >
                   <View style={styles.buttonContent}>
-                    <IconSymbol name="xmark.circle" size={18} color="#FF3B30" />
+                    <Feather name="x" size={26} color="red" />
                     <ThemedText style={[styles.buttonText, { color: '#FF3B30' }]}>
                       Discard
                     </ThemedText>

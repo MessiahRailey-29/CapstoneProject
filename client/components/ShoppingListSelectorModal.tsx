@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   Alert,
+  useColorScheme
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -14,6 +15,8 @@ import { useShoppingListIds, useShoppingListsValues } from '@/stores/ShoppingLis
 import { useAddProductWithNotifications } from '@/hooks/useAddProductWithNotifications';
 import { useRouter } from 'expo-router';
 import CustomAlert from './ui/CustomAlert';
+import { Colors } from '@/constants/Colors';
+import { Feather } from '@expo/vector-icons';
 
 interface ShoppingListSelectorModalProps {
   visible: boolean;
@@ -46,6 +49,11 @@ function ShoppingListItem({
   onClose: () => void;
 }) {
   const router = useRouter();
+
+    // Color scheme and styles
+    const scheme = useColorScheme();
+    const colors = Colors[scheme ?? 'light'];
+    const styles = createStyles(colors);
 
   // 🔔 UPDATED: Use helper hook with automatic notification support
   const addProduct = useAddProductWithNotifications(listId);
@@ -165,6 +173,11 @@ export default function ShoppingListSelectorModal({
   const shoppingListIds = useShoppingListIds();
   const shoppingListsValues = useShoppingListsValues();
 
+  // Color scheme and styles
+    const scheme = useColorScheme();
+    const colors = Colors[scheme ?? 'light'];
+    const styles = createStyles(colors);
+
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
   const [customAlertTitle, setCustomAlertTitle] = useState('');
   const [customAlertMessage, setCustomAlertMessage] = useState('');
@@ -213,7 +226,7 @@ export default function ShoppingListSelectorModal({
               <ThemedText style={styles.productName}>{productName}</ThemedText>
             </View>
             <Pressable onPress={onClose} style={styles.closeButton}>
-              <IconSymbol name="xmark.circle.fill" size={28} color="#999" />
+              <Feather name="x" size={30} color="red" />
             </Pressable>
           </View>
 
@@ -295,22 +308,19 @@ export default function ShoppingListSelectorModal({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.mainBackground,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '85%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 5,
+    elevation: 8,
   },
   header: {
     flexDirection: 'row',
@@ -318,7 +328,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.borderColor,
   },
   headerContent: {
     flex: 1,
@@ -330,7 +340,7 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: 14,
-    color: '#666',
+    color: colors.ghost,
   },
   closeButton: {
     padding: 4,
@@ -346,7 +356,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 12,
@@ -367,7 +377,7 @@ const styles = StyleSheet.create({
   },
   createNewSubtext: {
     fontSize: 13,
-    color: '#666',
+    color: colors.ghost,
   },
   divider: {
     flexDirection: 'row',
@@ -378,12 +388,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: colors.borderColor,
   },
   dividerText: {
     marginHorizontal: 12,
     fontSize: 13,
-    color: '#999',
+    color: colors.ghost,
   },
   listItem: {
     flexDirection: 'row',
@@ -391,11 +401,12 @@ const styles = StyleSheet.create({
     padding: 16,
     marginHorizontal: 16,
     marginBottom: 8,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
     borderRadius: 12,
+    elevation: 8
   },
   listItemPressed: {
-    backgroundColor: '#e8e9ea',
+    backgroundColor: '#e8e9ea45',
   },
   listIcon: {
     width: 48,
@@ -419,7 +430,7 @@ const styles = StyleSheet.create({
   },
   listDescription: {
     fontSize: 13,
-    color: '#666',
+    color: colors.ghost,
   },
   emptyState: {
     alignItems: 'center',
@@ -430,7 +441,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginTop: 12,
-    color: '#666',
+    color: colors.ghost,
   },
   emptyStateSubtext: {
     fontSize: 14,
@@ -438,3 +449,4 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
+}

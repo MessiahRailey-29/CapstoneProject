@@ -14,7 +14,7 @@ import {
 } from "@/stores/ShoppingListStore";
 import { Colors } from "@/constants/Colors";
 import { useProductPrices } from "@/hooks/useProducts";
-import { EvilIcons } from "@expo/vector-icons";
+import { EvilIcons, Feather } from "@expo/vector-icons";
 import { exposedGhostText, borderColor } from '../../../../../constants/Colors';
 import CustomAlert from "@/components/ui/CustomAlert";
 import { ScrollView } from "react-native-gesture-handler";
@@ -426,7 +426,7 @@ function ProductContent({
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <Pressable onPress={() => setShowStorePicker(false)}>
-                <IconSymbol name="xmark" size={24} color="#007AFF" />
+                <Feather name="x" size={28} color="red" />
               </Pressable>
               <ThemedText type="title" style={styles.modalTitle}>
                 Select Store & Price

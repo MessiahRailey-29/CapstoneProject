@@ -189,6 +189,13 @@ function InventoryItem({ itemId, storage, showStorage = false }: { itemId: strin
             <ThemedText style={styles.deleteText}>Delete</ThemedText>
           </Pressable>
         </Animated.View>
+        <CustomAlert
+          visible={customAlertVisible}
+          title={customAlertTitle}
+          message={customAlertMessage}
+          buttons={customAlertButtons}
+          onClose={() => setCustomAlertVisible(false)}
+        />
       </View>
     );
   };
@@ -251,6 +258,13 @@ function InventoryItem({ itemId, storage, showStorage = false }: { itemId: strin
           <Text style={styles.itemDate}>Purchased: {formattedDate}</Text>
         </View>
       </View>
+      <CustomAlert
+          visible={customAlertVisible}
+          title={customAlertTitle}
+          message={customAlertMessage}
+          buttons={customAlertButtons}
+          onClose={() => setCustomAlertVisible(false)}
+        />
     </Swipeable>
   );
 }

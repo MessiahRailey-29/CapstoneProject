@@ -19,7 +19,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from "@/constants/Colors";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { FontAwesome } from "@expo/vector-icons";
+import { Feather, FontAwesome } from "@expo/vector-icons";
 import QuickAddFab from "@/components/AddShoppingListFaB";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from "@/components/ui/CustomAlert";
@@ -581,7 +581,7 @@ export default function HomeScreen() {
           <View style={styles.modalHeader}>
             <ThemedText style={styles.modalTitle}>Sort By</ThemedText>
             <Pressable onPress={() => setShowSortModal(false)}>
-              <IconSymbol name="xmark" size={24} color="#8E8E93" />
+              <Feather name="x" size={28} color="red" />
             </Pressable>
           </View>
 
@@ -635,7 +635,7 @@ export default function HomeScreen() {
           <View style={styles.modalHeader}>
             <ThemedText style={styles.modalTitle}>Filter By</ThemedText>
             <Pressable onPress={() => setShowFilterModal(false)}>
-              <IconSymbol name="xmark" size={24} color="#8E8E93" />
+              <Feather name="x" size={28} color="red" />
             </Pressable>
           </View>
 
@@ -669,6 +669,13 @@ export default function HomeScreen() {
           </View>
         </View>
       </Pressable>
+      <CustomAlert
+        visible={customAlertVisible}
+        title={customAlertTitle}
+        message={customAlertMessage}
+        buttons={customAlertButtons}
+        onClose={() => setCustomAlertVisible(false)}
+      />
     </Modal>
   );
 

@@ -1,10 +1,11 @@
 import * as React from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, useColorScheme } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Colors } from '@/constants/Colors';
 
 const TERMS_ACCEPTED_PREFIX = '@terms_accepted_';
 const TERMS_DATE_PREFIX = '@terms_accepted_date_';
@@ -14,6 +15,11 @@ export default function TermsAcceptanceScreen() {
   const { userId } = useAuth();
   const [hasScrolledToBottom, setHasScrolledToBottom] = React.useState(false);
   const [isAccepting, setIsAccepting] = React.useState(false);
+
+    // Color scheme and styles
+    const scheme = useColorScheme();
+    const colors = Colors[scheme ?? 'light'];
+    const styles = createStyles(colors);
 
   const handleScroll = (event: any) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
@@ -305,17 +311,18 @@ export default function TermsAcceptanceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.mainBackground,
   },
   header: {
     paddingTop: 60,
     paddingHorizontal: 24,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.borderColor,
   },
   title: {
     fontSize: 24,
@@ -388,8 +395,8 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 40,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderTopColor: colors.borderColor,
+    backgroundColor: colors.background,
   },
   footerNote: {
     fontSize: 11,
@@ -399,3 +406,4 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
 });
+}

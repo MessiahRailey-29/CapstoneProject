@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, useColorScheme } from 'react-native';
 import { DuplicateMatch } from '@/services/DuplicateDetectionService';
-
+import { Colors } from '@/constants/Colors';
 interface DuplicateResultsProps {
   duplicates: DuplicateMatch[];
   onSkipProduct: (productName: string) => void;
@@ -58,6 +58,11 @@ export default function DuplicateResults({
     if (daysAgo < 30) return `${Math.floor(daysAgo / 7)} week${Math.floor(daysAgo / 7) === 1 ? '' : 's'} ago`;
     return `${Math.floor(daysAgo / 30)} month${Math.floor(daysAgo / 30) === 1 ? '' : 's'} ago`;
   };
+
+    // Color scheme and styles
+    const scheme = useColorScheme();
+    const colors = Colors[scheme ?? 'light'];
+    const styles = createStyles(colors);
 
   if (duplicates.length === 0) {
     return (
@@ -133,36 +138,6 @@ export default function DuplicateResults({
                     </View>
                   </View>
                 ))}
-
-                <View style={styles.actionButtons}>
-                  {duplicate.suggestedAction === 'skip' && (
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.skipButton]}
-                      onPress={() => onSkipProduct(duplicate.productName)}
-                    >
-                      <Text style={styles.actionButtonText}>Skip This Item</Text>
-                    </TouchableOpacity>
-                  )}
-                  
-                  {(duplicate.suggestedAction === 'reduce' || duplicate.suggestedAction === 'skip') && (
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.reduceButton]}
-                      onPress={() => {
-                        const suggestedQuantity = Math.max(1, Math.floor(duplicate.currentQuantity / 2));
-                        onReduceQuantity(duplicate.productName, suggestedQuantity);
-                      }}
-                    >
-                      <Text style={styles.actionButtonText}>Reduce to Half</Text>
-                    </TouchableOpacity>
-                  )}
-                  
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.keepButton]}
-                    onPress={() => {}} // Keep as is - no action needed
-                  >
-                    <Text style={styles.keepButtonText}>Keep Original</Text>
-                  </TouchableOpacity>
-                </View>
               </View>
             )}
           </View>
@@ -178,33 +153,35 @@ export default function DuplicateResults({
   );
 }
 
-const styles = StyleSheet.create({
+
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.mainBackground,
   },
   header: {
-    backgroundColor: 'white',
+    backgroundColor: colors.mainBackground,
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: colors.borderColor,
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000',
+    color: colors.text,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: colors.ghost,
   },
   scrollView: {
     flex: 1,
     padding: 16,
   },
   duplicateCard: {
-    backgroundColor: 'white',
+    backgroundColor: colors.background,
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
@@ -224,12 +201,12 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: colors.text,
     marginBottom: 4,
   },
   currentQuantity: {
     fontSize: 14,
-    color: '#666',
+    color: colors.ghost,
     marginBottom: 8,
   },
   badgeRow: {
@@ -248,27 +225,27 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    color: 'white',
+    color: colors.text,
     fontWeight: '500',
   },
   expandIcon: {
     fontSize: 16,
-    color: '#666',
+    color: colors.exposedGhost,
     marginLeft: 8,
   },
   duplicateDetails: {
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: colors.borderColor,
     padding: 16,
   },
   matchesTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: colors.exposedGhost,
     marginBottom: 12,
   },
   matchItem: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.mainBackground,
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -282,11 +259,11 @@ const styles = StyleSheet.create({
   matchListName: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
+    color: colors.exposedGhost,
   },
   matchDate: {
     fontSize: 12,
-    color: '#666',
+    color: colors.ghost,
   },
   matchDetails: {
     flexDirection: 'row',
@@ -295,7 +272,7 @@ const styles = StyleSheet.create({
   },
   matchQuantity: {
     fontSize: 14,
-    color: '#666',
+    color: colors.ghost,
   },
   purchasedTag: {
     fontSize: 12,
@@ -307,44 +284,11 @@ const styles = StyleSheet.create({
     color: '#FF9500',
     fontWeight: '500',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    marginTop: 16,
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  actionButton: {
-    flex: 1,
-    minWidth: 100,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  skipButton: {
-    backgroundColor: '#FF3B30',
-  },
-  reduceButton: {
-    backgroundColor: '#FF9500',
-  },
-  keepButton: {
-    backgroundColor: '#e0e0e0',
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: 'white',
-  },
-  keepButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
   footer: {
-    backgroundColor: 'white',
+    backgroundColor: colors.background,
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: colors.borderColor,
   },
   dismissButton: {
     backgroundColor: '#007AFF',
@@ -371,15 +315,16 @@ const styles = StyleSheet.create({
   noDuplicatesTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000',
+    color: colors.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   noDuplicatesText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.ghost,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
   },
 });
+}
