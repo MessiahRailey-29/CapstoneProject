@@ -17,6 +17,7 @@ import { ProductSummary } from '@/services/DuplicateDetectionService';
 import { useShoppingListStore, useShoppingListProductIds } from '@/stores/ShoppingListStore';
 import CustomAlert from "@/components/ui/CustomAlert";
 import { useInventoryItems } from '@/stores/InventoryStore';
+import { Feather } from "@expo/vector-icons";
 
 interface SelectedStoreInfo {
   store: string;
@@ -530,7 +531,7 @@ export default function NewItemScreen() {
                   style={styles.dismissButton}
                   onPress={handleDismissSuggestions}
                 >
-                  <IconSymbol name="xmark.circle.fill" color="#999" size={20} />
+                  <Feather name="x" color="#999" size={20} />
                 </Pressable>
               )}
             </View>
@@ -1020,7 +1021,7 @@ function QueuedProductCard({
           }}
           style={styles.queuedProductRemove}
         >
-          <IconSymbol name="xmark.circle.fill" color="#FF3B30" size={24} />
+          <Feather name="x" color="#FF3B30" size={24} />
         </Pressable>
       </View>
     </Pressable>

@@ -18,6 +18,7 @@ import { EvilIcons, Feather } from "@expo/vector-icons";
 import { exposedGhostText, borderColor } from '../../../../../constants/Colors';
 import CustomAlert from "@/components/ui/CustomAlert";
 import { ScrollView } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Define ProductPrice type locally to match the API structure
 interface ProductPrice {
@@ -58,6 +59,9 @@ function ProductContent({
   listId: string;
   productId: string;
 }) {
+
+  const insets = useSafeAreaInsets();
+
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   const styles = createStyles(colors);
@@ -411,16 +415,15 @@ function ProductContent({
       <Modal
         visible={showStorePicker}
         animationType="slide"
-        presentationStyle="pageSheet"
         onRequestClose={() => setShowStorePicker(false)}
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 200 : 0} // adjust if you have a header
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom + 200 : 50} // adjust if you have a header
         >
           <ScrollView
-            contentContainerStyle={{ backgroundColor: colors.background, flexGrow: 1, padding: 16, paddingBottom: 100 }}
+            contentContainerStyle={{ backgroundColor: colors.background, flexGrow: 1, padding: 16, paddingBottom: insets.bottom + 200 }}
             keyboardShouldPersistTaps="handled"
           >
             {/* Modal Header */}
